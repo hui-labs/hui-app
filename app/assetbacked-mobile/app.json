@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Asset Backed",
+    "slug": "asset-backed",
+    "owner": "leveluplabs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "currentFullName": "@leveluplabs/asset-backed",
+    "originalFullName": "@leveluplabs/asset-backed",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.leveluplabs.assetbacked"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9ef74a5a-8ae0-4b2a-ade3-73ec28960b64"
+      }
+    }
+  }
+}
