@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "idl": "cp -r ../../target/idl ./pages/api/idl && cp -r ../../target/types ./pages/api/types"
+    "idl": "cp -r ../../target/idl contracts/idl && cp -r ../../target/types ./pages/api/types"
   },
   "dependencies": {
     "@project-serum/anchor": "^0.25.0",
@@ -26,6 +26,7 @@
     "next": "^13.0.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-use": "^17.4.0",
     "typescript": "4.9.3"
   },
   "devDependencies": {

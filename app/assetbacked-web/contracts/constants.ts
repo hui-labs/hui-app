@@ -10,3 +10,6 @@ export const connection = new Connection(endpoint, commitmentLevel)
 /* Constants for the Deployed "Hello World" Program */
 export const assetBackedProgramId = new PublicKey(idl.metadata.address)
 export const assetBackedPInterface = JSON.parse(JSON.stringify(idl))
+
+export const USDCAddress = "7e3gKwJYYCkW6UqGXBmDA8csZkKmLe4V8NVqJP6YmnjF"
+export const USDTAddress = "JB7priytaWzyfradidEUJ7WnzUAE5giWzbFbGNxq7ns6"
