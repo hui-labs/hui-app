@@ -1,5 +1,5 @@
 import { FC, useEffect, useState } from "react"
-import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js"
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"
 
 type PhantomEvent = "disconnect" | "connect" | "accountChanged"
 
@@ -17,6 +17,8 @@ interface PhantomProvider {
 type WindowWithSolana = Window & {
   solana?: PhantomProvider
 }
+
+const connection = new Connection("https://api.devnet.solana.com")
 
 const Connect2Phantom: FC = () => {
   const [walletAvail, setWalletAvail] = useState(false)
@@ -67,6 +69,18 @@ const Connect2Phantom: FC = () => {
     })
   }
 
+  const getBalance = async (
+    pubKey: PublicKey | null,
+    connection: Connection
+  ) => {
+    if (pubKey && connection) {
+      let balance = await connection.getBalance(pubKey)
+      console.log(`${balance / LAMPORTS_PER_SOL} SOL`)
+      return
+    }
+    console.log("null")
+  }
+
   return (
     <div>
       {walletAvail ? (
@@ -76,6 +90,9 @@ const Connect2Phantom: FC = () => {
           </button>
           <button disabled={!connected} onClick={disconnectHandler}>
             Disconnect from Phantom
+          </button>
+          <button onClick={() => getBalance(pubKey, connection)}>
+            Get balance
           </button>
           {connected ? <p>Your public key is : {pubKey?.toBase58()}</p> : null}
         </>
