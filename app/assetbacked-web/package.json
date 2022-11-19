@@ -6,9 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "idl": "cp -r ../../target/idl ./pages/api/idl && cp -r ../../target/types ./pages/api/types"
   },
   "dependencies": {
+    "@project-serum/anchor": "^0.25.0",
+    "@solana/wallet-adapter-base": "^0.9.18",
+    "@solana/wallet-adapter-react": "^0.15.24",
+    "@solana/wallet-adapter-react-ui": "^0.9.22",
+    "@solana/wallet-adapter-wallets": "^0.19.5",
     "@solana/web3.js": "^1.66.2",
     "@types/node": "18.11.9",
     "@types/react": "18.0.25",
