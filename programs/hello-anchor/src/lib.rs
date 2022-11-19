@@ -130,25 +130,38 @@ pub mod hello_anchor {
     ) -> Result<()> {
         let curve = ConstantProduct;
         let pool = &ctx.accounts.pool;
-        ctx.accounts.loan.interest_rate = pool.interest_rate.clone();
-        ctx.accounts.loan.borrower = ctx.accounts.borrower.to_account_info().key();
-        ctx.accounts.loan.token_a_account = ctx.accounts.pool.token_a_account.clone();
-        ctx.accounts.loan.token_b_account = ctx.accounts.pool.token_b_account.clone();
-        ctx.accounts.loan.repayment_period = pool.repayment_period.clone();
-        ctx.accounts.loan.fees = Fees {
+        let loan = &mut ctx.accounts.loan;
+
+        loan.interest_rate = pool.interest_rate.clone();
+        loan.borrower = ctx.accounts.borrower.to_account_info().key();
+        loan.token_a_account = ctx.accounts.pool.token_a_account.clone();
+        loan.token_b_account = ctx.accounts.pool.token_b_account.clone();
+        loan.repayment_period = pool.repayment_period.clone();
+        loan.fees = Fees {
             loan_fee: SYSTEM_LOAN_FEE,
             transfer_fee: SYSTEM_TRANSFER_FEE
         };
-        ctx.accounts.loan.min_loan_amount = pool.min_loan_amount.clone();
-        ctx.accounts.loan.max_loan_amount = pool.max_loan_amount.clone();
-        ctx.accounts.loan.max_loan_threshold = pool.max_loan_threshold.clone();
+        loan.min_loan_amount = pool.min_loan_amount.clone();
+        loan.max_loan_amount = pool.max_loan_amount.clone();
+        loan.max_loan_threshold = pool.max_loan_threshold.clone();
 
         let signer_seeds = ctx
             .accounts
             .pool
             .signer_seeds(&ctx.accounts.pool_pda, ctx.program_id)?;
         let signer_seeds = &[&signer_seeds.value()[..]];
+
+        // Transfer to the borrower
+        // amount >= min_loan
+        // && amount <= current_pool_amount - loan_fee
+        // && amount <= max_loan
         let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
+        let token_a_amount = ctx.accounts.token_a_for_pda.amount;
+        require_gte!(amount, pool.min_loan_amount);
+        require_gte!(pool.max_loan_amount, amount);
+        let max_return_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount);
+        // require_gte!(token_a_amount - loan_fee, max_return_amount);
+
         token::transfer(ctx.accounts.to_transfer_a_context(), amount)?;
         token::transfer(
             ctx.accounts
@@ -160,7 +173,7 @@ pub mod hello_anchor {
             ctx.accounts
                 .to_transfer_b_context()
                 .with_signer(signer_seeds),
-            amount,
+            max_return_amount,
         )?;
 
         Ok(())
@@ -206,8 +219,8 @@ pub struct Loan {
 #[derive(Accounts)]
 pub struct CreateLoan<'info> {
     #[account(zero)]
-    pub loan: Box<Account<'info, Loan>>,
-    pub pool: Box<Account<'info, Pool>>,
+    pub loan: Account<'info, Loan>,
+    pub pool: Account<'info, Pool>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub pool_pda: AccountInfo<'info>,
     /// CHECK: This is not dangerous because we don't read or write from this account
@@ -402,4 +415,15 @@ fn to_u128(val: u64) -> Result<u128> {
 fn to_u64(val: u128) -> Result<u64> {
     val.try_into()
         .map_err(|_| AppError::ConversionFailure.into())
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_a() {
+        let a = 100_u64 * 10_u64.pow(9);
+        let b = 800000000_u64;
+        println!("{}", (a / 10_u64.pow(9)) * b);
+    }
 }

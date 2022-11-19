@@ -242,10 +242,10 @@ describe("hello-anchor", () => {
     const tx = await program.methods
       .initPool(
         {
-          interestRate: new BN(0.0), // 0.001
-          maxLoanAmount: new BN(10),
-          maxLoanThreshold: new BN(10),
-          minLoanAmount: new BN(10),
+          interestRate: new BN(10), // 0.001
+          maxLoanAmount: new BN(100 * DECIMALS),
+          maxLoanThreshold: new BN(0.8 * DECIMALS),
+          minLoanAmount: new BN(10 * DECIMALS),
           repaymentPeriod: {
             oneHour: {},
           } as never,
@@ -468,10 +468,13 @@ describe("hello-anchor", () => {
         systemFeeAccount: systemFeeAccount,
       })
       .preInstructions([await program.account.loan.createInstruction(loan)])
-      .signers([bob, loan])
+      .signers([loan, bob])
       .rpc()
 
     await printTable()
+
+    const loanAccount = await program.account.loan.fetch(loan.publicKey)
+    console.log(loanAccount)
   })
 })
 
