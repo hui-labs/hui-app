@@ -5,8 +5,6 @@
     "owner": "leveluplabs",
     "version": "1.0.0",
     "orientation": "portrait",
-    "currentFullName": "@leveluplabs/asset-backed",
-    "originalFullName": "@leveluplabs/asset-backed",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
