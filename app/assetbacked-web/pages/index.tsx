@@ -1,10 +1,10 @@
-import ConnectToPhantom from "../component/ConnectToPhantom"
+import Connect2Phantom from "../component/Connect2Phantom"
 
 export default function Home() {
   return (
     <div>
       <h1>Hello</h1>
-      <ConnectToPhantom />
+      <Connect2Phantom />
     </div>
   )
 }
