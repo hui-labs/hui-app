@@ -55,16 +55,12 @@ describe("hello-anchor", () => {
     )
 
     const [poolPDA] = await PublicKey.findProgramAddress(
-      [
-        Buffer.from("pool"),
-        usdcMintPubkey.toBuffer(),
-        usdtMintPubkey.toBuffer(),
-      ],
+      [Buffer.from("pool"), usdtMintPubkey.toBuffer()],
       program.programId
     )
 
     // Create system fee account
-    const systemFeeAccount = await createAccount(
+    const systemUSDTFeeAccount = await createAccount(
       connection,
       systemFee,
       usdtMintPubkey,
@@ -115,16 +111,7 @@ describe("hello-anchor", () => {
     )
 
     // Create token accounts for PDA
-    const pdaUSDCAccount = await createAccount(
-      connection,
-      admin,
-      usdcMintPubkey,
-      admin.publicKey,
-      undefined,
-      undefined,
-      TOKEN_PROGRAM_ID
-    )
-    const pdaUSDTAccount = await createAccount(
+    const poolVaultUSDTAccount = await createAccount(
       connection,
       admin,
       usdtMintPubkey,
@@ -138,18 +125,7 @@ describe("hello-anchor", () => {
     await setAuthority(
       connection,
       admin,
-      pdaUSDCAccount,
-      admin.publicKey,
-      AuthorityType.AccountOwner,
-      poolPDA,
-      undefined,
-      undefined,
-      TOKEN_PROGRAM_ID
-    )
-    await setAuthority(
-      connection,
-      admin,
-      pdaUSDTAccount,
+      poolVaultUSDTAccount,
       admin.publicKey,
       AuthorityType.AccountOwner,
       poolPDA,
@@ -189,7 +165,7 @@ describe("hello-anchor", () => {
     //   connection,
     //   admin,
     //   usdtMint.address,
-    //   pdaUSDTAccount,
+    //   poolVaultUSDTAccount,
     //   usdtMint.mintAuthority,
     //   100
     // )
@@ -246,7 +222,7 @@ describe("hello-anchor", () => {
           maxLoanAmount: new BN(100 * DECIMALS),
           maxLoanThreshold: new BN(0.8 * DECIMALS),
           minLoanAmount: new BN(10 * DECIMALS),
-          repaymentPeriod: {
+          loanTerm: {
             oneHour: {},
           } as never,
         },
@@ -256,11 +232,10 @@ describe("hello-anchor", () => {
       .accounts({
         pool: pool.publicKey,
         pda: poolPDA,
-        tokenAForPda: pdaUSDCAccount,
-        tokenBForPda: pdaUSDTAccount,
+        vault: poolVaultUSDTAccount,
         depositor: alice.publicKey,
-        systemFeeAccount: systemFeeAccount,
-        tokenAForDepositor: aliceUSDTAccount,
+        systemFeeAccount: systemUSDTFeeAccount,
+        tokenDepositor: aliceUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .preInstructions([await program.account.pool.createInstruction(pool)])
@@ -307,15 +282,9 @@ describe("hello-anchor", () => {
     )
 
     // Get PDA accounts
-    const usdcForPDAAccount = await getAccount(
+    const usdtForPoolVaultAccount = await getAccount(
       connection,
-      pdaUSDCAccount,
-      null,
-      TOKEN_PROGRAM_ID
-    )
-    const usdtForPDAAccount = await getAccount(
-      connection,
-      pdaUSDTAccount,
+      poolVaultUSDTAccount,
       null,
       TOKEN_PROGRAM_ID
     )
@@ -323,7 +292,42 @@ describe("hello-anchor", () => {
     // Get system fee account
     const systemFeeForAdminAccount = await getAccount(
       connection,
-      systemFeeAccount,
+      systemUSDTFeeAccount,
+      null,
+      TOKEN_PROGRAM_ID
+    )
+
+    // Create loan PDA
+    const [loanPDA] = await PublicKey.findProgramAddress(
+      [Buffer.from("loan"), pool.publicKey.toBuffer()],
+      program.programId
+    )
+    const loan = web3.Keypair.generate()
+
+    // Create loan vault USDC
+    const loanVaultUSDCAccount = await createAccount(
+      connection,
+      admin,
+      usdcMintPubkey,
+      admin.publicKey,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+    await setAuthority(
+      connection,
+      admin,
+      loanVaultUSDCAccount,
+      admin.publicKey,
+      AuthorityType.AccountOwner,
+      loanPDA,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+    const usdcForLoanVaultAccount = await getAccount(
+      connection,
+      loanVaultUSDCAccount,
       null,
       TOKEN_PROGRAM_ID
     )
@@ -333,9 +337,8 @@ describe("hello-anchor", () => {
       pubkey: PublicKey
     ) => {
       try {
-        return parseInt(
-          (await connection.getTokenAccountBalance(pubkey)).value.amount
-        )
+        const { value } = await connection.getTokenAccountBalance(pubkey)
+        return parseInt(value.amount) / 10 ** 9
       } catch (e) {
         console.error(`Not a token account ${pubkey}`)
         return NaN
@@ -369,43 +372,27 @@ describe("hello-anchor", () => {
           amount: await getTokenBalance(connection, bobUSDTAccount),
         },
         {
-          name: "PDA USDC",
-          address: pdaUSDCAccount.toBase58(),
-          owner: usdcForPDAAccount.owner.toBase58(),
-          amount: await getTokenBalance(connection, pdaUSDCAccount),
+          name: "Pool Vault USDT",
+          address: poolVaultUSDTAccount.toBase58(),
+          owner: usdtForPoolVaultAccount.owner.toBase58(),
+          amount: await getTokenBalance(connection, poolVaultUSDTAccount),
         },
         {
-          name: "PDA USDT",
-          address: pdaUSDTAccount.toBase58(),
-          owner: usdtForPDAAccount.owner.toBase58(),
-          amount: await getTokenBalance(connection, pdaUSDTAccount),
+          name: "Loan Vault USDC",
+          address: loanVaultUSDCAccount.toBase58(),
+          owner: usdcForLoanVaultAccount.owner.toBase58(),
+          amount: await getTokenBalance(connection, loanVaultUSDCAccount),
         },
         {
           name: "System Fee Account",
-          address: systemFeeAccount.toBase58(),
+          address: systemUSDTFeeAccount.toBase58(),
           owner: systemFeeForAdminAccount.owner.toBase58(),
-          amount: await getTokenBalance(connection, systemFeeAccount),
+          amount: await getTokenBalance(connection, systemUSDTFeeAccount),
         },
       ])
     }
-
     await printTable()
 
-    // await depositAll(
-    //   "UserA",
-    //   POOL_TOKEN_AMOUNT,
-    //   alice,
-    //   poolAccountForUserA,
-    //   aliceUSDCAccount,
-    //   aliceUSDTAccount
-    // )
-
-    const [loanPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("loan"), pool.publicKey.toBuffer()],
-      program.programId
-    )
-
-    const loan = web3.Keypair.generate()
     await program.methods
       .initLoan(new BN(100 * DECIMALS))
       .accounts({
@@ -415,16 +402,15 @@ describe("hello-anchor", () => {
         borrower: bob.publicKey,
         loanPda: loanPDA,
         tokenProgram: TOKEN_PROGRAM_ID,
-        tokenAForPda: pdaUSDCAccount,
-        tokenBForPda: pdaUSDTAccount,
-        tokenAForDepositor: bobUSDCAccount,
-        tokenBForDepositor: bobUSDTAccount,
-        systemFeeAccount: systemFeeAccount,
+        systemFeeAccount: systemUSDTFeeAccount,
+        tokenDepositor: bobUSDCAccount,
+        tokenReceiver: bobUSDTAccount,
+        loanVault: loanVaultUSDCAccount,
+        poolVault: poolVaultUSDTAccount,
       })
       .preInstructions([await program.account.loan.createInstruction(loan)])
       .signers([loan, bob])
       .rpc()
-
     await printTable()
 
     // Deposit USDC to the pool
@@ -433,8 +419,8 @@ describe("hello-anchor", () => {
       .accounts({
         depositor: alice.publicKey,
         pool: pool.publicKey,
-        tokenAForPda: pdaUSDTAccount,
-        tokenAForDepositor: aliceUSDTAccount,
+        loanVault: poolVaultUSDTAccount,
+        tokenDepositor: aliceUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([alice])
@@ -444,13 +430,13 @@ describe("hello-anchor", () => {
 
     // Withdraw USDC to the pool
     await program.methods
-      .withdraw(new anchor.BN(100 * DECIMALS))
+      .withdraw(new anchor.BN(30 * DECIMALS))
       .accounts({
         depositor: alice.publicKey,
         pool: pool.publicKey,
         poolPda: poolPDA,
-        tokenAForPda: pdaUSDCAccount,
-        tokenAForDepositor: aliceUSDCAccount,
+        tokenDepositor: aliceUSDTAccount,
+        poolVault: poolVaultUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([alice])
