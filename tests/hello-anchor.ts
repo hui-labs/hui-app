@@ -11,7 +11,7 @@ import {
   setAuthority,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
-import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js"
+import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js"
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
 
 describe("hello-anchor", () => {
@@ -209,10 +209,9 @@ describe("hello-anchor", () => {
     const requiredLoanFee: BN = await program.methods
       .estimateLoanFee(topUpAmount)
       .accounts({
-        mint: usdcMint.address,
+        mint: usdtMint.address,
       })
       .view()
-    console.log(requiredLoanFee.toString())
 
     const pool = web3.Keypair.generate()
     const tx = await program.methods
@@ -223,7 +222,7 @@ describe("hello-anchor", () => {
           maxLoanThreshold: new BN(0.8 * DECIMALS),
           minLoanAmount: new BN(10 * DECIMALS),
           loanTerm: {
-            oneHour: {},
+            nineMonths: {},
           } as never,
         },
         topUpAmount,
@@ -305,20 +304,47 @@ describe("hello-anchor", () => {
     const loan = web3.Keypair.generate()
 
     // Create loan vault USDC
+    const loanUser = Keypair.generate()
+    let airdropSignature = await connection.requestAirdrop(
+      loanUser.publicKey,
+      web3.LAMPORTS_PER_SOL
+    )
+
+    await connection.confirmTransaction(airdropSignature, "confirmed")
     const loanVaultUSDCAccount = await createAccount(
       connection,
-      admin,
+      loanUser,
       usdcMintPubkey,
-      admin.publicKey,
+      loanUser.publicKey,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+    const loanVaultUSDTAccount = await createAccount(
+      connection,
+      loanUser,
+      usdtMintPubkey,
+      loanUser.publicKey,
       undefined,
       undefined,
       TOKEN_PROGRAM_ID
     )
     await setAuthority(
       connection,
-      admin,
+      loanUser,
       loanVaultUSDCAccount,
-      admin.publicKey,
+      loanUser.publicKey,
+      AuthorityType.AccountOwner,
+      loanPDA,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+    await setAuthority(
+      connection,
+      loanUser,
+      loanVaultUSDTAccount,
+      loanUser.publicKey,
       AuthorityType.AccountOwner,
       loanPDA,
       undefined,
@@ -331,6 +357,15 @@ describe("hello-anchor", () => {
       null,
       TOKEN_PROGRAM_ID
     )
+    const usdtForLoanVaultAccount = await getAccount(
+      connection,
+      loanVaultUSDCAccount,
+      null,
+      TOKEN_PROGRAM_ID
+    )
+
+    const formatUnit = (amount: string, decimals: number = 9) =>
+      parseInt(amount) / 10 ** decimals
 
     const getTokenBalance = async (
       connection: web3.Connection,
@@ -338,7 +373,7 @@ describe("hello-anchor", () => {
     ) => {
       try {
         const { value } = await connection.getTokenAccountBalance(pubkey)
-        return parseInt(value.amount) / 10 ** 9
+        return formatUnit(value.amount)
       } catch (e) {
         console.error(`Not a token account ${pubkey}`)
         return NaN
@@ -384,6 +419,12 @@ describe("hello-anchor", () => {
           amount: await getTokenBalance(connection, loanVaultUSDCAccount),
         },
         {
+          name: "Loan Vault USDT",
+          address: loanVaultUSDTAccount.toBase58(),
+          owner: usdtForLoanVaultAccount.owner.toBase58(),
+          amount: await getTokenBalance(connection, loanVaultUSDTAccount),
+        },
+        {
           name: "System Fee Account",
           address: systemUSDTFeeAccount.toBase58(),
           owner: systemFeeForAdminAccount.owner.toBase58(),
@@ -405,8 +446,9 @@ describe("hello-anchor", () => {
         systemFeeAccount: systemUSDTFeeAccount,
         tokenDepositor: bobUSDCAccount,
         tokenReceiver: bobUSDTAccount,
-        loanVault: loanVaultUSDCAccount,
         poolVault: poolVaultUSDTAccount,
+        loanAVault: loanVaultUSDCAccount,
+        loanBVault: loanVaultUSDTAccount,
       })
       .preInstructions([await program.account.loan.createInstruction(loan)])
       .signers([loan, bob])
@@ -414,8 +456,15 @@ describe("hello-anchor", () => {
     await printTable()
 
     // Deposit USDC to the pool
+    const depositTopUpAmount = new anchor.BN(10 * DECIMALS)
+    const requiredDepositLoanFee: BN = await program.methods
+      .estimateLoanFee(depositTopUpAmount)
+      .accounts({
+        mint: usdtMint.address,
+      })
+      .view()
     await program.methods
-      .deposit(new anchor.BN(10 * DECIMALS))
+      .deposit(depositTopUpAmount, requiredDepositLoanFee)
       .accounts({
         depositor: alice.publicKey,
         pool: pool.publicKey,
@@ -444,8 +493,41 @@ describe("hello-anchor", () => {
     await sleep()
     await printTable()
 
+    const interestRate = await program.methods
+      .settlementAmount()
+      .accounts({
+        loan: loan.publicKey,
+      })
+      .view()
+    console.log(formatUnit(interestRate))
     // const loanAccount = await program.account.loan.fetch(loan.publicKey)
     // console.log(loanAccount)
+
+    await mintTo(
+      connection,
+      admin,
+      usdtMint.address,
+      bobUSDTAccount,
+      usdtMint.mintAuthority,
+      10 * DECIMALS
+    )
+    await sleep()
+    await printTable()
+    await program.methods
+      .finalSettlement(new BN((80 + 5.99999976) * DECIMALS))
+      .accounts({
+        loan: loan.publicKey,
+        loanPda: loanPDA,
+        tokenDepositor: bobUSDTAccount,
+        tokenReceiver: bobUSDCAccount,
+        depositor: bob.publicKey,
+        loanAVault: loanVaultUSDCAccount,
+        loanBVault: loanVaultUSDTAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([bob])
+      .rpc()
+    await printTable()
   })
 })
 

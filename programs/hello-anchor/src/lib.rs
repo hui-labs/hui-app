@@ -1,7 +1,7 @@
 mod curve;
 mod errors;
 
-use crate::curve::ConstantProduct;
+use crate::curve::{ConstantProduct, LoanTerm};
 use crate::errors::AppError;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
@@ -12,6 +12,7 @@ declare_id!("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz");
 #[program]
 pub mod hello_anchor {
     use super::*;
+    use crate::curve::to_u64;
 
     // Decimals is 9
     const SYSTEM_LOAN_FEE: u64 = 1_000_000; // 0.1%
@@ -45,7 +46,10 @@ pub mod hello_anchor {
         pool.min_loan_amount = config.min_loan_amount;
         pool.max_loan_threshold = config.max_loan_threshold;
 
-        token::transfer(ctx.accounts.to_transfer_vault_context(), amount + fee_amount)?;
+        token::transfer(
+            ctx.accounts.to_transfer_vault_context(),
+            amount + fee_amount,
+        )?;
 
         Ok(())
     }
@@ -55,10 +59,13 @@ pub mod hello_anchor {
         Ok(curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount))
     }
 
-    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+    pub fn deposit(ctx: Context<Deposit>, amount: u64, fee: u64) -> Result<()> {
+        let curve = ConstantProduct;
+        let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
         require_gte!(amount, 0);
+        require_gte!(fee, loan_fee);
 
-        token::transfer(ctx.accounts.to_transfer_a_context(), amount)?;
+        token::transfer(ctx.accounts.to_transfer_a_context(), amount + fee)?;
 
         Ok(())
     }
@@ -69,6 +76,7 @@ pub mod hello_anchor {
         let loan = &mut ctx.accounts.loan;
 
         loan.interest_rate = pool.interest_rate.clone();
+        loan.pool = pool.to_account_info().key().clone();
         loan.borrower = ctx.accounts.borrower.to_account_info().key();
         loan.token_b_account = ctx.accounts.pool.token_b_account.clone();
         loan.loan_term = pool.loan_term.clone();
@@ -138,24 +146,72 @@ pub mod hello_anchor {
         Ok(())
     }
 
-    pub fn settlement_amount(ctx: Context<SettlementAmount>) -> Result<u64> {
-        let received_amount = ctx.accounts.loan.received_amount;
-        let interest_rate = ctx.accounts.loan.interest_rate * 1_00;
-        let interest_by_term = match ctx.accounts.loan.loan_term {
-            LoanTerm::OneHour => (interest_rate * 1_00 / 30_00 / 24_00) / 12_00,
-            LoanTerm::OneMonth => (interest_rate * 1_00) / 12_00,
-            LoanTerm::ThreeMonth => (interest_rate * 3_00) / 12_00,
-            LoanTerm::SixMonth => (interest_rate * 6_00) / 12_00,
-            LoanTerm::NineMonth => (interest_rate * 9_00) / 12_00,
-            LoanTerm::OneYear => interest_rate
-        };
-        let interest = (interest_by_term / 100_u64.pow(9)) * received_amount;
-        Ok(interest)
+    pub fn settlement_amount(ctx: Context<SettlementAmount>) -> Result<u128> {
+        let curve = ConstantProduct;
+        let interest_amount = curve.calc_interest_amount(
+            ctx.accounts.loan.received_amount,
+            ctx.accounts.loan.interest_rate,
+            ctx.accounts.loan.loan_term.clone(),
+        )?;
+
+        Ok(interest_amount)
     }
 
-    pub fn final_settlement(ctx: Context<FinalSettlement>) -> Result<()> {
+    pub fn final_settlement(ctx: Context<FinalSettlement>, amount: u64) -> Result<()> {
+        let required_amount = ctx.accounts.loan.received_amount;
+        let curve = ConstantProduct;
+        let interest_amount = to_u64(curve.calc_interest_amount(
+            ctx.accounts.loan.received_amount,
+            ctx.accounts.loan.interest_rate,
+            ctx.accounts.loan.loan_term.clone(),
+        )?)?;
+        require_gte!(amount, required_amount + interest_amount);
+        let signer_seeds = ctx
+            .accounts
+            .loan
+            .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
+        let signer_seeds = &[&signer_seeds.value()[..]];
+
+        token::transfer(
+            ctx.accounts.to_transfer_b_context(),
+            amount,
+        )?;
+        token::transfer(
+            ctx.accounts
+                .to_transfer_a_context()
+                .with_signer(signer_seeds),
+            ctx.accounts.loan_a_vault.amount,
+        )?;
+
         Ok(())
     }
+
+    pub fn claim_loan(ctx: Context<ClaimLoan>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn split_loan(ctx: Context<SplitLoan>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn transfer_loan(ctx: Context<TransferLoan>) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct TransferLoan<'info> {
+    pub loan: Box<Account<'info, Loan>>,
+}
+
+#[derive(Accounts)]
+pub struct SplitLoan<'info> {
+    pub loan: Box<Account<'info, Loan>>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimLoan<'info> {
+    pub loan: Box<Account<'info, Loan>>,
 }
 
 #[derive(Accounts)]
@@ -164,8 +220,42 @@ pub struct SettlementAmount<'info> {
 }
 
 #[derive(Accounts)]
-pub struct FinalSettlement {
+pub struct FinalSettlement<'info> {
+    #[account(mut)]
+    pub depositor: Signer<'info>,
+    #[account(mut)]
+    pub loan: Box<Account<'info, Loan>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub loan_pda: AccountInfo<'info>,
+    #[account(mut)]
+    pub loan_a_vault: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub loan_b_vault: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub token_depositor: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub token_receiver: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+}
 
+impl<'info> FinalSettlement<'info> {
+    fn to_transfer_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.token_depositor.to_account_info().clone(),
+            to: self.loan_b_vault.to_account_info().clone(),
+            authority: self.depositor.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+
+    fn to_transfer_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.loan_a_vault.to_account_info().clone(),
+            to: self.token_receiver.to_account_info().clone(),
+            authority: self.loan_pda.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
 }
 
 #[derive(Accounts)]
@@ -205,16 +295,6 @@ pub struct InitSystem<'info> {
     pub system_fee_account: Box<Account<'info, TokenAccount>>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum LoanTerm {
-    OneHour,
-    OneMonth,
-    ThreeMonth,
-    SixMonth,
-    NineMonth,
-    OneYear,
-}
-
 pub struct SignerSeeds<'a>([&'a [u8]; 2], [u8; 1]);
 
 impl<'a> SignerSeeds<'a> {
@@ -237,7 +317,7 @@ pub struct Loan {
     max_loan_amount: u64,
     max_loan_threshold: u64,
     fee: u64,
-    received_amount: u64
+    received_amount: u64,
 }
 
 impl Loan {
@@ -268,7 +348,9 @@ pub struct CreateLoan<'info> {
     #[account(mut)]
     pub pool_vault: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub loan_vault: Box<Account<'info, TokenAccount>>,
+    pub loan_a_vault: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub loan_b_vault: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub token_depositor: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
@@ -292,7 +374,7 @@ impl<'info> CreateLoan<'info> {
     fn to_transfer_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.token_depositor.to_account_info().clone(),
-            to: self.loan_vault.to_account_info().clone(),
+            to: self.loan_a_vault.to_account_info().clone(),
             authority: self.borrower.to_account_info().clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
@@ -362,10 +444,7 @@ pub struct Pool {
 
 impl Pool {
     fn signer_seeds<'a>(&'a self, pda: &AccountInfo, program_id: &Pubkey) -> Result<SignerSeeds> {
-        let seeds = [
-            b"pool".as_ref(),
-            self.token_b_mint.as_ref(),
-        ];
+        let seeds = [b"pool".as_ref(), self.token_b_mint.as_ref()];
         let (pubkey, bump) = Pubkey::find_program_address(&seeds, program_id);
         if pubkey != pda.key() {
             return Err(ProgramError::InvalidArgument.into());
@@ -400,16 +479,6 @@ impl<'info> InitPool<'info> {
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
-}
-
-fn to_u128(val: u64) -> Result<u128> {
-    val.try_into()
-        .map_err(|_| AppError::ConversionFailure.into())
-}
-
-fn to_u64(val: u128) -> Result<u64> {
-    val.try_into()
-        .map_err(|_| AppError::ConversionFailure.into())
 }
 
 #[cfg(test)]
