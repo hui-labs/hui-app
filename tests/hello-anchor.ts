@@ -267,7 +267,7 @@ describe("hello-anchor", () => {
       .signers([alice, pool])
       .rpc()
 
-    console.log("Your transaction signature", tx)
+    console.log("Your transaction signature:", tx)
     console.table([
       {
         name: "Pool",
@@ -277,7 +277,6 @@ describe("hello-anchor", () => {
         ).owner.toBase58(),
       },
     ])
-    console.log("Token Account")
 
     // Get Alice accounts
     const usdcForAliceAccount = await getAccount(
@@ -341,51 +340,6 @@ describe("hello-anchor", () => {
         console.error(`Not a token account ${pubkey}`)
         return NaN
       }
-    }
-
-    const depositAll = async (
-      name: string,
-      amount: number,
-      user: web3.Keypair,
-      poolForUser: PublicKey,
-      aForUser: PublicKey,
-      bForUser: PublicKey
-    ) => {
-      const aForPDA = await getAccount(
-        connection,
-        pdaUSDCAccount,
-        null,
-        TOKEN_PROGRAM_ID
-      )
-      const bForPDA = await getAccount(
-        connection,
-        pdaUSDTAccount,
-        null,
-        TOKEN_PROGRAM_ID
-      )
-      // const maxTokenA = Math.floor(
-      //   (Number(usdcForPDAAccount.amount) * amount) / Number(poolMint.supply)
-      // )
-      // const maxTokenB = Math.floor(
-      //   (Number(usdtForPDAAccount.amount) * amount) / Number(poolMint.supply)
-      // )
-
-      await program.methods
-        .depositAll(new anchor.BN(amount), new anchor.BN(10), new anchor.BN(10))
-        .accounts({
-          depositor: user.publicKey,
-          pair: pool.publicKey,
-          pda: poolPDA,
-          tokenAForPda: pdaUSDCAccount,
-          tokenBForPda: pdaUSDTAccount,
-          tokenAForDepositor: aForUser,
-          tokenBForDepositor: bForUser,
-          tokenPoolForDepositor: poolForUser,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([user])
-        .rpc()
-      await sleep()
     }
 
     const printTable = async () => {
@@ -473,8 +427,39 @@ describe("hello-anchor", () => {
 
     await printTable()
 
-    const loanAccount = await program.account.loan.fetch(loan.publicKey)
-    console.log(loanAccount)
+    // Deposit USDC to the pool
+    await program.methods
+      .deposit(new anchor.BN(10 * DECIMALS))
+      .accounts({
+        depositor: alice.publicKey,
+        pool: pool.publicKey,
+        tokenAForPda: pdaUSDTAccount,
+        tokenAForDepositor: aliceUSDTAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([alice])
+      .rpc()
+    await sleep()
+    await printTable()
+
+    // Withdraw USDC to the pool
+    await program.methods
+      .withdraw(new anchor.BN(100 * DECIMALS))
+      .accounts({
+        depositor: alice.publicKey,
+        pool: pool.publicKey,
+        poolPda: poolPDA,
+        tokenAForPda: pdaUSDCAccount,
+        tokenAForDepositor: aliceUSDCAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([alice])
+      .rpc()
+    await sleep()
+    await printTable()
+
+    // const loanAccount = await program.account.loan.fetch(loan.publicKey)
+    // console.log(loanAccount)
   })
 })
 

@@ -1,17 +1,16 @@
 mod curve;
 mod errors;
 
-use crate::curve::{ConstantProduct, RoundDirection};
+use crate::curve::ConstantProduct;
 use crate::errors::AppError;
 use anchor_lang::prelude::*;
 use anchor_spl::token;
-use anchor_spl::token::{Mint, MintTo, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, MintTo, Token, TokenAccount, Transfer};
 
 declare_id!("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz");
 
 #[program]
 pub mod hello_anchor {
-    use std::ops::Mul;
     use super::*;
 
     // Decimals is 9
@@ -40,7 +39,7 @@ pub mod hello_anchor {
         pool.token_b_mint = ctx.accounts.token_b_for_pda.mint.key();
         pool.fees = Fees {
             loan_fee: SYSTEM_LOAN_FEE,
-            transfer_fee: SYSTEM_TRANSFER_FEE
+            transfer_fee: SYSTEM_TRANSFER_FEE,
         };
         pool.interest_rate = config.interest_rate;
         pool.max_loan_amount = config.max_loan_amount;
@@ -53,81 +52,19 @@ pub mod hello_anchor {
     }
 
     pub fn estimate_loan_fee(ctx: Context<EstimateFee>, amount: u64) -> Result<u64> {
-        Ok((amount * SYSTEM_LOAN_FEE) / 10_u64.pow(9))
+        let curve = ConstantProduct;
+        Ok(curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount))
     }
 
-    pub fn deposit_all(
-        ctx: Context<DepositAll>,
-        pool_token_amount: u64,
-        maximum_token_a_amount: u64,
-        maximum_token_b_amount: u64,
-    ) -> Result<()> {
-        msg!(
-            "Instruction Pool Deposit {},{},{}",
-            pool_token_amount,
-            maximum_token_a_amount,
-            maximum_token_b_amount
-        );
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        require_gte!(amount, 0);
 
-        let curve = ConstantProduct;
-        let current_pool_mint_supply = to_u128(ctx.accounts.pool.supply)?;
-        let (pool_token_amount, pool_mint_supply) = if current_pool_mint_supply > 0 {
-            (to_u128(pool_token_amount)?, current_pool_mint_supply)
-        } else {
-            (curve.new_pool_supply(), curve.new_pool_supply())
-        };
-
-        let (token_a_amount, token_b_amount) = curve
-            .pool_tokens_to_trading_tokens(
-                pool_token_amount,
-                pool_mint_supply,
-                to_u128(ctx.accounts.token_a_for_pda.amount)?,
-                to_u128(ctx.accounts.token_b_for_pda.amount)?,
-                RoundDirection::Ceiling,
-            )
-            .ok_or(AppError::ZeroTradingTokens)?;
-
-        msg!(
-            "Pooling token amount of A is {} and B is {}",
-            token_a_amount,
-            token_b_amount
-        );
-
-        let token_a_amount = to_u64(token_a_amount)?;
-        if token_a_amount > maximum_token_a_amount {
-            return Err(AppError::ExceededSlippage.into());
-        }
-        if token_a_amount == 0 {
-            return Err(AppError::ZeroTradingTokens.into());
-        }
-        let token_b_amount = to_u64(token_b_amount)?;
-        if token_b_amount > maximum_token_b_amount {
-            return Err(AppError::ExceededSlippage.into());
-        }
-        if token_b_amount == 0 {
-            return Err(AppError::ZeroTradingTokens.into());
-        }
-
-        let signer_seeds = ctx
-            .accounts
-            .pair
-            .signer_seeds(&ctx.accounts.pda, ctx.program_id)?;
-        let signer_seeds = &[&signer_seeds.value()[..]];
-
-        token::transfer(ctx.accounts.to_transfer_a_context(), token_a_amount)?;
-        token::transfer(ctx.accounts.to_transfer_b_context(), token_b_amount)?;
-        token::mint_to(
-            ctx.accounts.to_mint_context().with_signer(signer_seeds),
-            to_u64(pool_token_amount)?,
-        )?;
+        token::transfer(ctx.accounts.to_transfer_a_context(), amount)?;
 
         Ok(())
     }
 
-    pub fn init_loan(
-        ctx: Context<CreateLoan>,
-        amount: u64,
-    ) -> Result<()> {
+    pub fn init_loan(ctx: Context<CreateLoan>, amount: u64) -> Result<()> {
         let curve = ConstantProduct;
         let pool = &ctx.accounts.pool;
         let loan = &mut ctx.accounts.loan;
@@ -139,7 +76,7 @@ pub mod hello_anchor {
         loan.repayment_period = pool.repayment_period.clone();
         loan.fees = Fees {
             loan_fee: SYSTEM_LOAN_FEE,
-            transfer_fee: SYSTEM_TRANSFER_FEE
+            transfer_fee: SYSTEM_TRANSFER_FEE,
         };
         loan.min_loan_amount = pool.min_loan_amount.clone();
         loan.max_loan_amount = pool.max_loan_amount.clone();
@@ -177,6 +114,62 @@ pub mod hello_anchor {
         )?;
 
         Ok(())
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        let remain_amount = ctx.accounts.token_a_for_pda.amount;
+        require_gt!(remain_amount, 0);
+        require_gte!(remain_amount, amount);
+
+        let signer_seeds = ctx
+            .accounts
+            .pool
+            .signer_seeds(&ctx.accounts.pool_pda, ctx.program_id)?;
+        let signer_seeds = &[&signer_seeds.value()[..]];
+
+        token::transfer(
+            ctx.accounts
+                .to_transfer_a_context()
+                .with_signer(signer_seeds),
+            amount,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn final_settlement(ctx: Context<FinalSettlement>) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct FinalSettlement {
+
+}
+
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(mut)]
+    pub depositor: Signer<'info>,
+    #[account(mut)]
+    pub pool: Box<Account<'info, Pool>>,
+    #[account(mut)]
+    pub token_a_for_depositor: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub token_a_for_pda: Box<Account<'info, TokenAccount>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub pool_pda: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+impl<'info> Withdraw<'info> {
+    fn to_transfer_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.token_a_for_pda.to_account_info().clone(),
+            to: self.token_a_for_depositor.to_account_info().clone(),
+            authority: self.pool_pda.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
 
@@ -225,8 +218,7 @@ pub struct CreateLoan<'info> {
     pub pool_pda: AccountInfo<'info>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub loan_pda: AccountInfo<'info>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    pub token_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
     #[account(mut)]
     pub token_a_for_pda: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
@@ -248,7 +240,7 @@ impl<'info> CreateLoan<'info> {
             to: self.token_a_for_pda.to_account_info().clone(),
             authority: self.borrower.to_account_info().clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 
     fn to_transfer_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
@@ -257,7 +249,7 @@ impl<'info> CreateLoan<'info> {
             to: self.token_b_for_depositor.to_account_info().clone(),
             authority: self.pool_pda.clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 
     fn to_transfer_fee_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
@@ -266,60 +258,31 @@ impl<'info> CreateLoan<'info> {
             to: self.system_fee_account.to_account_info().clone(),
             authority: self.pool_pda.clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
 
 #[derive(Accounts)]
-#[instruction(pool_token_amount: u64, maximum_token_a_amount: u64, maximum_token_b_amount: u64)]
-pub struct DepositAll<'info> {
+#[instruction(amount: u64)]
+pub struct Deposit<'info> {
     pub depositor: Signer<'info>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    pub pda: AccountInfo<'info>,
     #[account(mut)]
-    pub pair: Box<Account<'info, Pool>>,
+    pub pool: Account<'info, Pool>,
     #[account(mut)]
-    pub pool: Account<'info, Mint>,
+    pub token_a_for_depositor: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub token_a_for_depositor: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub token_b_for_depositor: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub token_pool_for_depositor: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub token_a_for_pda: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub token_b_for_pda: Box<Account<'info, TokenAccount>>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    pub token_program: AccountInfo<'info>,
+    pub token_a_for_pda: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
-impl<'info> DepositAll<'info> {
+impl<'info> Deposit<'info> {
     fn to_transfer_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.token_a_for_depositor.to_account_info().clone(),
             to: self.token_a_for_pda.to_account_info().clone(),
             authority: self.depositor.to_account_info().clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
-    }
-
-    fn to_transfer_b_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
-        let cpi_accounts = Transfer {
-            from: self.token_b_for_depositor.to_account_info().clone(),
-            to: self.token_b_for_pda.to_account_info().clone(),
-            authority: self.depositor.to_account_info().clone(),
-        };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
-    }
-
-    fn to_mint_context(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
-        let cpi_accounts = MintTo {
-            mint: self.pool.to_account_info().clone(),
-            to: self.token_pool_for_depositor.to_account_info().clone(),
-            authority: self.pda.clone(),
-        };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
 
@@ -382,7 +345,7 @@ impl Pool {
 pub struct InitPool<'info> {
     pub depositor: Signer<'info>,
     #[account(zero)]
-    pub pool: Box<Account<'info, Pool>>,
+    pub pool: Account<'info, Pool>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub pda: AccountInfo<'info>,
     #[account(mut)]
@@ -392,8 +355,7 @@ pub struct InitPool<'info> {
     #[account(mut)]
     pub token_a_for_depositor: Box<Account<'info, TokenAccount>>,
     pub system_fee_account: Box<Account<'info, TokenAccount>>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    pub token_program: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 impl<'info> InitPool<'info> {
@@ -403,7 +365,7 @@ impl<'info> InitPool<'info> {
             to: self.token_b_for_pda.to_account_info().clone(),
             authority: self.depositor.to_account_info().clone(),
         };
-        CpiContext::new(self.token_program.clone(), cpi_accounts)
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
 
