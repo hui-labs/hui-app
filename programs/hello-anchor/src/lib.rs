@@ -49,6 +49,7 @@ pub mod hello_anchor {
         pool.max_loan_amount = config.max_loan_amount;
         pool.min_loan_amount = config.min_loan_amount;
         pool.max_loan_threshold = config.max_loan_threshold;
+        pool.status = PoolStatus::Opening;
 
         token::transfer(
             ctx.accounts.to_transfer_vault_context(),
@@ -92,6 +93,7 @@ pub mod hello_anchor {
         loan.min_loan_amount = pool.min_loan_amount.clone();
         loan.max_loan_amount = pool.max_loan_amount.clone();
         loan.max_loan_threshold = pool.max_loan_threshold.clone();
+        loan.status = LoanStatus::Opening;
 
         let signer_seeds = ctx
             .accounts
@@ -239,6 +241,7 @@ pub mod hello_anchor {
                 .with_signer(signer_seeds),
             ctx.accounts.loan_a_vault.amount,
         )?;
+        ctx.accounts.loan.status = LoanStatus::Done;
 
         Ok(())
     }
@@ -258,6 +261,7 @@ pub mod hello_anchor {
         )?;
         token::burn(ctx.accounts.to_burn_nft_context(), 1)?;
         // token::close_account(ctx.accounts.to_close_nft_context())?;
+        ctx.accounts.loan.status = LoanStatus::Closed;
 
         Ok(())
     }
@@ -419,6 +423,15 @@ impl<'a> SignerSeeds<'a> {
     }
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum LoanStatus {
+    Listing,
+    Opening,
+    Disabled,
+    Closed,
+    Done,
+}
+
 #[account]
 pub struct Loan {
     pool: Pubkey,
@@ -434,6 +447,7 @@ pub struct Loan {
     max_loan_threshold: u64,
     fee: u64,
     received_amount: u64,
+    status: LoanStatus
 }
 
 impl Loan {
@@ -549,6 +563,13 @@ pub struct PoolConfig {
     pub max_loan_threshold: u64,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum PoolStatus {
+    Opening,
+    Disabled,
+    Closed,
+}
+
 #[account]
 pub struct Pool {
     pub token_b_account: Pubkey,
@@ -560,6 +581,7 @@ pub struct Pool {
     pub min_loan_amount: u64,
     pub max_loan_amount: u64,
     pub max_loan_threshold: u64,
+    pub status: PoolStatus,
 }
 
 impl Pool {
