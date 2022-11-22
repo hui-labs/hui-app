@@ -266,13 +266,13 @@ pub mod hello_anchor {
         Ok(())
     }
 
-    pub fn transfer_loan(ctx: Context<TransferLoan>) -> Result<()> {
+    pub fn merge_loan(ctx: Context<MergeLoan>) -> Result<()> {
         Ok(())
     }
 }
 
 #[derive(Accounts)]
-pub struct TransferLoan<'info> {
+pub struct MergeLoan<'info> {
     pub loan: Box<Account<'info, Loan>>,
 }
 
