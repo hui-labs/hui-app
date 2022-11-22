@@ -2,14 +2,23 @@ import * as anchor from "@project-serum/anchor"
 import { BN, Program, web3 } from "@project-serum/anchor"
 import { HelloAnchor } from "../target/types/hello_anchor"
 import {
+  approve,
   AuthorityType,
+  burn,
+  burnChecked,
+  closeAccount,
   createAccount,
+  createAssociatedTokenAccountInstruction,
+  createInitializeMintInstruction,
   createMint,
   getAccount,
+  getAssociatedTokenAddress,
   getMint,
+  MINT_SIZE,
   mintTo,
   setAuthority,
   TOKEN_PROGRAM_ID,
+  transfer,
 } from "@solana/spl-token"
 import { Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js"
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
@@ -24,6 +33,7 @@ describe("hello-anchor", () => {
   it("Is initialized!", async () => {
     const alice = web3.Keypair.generate()
     const bob = web3.Keypair.generate()
+    const tom = web3.Keypair.generate()
     const systemFee = web3.Keypair.generate()
 
     const wallet = NodeWallet.local()
@@ -31,6 +41,7 @@ describe("hello-anchor", () => {
     await connection.requestAirdrop(systemFee.publicKey, LAMPORTS_PER_SOL * 10)
     await connection.requestAirdrop(alice.publicKey, LAMPORTS_PER_SOL * 10)
     await connection.requestAirdrop(bob.publicKey, LAMPORTS_PER_SOL * 10)
+    await connection.requestAirdrop(tom.publicKey, LAMPORTS_PER_SOL * 10)
 
     // Create USDC and USDT token
     const usdcMintPubkey = await createMint(
@@ -105,6 +116,18 @@ describe("hello-anchor", () => {
       bob,
       usdtMintPubkey,
       bob.publicKey,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+
+    // Tom
+
+    const tomUSDTAccount = await createAccount(
+      connection,
+      tom,
+      usdtMintPubkey,
+      tom.publicKey,
       undefined,
       undefined,
       TOKEN_PROGRAM_ID
@@ -252,6 +275,14 @@ describe("hello-anchor", () => {
       },
     ])
 
+    // Tom
+    const usdtForTomAccount = await getAccount(
+      connection,
+      tomUSDTAccount,
+      null,
+      TOKEN_PROGRAM_ID
+    )
+
     // Get Alice accounts
     const usdcForAliceAccount = await getAccount(
       connection,
@@ -369,11 +400,14 @@ describe("hello-anchor", () => {
 
     const getTokenBalance = async (
       connection: web3.Connection,
-      pubkey: PublicKey
+      pubkey: PublicKey,
+      decimals = 9
     ) => {
       try {
         const { value } = await connection.getTokenAccountBalance(pubkey)
-        return formatUnit(value.amount)
+        if (decimals > 0) return formatUnit(value.amount)
+
+        return value.amount
       } catch (e) {
         console.error(`Not a token account ${pubkey}`)
         return NaN
@@ -382,6 +416,12 @@ describe("hello-anchor", () => {
 
     const printTable = async () => {
       console.table([
+        {
+          name: "Tom USDT",
+          address: tomUSDTAccount.toBase58(),
+          owner: usdtForTomAccount.owner.toBase58(),
+          amount: await getTokenBalance(connection, tomUSDTAccount),
+        },
         {
           name: "Alice USDC",
           address: aliceUSDCAccount.toBase58(),
@@ -434,15 +474,44 @@ describe("hello-anchor", () => {
     }
     await printTable()
 
+    const mintNft = web3.Keypair.generate()
+    await connection.requestAirdrop(mintNft.publicKey, LAMPORTS_PER_SOL * 10)
+    const nftMintPubkey = await createMint(
+      connection,
+      alice,
+      loanPDA,
+      null,
+      0,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+    const nftTokenAccount = await createAccount(
+      connection,
+      alice,
+      nftMintPubkey,
+      alice.publicKey,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+
+    // const TOKEN_METADATA_PROGRAM_ID = new anchor.web3.PublicKey(
+    //   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+    // )
+
     await program.methods
       .initLoan(new BN(100 * DECIMALS))
       .accounts({
+        mintNft: nftMintPubkey,
+        nftTokenAccount: nftTokenAccount,
         loan: loan.publicKey,
         pool: pool.publicKey,
         poolPda: poolPDA,
         borrower: bob.publicKey,
         loanPda: loanPDA,
         tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: web3.SystemProgram.programId,
         systemFeeAccount: systemUSDTFeeAccount,
         tokenDepositor: bobUSDCAccount,
         tokenReceiver: bobUSDTAccount,
@@ -453,6 +522,7 @@ describe("hello-anchor", () => {
       .preInstructions([await program.account.loan.createInstruction(loan)])
       .signers([loan, bob])
       .rpc()
+
     await printTable()
 
     // Deposit USDC to the pool
@@ -528,6 +598,69 @@ describe("hello-anchor", () => {
       .signers([bob])
       .rpc()
     await printTable()
+
+    // Claims
+    // await approve(connection, alice, nftTokenAccount, loanPDA, alice, 1)
+    // console.log(await connection.getTokenAccountBalance(nftTokenAccount))
+    // await burnChecked(
+    //   connection,
+    //   alice,
+    //   nftTokenAccount,
+    //   nftMintPubkey,
+    //   alice,
+    //   1,
+    //   0
+    // )
+    const tomNftTokenAccount = await createAccount(
+      connection,
+      tom,
+      nftMintPubkey,
+      tom.publicKey,
+      undefined,
+      undefined,
+      TOKEN_PROGRAM_ID
+    )
+    await transfer(
+      connection,
+      alice,
+      nftTokenAccount,
+      tomNftTokenAccount,
+      alice,
+      1
+    )
+    console.log(
+      (await connection.getTokenAccountBalance(nftTokenAccount)).value
+    )
+    console.log(
+      (await connection.getTokenAccountBalance(tomNftTokenAccount)).value
+    )
+    await program.methods
+      .claimLoan()
+      .accounts({
+        loan: loan.publicKey,
+        loanPda: loanPDA,
+        owner: tom.publicKey,
+        nftAccount: tomNftTokenAccount,
+        mintNft: nftMintPubkey,
+        nftDestination: tom.publicKey,
+        loanVault: loanVaultUSDTAccount,
+        tokenAccount: tomUSDTAccount,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([tom])
+      .rpc()
+    await sleep()
+    await printTable()
+    console.log(
+      (await connection.getTokenAccountBalance(nftTokenAccount)).value
+    )
+    await closeAccount(
+      connection,
+      alice,
+      nftTokenAccount,
+      alice.publicKey,
+      alice
+    )
   })
 })
 
