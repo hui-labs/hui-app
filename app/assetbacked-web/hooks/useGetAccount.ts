@@ -6,7 +6,8 @@ import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 
 export const useGetAccount = (
   workspace: AsyncState<Workspace | null>,
-  associatedToken: AsyncState<PublicKey | null>
+  associatedToken: AsyncState<PublicKey | null>,
+  deps: any[] = []
 ) => {
   return useAsync(async () => {
     if (workspace.value && associatedToken.value) {
@@ -18,5 +19,5 @@ export const useGetAccount = (
     }
 
     return null
-  }, [workspace.value, associatedToken.value])
+  }, [workspace.value, associatedToken.value, ...deps])
 }

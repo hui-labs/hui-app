@@ -1,7 +1,7 @@
 import useIsMounted from "../hooks/useIsMounted"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import styles from "../styles/Home.module.css"
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import {
   Keypair,
   LAMPORTS_PER_SOL,
@@ -26,6 +26,8 @@ import { useGetAccount } from "@/hooks/useGetAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 import { useBalance } from "@/hooks/useBalance"
+import axios from "axios"
+import { useAsyncFn } from "react-use"
 
 const USDCPubKey = new PublicKey(Address.USDC)
 const keypair = Keypair.fromSecretKey(
@@ -44,6 +46,20 @@ interface MintToConfig {
   associatedAccount: AsyncState<PublicKey | null>
   decimals: number
 }
+
+const doAirdrop = async (mint: PublicKey, destination: PublicKey) => {
+  const result = await axios.post("/api/airdrop", {
+    mint: mint.toBase58(),
+    destination: destination.toBase58(),
+  })
+
+  if (result.status === 200) {
+    return result.data
+  }
+
+  return null
+}
+
 const useMintTo = ({
   decimals,
   account,
@@ -51,7 +67,7 @@ const useMintTo = ({
   mint,
   associatedAccount,
 }: MintToConfig) => {
-  return useCallback(async () => {
+  return useAsyncFn(async () => {
     if (
       workspace.value &&
       mint.value &&
@@ -80,31 +96,13 @@ const useMintTo = ({
       const txId = await workspace.value.connection.sendRawTransaction(
         signed.serialize()
       )
-      const result = await workspace.value.connection.confirmTransaction(
-        txId,
-        commitmentLevel
-      )
-      console.log(result)
+      await workspace.value.connection.confirmTransaction(txId, commitmentLevel)
+
+      return null
     }
 
-    if (workspace.value && mint.value && account.value) {
-      const transaction = new Transaction().add(
-        createMintToInstruction(
-          mint.value.address,
-          account.value.address,
-          keypair.publicKey,
-          10 ** decimals,
-          undefined,
-          TOKEN_PROGRAM_ID
-        )
-      )
-
-      const tx = await web3.sendAndConfirmTransaction(
-        workspace.value.connection,
-        transaction,
-        [keypair]
-      )
-      console.log("Success 2", tx)
+    if (mint.value && account.value) {
+      return doAirdrop(mint.value.address, account.value.address)
     }
   }, [account, keypair, workspace, mint, associatedAccount])
 }
@@ -115,14 +113,14 @@ export default function Home() {
   const usdcMint = useGetMint(workspace, USDCPubKey)
   const associatedAccount = useAssociatedAccount(workspace, usdcMint)
   const account = useGetAccount(workspace, associatedAccount)
-  const usdcBalance = useFormatUnit(account.value?.amount)
-  const minTo = useMintTo({
+  const [state, minTo] = useMintTo({
     workspace,
     mint: usdcMint,
     account,
     associatedAccount,
     decimals: 9,
   })
+  const usdcBalance = useFormatUnit(account.value?.amount)
   const balance = useBalance(workspace)
   const solBalance = useFormatUnit(balance.value, LAMPORTS_PER_SOL)
 
@@ -130,14 +128,16 @@ export default function Home() {
     <div>
       <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
 
-      <button onClick={() => minTo()}>Faucet +1 USDC</button>
+      <button onClick={() => minTo()}>
+        {state.loading ? "Loading..." : "Faucet +100 USDC"}
+      </button>
       <div>
-        <h3>
+        <p>
           USDC Balance: <span>{usdcBalance}</span>
-        </h3>
-        <h3>
+        </p>
+        <p>
           Balance <span>{solBalance}</span>
-        </h3>
+        </p>
       </div>
     </div>
   )

@@ -1,20 +1,12 @@
 import idl from "@/contracts/idl/hello_anchor.json"
 import { Connection, PublicKey } from "@solana/web3.js"
-import {
-  AnchorWallet,
-  useAnchorWallet,
-  useWallet,
-  Wallet,
-} from "@solana/wallet-adapter-react"
+import { AnchorWallet, useAnchorWallet } from "@solana/wallet-adapter-react"
 import { AnchorProvider, Program } from "@project-serum/anchor"
 import { HelloAnchor } from "@/contracts/types/hello_anchor"
 import { useEffect, useState } from "react"
 import { AsyncState } from "react-use/lib/useAsyncFn"
-import { Provider } from "@project-serum/anchor"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
-const network =
-  "https://solana-devnet.g.alchemy.com/v2/DUPxh6-6BQsfz8p5EIT0pghxVoMsCs4l"
 const programId = new PublicKey(idl.metadata.address)
 
 export interface Workspace {
@@ -23,6 +15,7 @@ export interface Workspace {
   provider: AnchorProvider
   program: Program<HelloAnchor>
 }
+
 export const commitmentLevel = "processed"
 
 export const useWorkspace = (): AsyncState<Workspace | null> => {
@@ -31,7 +24,10 @@ export const useWorkspace = (): AsyncState<Workspace | null> => {
 
   useEffect(() => {
     if (wallet) {
-      const connection = new Connection(network, commitmentLevel)
+      const connection = new Connection(
+        process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!,
+        commitmentLevel
+      )
       const provider = new AnchorProvider(connection, wallet, {
         preflightCommitment: commitmentLevel,
       })
