@@ -4,6 +4,7 @@ import {
   AnchorWallet,
   useAnchorWallet,
   useWallet,
+  Wallet,
 } from "@solana/wallet-adapter-react"
 import { AnchorProvider, Program } from "@project-serum/anchor"
 import { HelloAnchor } from "@/contracts/types/hello_anchor"

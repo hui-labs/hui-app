@@ -9,7 +9,7 @@ import {
 } from "@solana/spl-token"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 
-export const useGetATA = (
+export const useAssociatedAccount = (
   workspace: AsyncState<Workspace | null>,
   address: AsyncState<Mint | null>,
   owner?: PublicKey

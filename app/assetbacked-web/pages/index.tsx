@@ -20,8 +20,8 @@ import {
 } from "@solana/spl-token"
 import { useGetMint } from "@/hooks/useGetMint"
 import { Address } from "@/constants"
-import { useGetATA } from "@/hooks/useGetATA"
-import { useWorkspace, Workspace } from "@/hooks/useWorkspace"
+import { useAssociatedAccount } from "@/hooks/useAssociatedAccount"
+import { commitmentLevel, useWorkspace, Workspace } from "@/hooks/useWorkspace"
 import { useGetAccount } from "@/hooks/useGetAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { AsyncState } from "react-use/lib/useAsyncFn"
@@ -42,13 +42,11 @@ interface MintToConfig {
   mint: AsyncState<Mint | null>
   account: AsyncState<Account | null>
   associatedAccount: AsyncState<PublicKey | null>
-  keypair: Signer
   decimals: number
 }
 const useMintTo = ({
   decimals,
   account,
-  keypair,
   workspace,
   mint,
   associatedAccount,
@@ -65,23 +63,28 @@ const useMintTo = ({
         createAssociatedTokenAccountInstruction(
           workspace.value.wallet.publicKey,
           associatedAccount.value,
-          keypair.publicKey,
+          workspace.value.wallet.publicKey,
           mint.value.address,
           TOKEN_PROGRAM_ID,
           ASSOCIATED_TOKEN_PROGRAM_ID
         )
       )
 
-      tx.recentBlockhash = (
-        await workspace.value.connection.getLatestBlockhash("finalized")
-      ).blockhash
-      tx.feePayer = workspace.value.wallet.publicKey
-      const signature = await workspace.value.wallet.signTransaction(tx)
-      const id = await workspace.value.connection.sendRawTransaction(
-        signature.serialize()
+      const { blockhash } = await workspace.value.connection.getRecentBlockhash(
+        commitmentLevel
       )
-      const result = await workspace.value.connection.confirmTransaction(id)
-      console.log("Success 1", result)
+      tx.recentBlockhash = blockhash
+      tx.feePayer = workspace.value.wallet.publicKey
+
+      const signed = await workspace.value.wallet.signTransaction(tx)
+      const txId = await workspace.value.connection.sendRawTransaction(
+        signed.serialize()
+      )
+      const result = await workspace.value.connection.confirmTransaction(
+        txId,
+        commitmentLevel
+      )
+      console.log(result)
     }
 
     if (workspace.value && mint.value && account.value) {
@@ -110,14 +113,13 @@ export default function Home() {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const usdcMint = useGetMint(workspace, USDCPubKey)
-  const associatedAccount = useGetATA(workspace, usdcMint)
+  const associatedAccount = useAssociatedAccount(workspace, usdcMint)
   const account = useGetAccount(workspace, associatedAccount)
   const usdcBalance = useFormatUnit(account.value?.amount)
-  const createMint = useMintTo({
+  const minTo = useMintTo({
     workspace,
     mint: usdcMint,
     account,
-    keypair,
     associatedAccount,
     decimals: 9,
   })
@@ -128,7 +130,7 @@ export default function Home() {
     <div>
       <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
 
-      <button onClick={() => createMint()}>Faucet +1 USDC</button>
+      <button onClick={() => minTo()}>Faucet +1 USDC</button>
       <div>
         <h3>
           USDC Balance: <span>{usdcBalance}</span>
