@@ -1,17 +1,25 @@
-import { useProvider } from "./useProvider"
-import { useEffect, useState } from "react"
+import { AsyncState } from "react-use/lib/useAsyncFn"
+import { commitmentLevel, Workspace } from "@/hooks/useWorkspace"
 import { PublicKey } from "@solana/web3.js"
+import { useAsync } from "react-use"
+import { getAccount, Mint } from "@solana/spl-token"
+import { useAssociatedAccount } from "@/hooks/useAssociatedAccount"
 
-export const useAccount = () => {
-  const provider = useProvider()
-  const [publicKey, setPublicKey] = useState<PublicKey>()
+export const useAccount = (
+  workspace: AsyncState<Workspace | null>,
+  address: AsyncState<Mint | null>,
+  owner?: PublicKey
+) => {
+  const associatedAccount = useAssociatedAccount(workspace, address, owner)
+  return useAsync(async () => {
+    if (workspace.value && associatedAccount.value) {
+      return getAccount(
+        workspace.value.connection,
+        associatedAccount.value,
+        commitmentLevel
+      )
+    }
 
-  useEffect(() => {
-    setPublicKey(provider?.wallet.publicKey)
-  }, [provider])
-
-  return {
-    publicKey,
-    address: publicKey?.toBase58(),
-  }
+    return null
+  }, [workspace.value, associatedAccount.value, owner])
 }
