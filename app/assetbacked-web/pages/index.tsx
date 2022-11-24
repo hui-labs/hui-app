@@ -15,6 +15,7 @@ import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useBalance } from "@/hooks/useBalance"
 import { useMintTo } from "@/hooks/useMintTo"
 import { useAccount } from "@/hooks/useAccount"
+import { createAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 
 export const Airdrop = () => {
   const workspace = useWorkspace()
@@ -82,6 +83,24 @@ export default function Home() {
       <Airdrop />
       <hr />
       <SystemInfo />
+      <hr />
+      <div>
+        <button
+        // onClick={async () => {
+        //   const poolVaultUSDTAccount = await createAccount(
+        //     connection,
+        //     admin,
+        //     usdtMintPubkey,
+        //     admin.publicKey,
+        //     undefined,
+        //     undefined,
+        //     TOKEN_PROGRAM_ID
+        //   )
+        // }}
+        >
+          Create pool
+        </button>
+      </div>
     </div>
   )
 }
