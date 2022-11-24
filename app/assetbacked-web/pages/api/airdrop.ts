@@ -14,18 +14,18 @@ type Data = {
   hash: string
 }
 
+const keypair = Keypair.fromSecretKey(
+  base58.decode(process.env.NEXT_FAUCET_PRIVATE_KEY!)
+)
+const connection = new Connection(
+  process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!,
+  commitmentLevel
+)
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
   const body = req.body
-  const keypair = Keypair.fromSecretKey(
-    base58.decode(process.env.NEXT_FAUCET_PRIVATE_KEY!)
-  )
-  const connection = new Connection(
-    process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!,
-    commitmentLevel
-  )
   const transaction = new Transaction().add(
     createMintToInstruction(
       new PublicKey(body.mint),

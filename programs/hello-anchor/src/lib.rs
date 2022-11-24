@@ -45,7 +45,6 @@ pub mod hello_anchor {
             transfer_fee: SYSTEM_TRANSFER_FEE,
         };
         pool.interest_rate = config.interest_rate;
-        pool.loan_term = config.loan_term;
         pool.max_loan_amount = config.max_loan_amount;
         pool.min_loan_amount = config.min_loan_amount;
         pool.max_loan_threshold = config.max_loan_threshold;
@@ -75,7 +74,7 @@ pub mod hello_anchor {
         Ok(())
     }
 
-    pub fn init_loan(ctx: Context<CreateLoan>, amount: u64) -> Result<()> {
+    pub fn init_loan(ctx: Context<CreateLoan>, amount: u64, loan_term: LoanTerm) -> Result<()> {
         let curve = ConstantProduct;
         let pool = &ctx.accounts.pool;
         let loan = &mut ctx.accounts.loan;
@@ -85,7 +84,7 @@ pub mod hello_anchor {
         loan.owner = ctx.accounts.nft_token_account.key().clone();
         loan.borrower = ctx.accounts.borrower.to_account_info().key();
         loan.token_b_account = ctx.accounts.pool.token_b_account.clone();
-        loan.loan_term = pool.loan_term.clone();
+        loan.loan_term = loan_term;
         loan.fees = Fees {
             loan_fee: SYSTEM_LOAN_FEE,
             transfer_fee: SYSTEM_TRANSFER_FEE,
@@ -557,7 +556,6 @@ pub struct Fees {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct PoolConfig {
     pub interest_rate: u64,
-    pub loan_term: LoanTerm,
     pub min_loan_amount: u64,
     pub max_loan_amount: u64,
     pub max_loan_threshold: u64,
@@ -577,7 +575,6 @@ pub struct Pool {
     pub pool_fee_account: Pubkey,
     pub fees: Fees,
     pub interest_rate: u64,
-    pub loan_term: LoanTerm,
     pub min_loan_amount: u64,
     pub max_loan_amount: u64,
     pub max_loan_threshold: u64,

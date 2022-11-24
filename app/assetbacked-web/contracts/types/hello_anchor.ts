@@ -32,17 +32,12 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "tokenAForPda",
+          "name": "vault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForPda",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenAForDepositor",
+          "name": "tokenDepositor",
           "isMut": true,
           "isSigner": false
         },
@@ -92,7 +87,7 @@ export type HelloAnchor = {
       "returns": "u64"
     },
     {
-      "name": "depositAll",
+      "name": "deposit",
       "accounts": [
         {
           "name": "depositor",
@@ -100,42 +95,17 @@ export type HelloAnchor = {
           "isSigner": true
         },
         {
-          "name": "pda",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "pair",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "pool",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenAForDepositor",
+          "name": "tokenDepositor",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForDepositor",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenPoolForDepositor",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenAForPda",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenBForPda",
+          "name": "loanVault",
           "isMut": true,
           "isSigner": false
         },
@@ -147,15 +117,11 @@ export type HelloAnchor = {
       ],
       "args": [
         {
-          "name": "poolTokenAmount",
+          "name": "amount",
           "type": "u64"
         },
         {
-          "name": "maximumTokenAAmount",
-          "type": "u64"
-        },
-        {
-          "name": "maximumTokenBAmount",
+          "name": "fee",
           "type": "u64"
         }
       ]
@@ -189,28 +155,48 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "tokenAForPda",
+          "name": "poolVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForPda",
+          "name": "loanAVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenAForDepositor",
+          "name": "loanBVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForDepositor",
+          "name": "tokenDepositor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenReceiver",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "systemFeeAccount",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mintNft",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -223,8 +209,191 @@ export type HelloAnchor = {
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "loanTerm",
+          "type": {
+            "defined": "LoanTerm"
+          }
         }
       ]
+    },
+    {
+      "name": "withdraw",
+      "accounts": [
+        {
+          "name": "depositor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenDepositor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "poolVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "poolPda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settlementAmount",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [],
+      "returns": "u128"
+    },
+    {
+      "name": "finalSettlement",
+      "accounts": [
+        {
+          "name": "depositor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "loan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanAVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanBVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenDepositor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenReceiver",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "claimLoan",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftDestination",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mintNft",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "splitLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mergeLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -238,7 +407,7 @@ export type HelloAnchor = {
             "type": "publicKey"
           },
           {
-            "name": "lender",
+            "name": "owner",
             "type": "publicKey"
           },
           {
@@ -258,9 +427,9 @@ export type HelloAnchor = {
             "type": "u64"
           },
           {
-            "name": "repaymentPeriod",
+            "name": "loanTerm",
             "type": {
-              "defined": "RepaymentPeriod"
+              "defined": "LoanTerm"
             }
           },
           {
@@ -280,6 +449,20 @@ export type HelloAnchor = {
           {
             "name": "maxLoanThreshold",
             "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "receivedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "LoanStatus"
+            }
           }
         ]
       }
@@ -290,15 +473,7 @@ export type HelloAnchor = {
         "kind": "struct",
         "fields": [
           {
-            "name": "tokenAAccount",
-            "type": "publicKey"
-          },
-          {
             "name": "tokenBAccount",
-            "type": "publicKey"
-          },
-          {
-            "name": "tokenAMint",
             "type": "publicKey"
           },
           {
@@ -320,12 +495,6 @@ export type HelloAnchor = {
             "type": "u64"
           },
           {
-            "name": "repaymentPeriod",
-            "type": {
-              "defined": "RepaymentPeriod"
-            }
-          },
-          {
             "name": "minLoanAmount",
             "type": "u64"
           },
@@ -336,6 +505,12 @@ export type HelloAnchor = {
           {
             "name": "maxLoanThreshold",
             "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "PoolStatus"
+            }
           }
         ]
       }
@@ -368,12 +543,6 @@ export type HelloAnchor = {
             "type": "u64"
           },
           {
-            "name": "repaymentPeriod",
-            "type": {
-              "defined": "RepaymentPeriod"
-            }
-          },
-          {
             "name": "minLoanAmount",
             "type": "u64"
           },
@@ -389,29 +558,27 @@ export type HelloAnchor = {
       }
     },
     {
-      "name": "TradeDirection",
+      "name": "LoanTerm",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "AtoB"
+            "name": "OneHour"
           },
           {
-            "name": "BtoA"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RoundDirection",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Ceiling"
+            "name": "OneMonth"
           },
           {
-            "name": "Floor"
+            "name": "ThreeMonths"
+          },
+          {
+            "name": "SixMonths"
+          },
+          {
+            "name": "NineMonths"
+          },
+          {
+            "name": "OneYear"
           }
         ]
       }
@@ -443,27 +610,41 @@ export type HelloAnchor = {
       }
     },
     {
-      "name": "RepaymentPeriod",
+      "name": "LoanStatus",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "OneHour"
+            "name": "Listing"
           },
           {
-            "name": "OneMonth"
+            "name": "Opening"
           },
           {
-            "name": "ThreeMonth"
+            "name": "Disabled"
           },
           {
-            "name": "SixMonth"
+            "name": "Closed"
           },
           {
-            "name": "NineMonth"
+            "name": "Done"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Opening"
           },
           {
-            "name": "OneYear"
+            "name": "Disabled"
+          },
+          {
+            "name": "Closed"
           }
         ]
       }
@@ -505,17 +686,12 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "tokenAForPda",
+          "name": "vault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForPda",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenAForDepositor",
+          "name": "tokenDepositor",
           "isMut": true,
           "isSigner": false
         },
@@ -565,7 +741,7 @@ export const IDL: HelloAnchor = {
       "returns": "u64"
     },
     {
-      "name": "depositAll",
+      "name": "deposit",
       "accounts": [
         {
           "name": "depositor",
@@ -573,42 +749,17 @@ export const IDL: HelloAnchor = {
           "isSigner": true
         },
         {
-          "name": "pda",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "pair",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "pool",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenAForDepositor",
+          "name": "tokenDepositor",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForDepositor",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenPoolForDepositor",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenAForPda",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenBForPda",
+          "name": "loanVault",
           "isMut": true,
           "isSigner": false
         },
@@ -620,15 +771,11 @@ export const IDL: HelloAnchor = {
       ],
       "args": [
         {
-          "name": "poolTokenAmount",
+          "name": "amount",
           "type": "u64"
         },
         {
-          "name": "maximumTokenAAmount",
-          "type": "u64"
-        },
-        {
-          "name": "maximumTokenBAmount",
+          "name": "fee",
           "type": "u64"
         }
       ]
@@ -662,28 +809,48 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "tokenAForPda",
+          "name": "poolVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForPda",
+          "name": "loanAVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenAForDepositor",
+          "name": "loanBVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "tokenBForDepositor",
+          "name": "tokenDepositor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenReceiver",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "systemFeeAccount",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mintNft",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -696,8 +863,191 @@ export const IDL: HelloAnchor = {
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "loanTerm",
+          "type": {
+            "defined": "LoanTerm"
+          }
         }
       ]
+    },
+    {
+      "name": "withdraw",
+      "accounts": [
+        {
+          "name": "depositor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenDepositor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "poolVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "poolPda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "settlementAmount",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [],
+      "returns": "u128"
+    },
+    {
+      "name": "finalSettlement",
+      "accounts": [
+        {
+          "name": "depositor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "loan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanAVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanBVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenDepositor",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenReceiver",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "claimLoan",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftDestination",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mintNft",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "splitLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mergeLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -711,7 +1061,7 @@ export const IDL: HelloAnchor = {
             "type": "publicKey"
           },
           {
-            "name": "lender",
+            "name": "owner",
             "type": "publicKey"
           },
           {
@@ -731,9 +1081,9 @@ export const IDL: HelloAnchor = {
             "type": "u64"
           },
           {
-            "name": "repaymentPeriod",
+            "name": "loanTerm",
             "type": {
-              "defined": "RepaymentPeriod"
+              "defined": "LoanTerm"
             }
           },
           {
@@ -753,6 +1103,20 @@ export const IDL: HelloAnchor = {
           {
             "name": "maxLoanThreshold",
             "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "receivedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "LoanStatus"
+            }
           }
         ]
       }
@@ -763,15 +1127,7 @@ export const IDL: HelloAnchor = {
         "kind": "struct",
         "fields": [
           {
-            "name": "tokenAAccount",
-            "type": "publicKey"
-          },
-          {
             "name": "tokenBAccount",
-            "type": "publicKey"
-          },
-          {
-            "name": "tokenAMint",
             "type": "publicKey"
           },
           {
@@ -793,12 +1149,6 @@ export const IDL: HelloAnchor = {
             "type": "u64"
           },
           {
-            "name": "repaymentPeriod",
-            "type": {
-              "defined": "RepaymentPeriod"
-            }
-          },
-          {
             "name": "minLoanAmount",
             "type": "u64"
           },
@@ -809,6 +1159,12 @@ export const IDL: HelloAnchor = {
           {
             "name": "maxLoanThreshold",
             "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "PoolStatus"
+            }
           }
         ]
       }
@@ -841,12 +1197,6 @@ export const IDL: HelloAnchor = {
             "type": "u64"
           },
           {
-            "name": "repaymentPeriod",
-            "type": {
-              "defined": "RepaymentPeriod"
-            }
-          },
-          {
             "name": "minLoanAmount",
             "type": "u64"
           },
@@ -862,29 +1212,27 @@ export const IDL: HelloAnchor = {
       }
     },
     {
-      "name": "TradeDirection",
+      "name": "LoanTerm",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "AtoB"
+            "name": "OneHour"
           },
           {
-            "name": "BtoA"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RoundDirection",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Ceiling"
+            "name": "OneMonth"
           },
           {
-            "name": "Floor"
+            "name": "ThreeMonths"
+          },
+          {
+            "name": "SixMonths"
+          },
+          {
+            "name": "NineMonths"
+          },
+          {
+            "name": "OneYear"
           }
         ]
       }
@@ -916,27 +1264,41 @@ export const IDL: HelloAnchor = {
       }
     },
     {
-      "name": "RepaymentPeriod",
+      "name": "LoanStatus",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "OneHour"
+            "name": "Listing"
           },
           {
-            "name": "OneMonth"
+            "name": "Opening"
           },
           {
-            "name": "ThreeMonth"
+            "name": "Disabled"
           },
           {
-            "name": "SixMonth"
+            "name": "Closed"
           },
           {
-            "name": "NineMonth"
+            "name": "Done"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Opening"
           },
           {
-            "name": "OneYear"
+            "name": "Disabled"
+          },
+          {
+            "name": "Closed"
           }
         ]
       }

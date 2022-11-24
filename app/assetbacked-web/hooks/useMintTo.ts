@@ -29,9 +29,8 @@ export const useMintTo = ({
   })
 
   return useAsyncFn(async () => {
-    if (state.value && mint.value && account.value && account.error) {
+    if (!account.value && account.error) {
       await createAccount()
-      return doAirdrop(mint.value.address, account.value.address)
     }
 
     if (mint.value && account.value) {

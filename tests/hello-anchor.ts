@@ -244,9 +244,6 @@ describe("hello-anchor", () => {
           maxLoanAmount: new BN(100 * DECIMALS),
           maxLoanThreshold: new BN(0.8 * DECIMALS),
           minLoanAmount: new BN(10 * DECIMALS),
-          loanTerm: {
-            nineMonths: {},
-          } as never,
         },
         topUpAmount,
         requiredLoanFee
@@ -501,7 +498,9 @@ describe("hello-anchor", () => {
     // )
 
     await program.methods
-      .initLoan(new BN(100 * DECIMALS))
+      .initLoan(new BN(100 * DECIMALS), {
+        oneMonth: {},
+      })
       .accounts({
         mintNft: nftMintPubkey,
         nftTokenAccount: nftTokenAccount,

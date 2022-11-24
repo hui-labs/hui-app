@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "idl": "cp -r ../../target/idl contracts/idl && cp -r ../../target/types ./pages/api/types"
+    "idl": "cp -r ../../target/idl contracts && cp -r ../../target/types ./contracts"
   },
   "dependencies": {
     "@project-serum/anchor": "^0.25.0",

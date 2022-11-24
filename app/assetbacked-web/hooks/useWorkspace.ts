@@ -7,7 +7,7 @@ import { useEffect, useState } from "react"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
-const programId = new PublicKey(idl.metadata.address)
+const programId = new PublicKey("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz")
 
 export interface Workspace {
   wallet: AnchorWallet

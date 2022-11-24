@@ -5,7 +5,6 @@ import {
   useAnchorWallet,
   WalletProvider,
 } from "@solana/wallet-adapter-react"
-import { endpoint } from "../contracts/constants"
 import "@solana/wallet-adapter-react-ui/styles.css"
 // import "../styles/globals.css"
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui"
@@ -14,7 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
   const phantomWallet = new PhantomWalletAdapter()
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
+    <ConnectionProvider endpoint={process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!}>
       <WalletProvider wallets={[phantomWallet]}>
         <WalletModalProvider>
           <Component {...pageProps} />
