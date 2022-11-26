@@ -388,7 +388,7 @@ export default function Home() {
               const loanVaultUSDCAccount =
                 await getOrCreateAssociatedTokenAccount(
                   loanPDA,
-                  usdcMint.value,
+                  usdcMint.value!,
                   true
                 )
               if (!loanVaultUSDCAccount)

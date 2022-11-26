@@ -4,8 +4,8 @@ mod errors;
 use crate::curve::{ConstantProduct, LoanTerm};
 use crate::errors::AppError;
 use anchor_lang::prelude::*;
-use anchor_spl::token;
-use anchor_spl::token::{Burn, CloseAccount, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::{token, mint};
+use anchor_spl::token::{Burn, CloseAccount, Mint, MintTo, Token, TokenAccount, Transfer, InitializeAccount};
 
 declare_id!("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz");
 
@@ -37,9 +37,10 @@ pub mod hello_anchor {
         require_gte!(fee_amount + amount, amount + required_fee);
 
         let pool = &mut ctx.accounts.pool;
-        pool.token_b_account = ctx.accounts.vault.key();
+        pool.vault_account = ctx.accounts.vault_account.key();
+        pool.vault_mint = ctx.accounts.vault_account.mint.key();
+        pool.collateral_mint = ctx.accounts.collateral_mint.key();
         pool.pool_fee_account = ctx.accounts.system_fee_account.key();
-        pool.token_b_mint = ctx.accounts.vault.mint.key();
         pool.fees = Fees {
             loan_fee: SYSTEM_LOAN_FEE,
             transfer_fee: SYSTEM_TRANSFER_FEE,
@@ -49,6 +50,7 @@ pub mod hello_anchor {
         pool.min_loan_amount = config.min_loan_amount;
         pool.max_loan_threshold = config.max_loan_threshold;
         pool.status = PoolStatus::Opening;
+        pool.owner = ctx.accounts.depositor.key();
 
         token::transfer(
             ctx.accounts.to_transfer_vault_context(),
@@ -74,75 +76,73 @@ pub mod hello_anchor {
         Ok(())
     }
 
-    pub fn init_loan(ctx: Context<CreateLoan>, amount: u64, loan_term: LoanTerm) -> Result<()> {
-        // let curve = ConstantProduct;
-        // let pool = &ctx.accounts.pool;
-        // let loan = &mut ctx.accounts.loan;
-        //
-        // loan.interest_rate = pool.interest_rate.clone();
-        // loan.pool = pool.to_account_info().key().clone();
-        // loan.owner = ctx.accounts.nft_token_account.key().clone();
-        // loan.borrower = ctx.accounts.borrower.to_account_info().key();
-        // loan.token_b_account = ctx.accounts.pool.token_b_account.clone();
-        // loan.loan_term = loan_term;
-        // loan.fees = Fees {
-        //     loan_fee: SYSTEM_LOAN_FEE,
-        //     transfer_fee: SYSTEM_TRANSFER_FEE,
-        // };
-        // loan.min_loan_amount = pool.min_loan_amount.clone();
-        // loan.max_loan_amount = pool.max_loan_amount.clone();
-        // loan.max_loan_threshold = pool.max_loan_threshold.clone();
-        // loan.status = LoanStatus::Opening;
-        //
-        // let signer_seeds = ctx
-        //     .accounts
-        //     .pool
-        //     .signer_seeds(&ctx.accounts.pool_pda, ctx.program_id)?;
-        // let signer_seeds = &[&signer_seeds.value()[..]];
-        //
-        // // Transfer to the borrower
-        // // amount >= min_loan
-        // // && amount <= current_pool_amount - loan_fee
-        // // && amount <= max_loan
-        // let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
-        // let token_a_amount = ctx.accounts.pool_vault.amount;
-        // require_gte!(amount, pool.min_loan_amount);
-        // require_gte!(pool.max_loan_amount, amount);
-        // let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount);
-        // // require_gte!(token_a_amount - loan_fee, max_return_amount);
-        //
-        // loan.received_amount = received_amount;
-        // loan.fee = loan_fee;
-        //
-        // token::transfer(ctx.accounts.to_transfer_vault_context(), amount)?;
-        // token::transfer(
-        //     ctx.accounts
-        //         .to_transfer_fee_context()
-        //         .with_signer(signer_seeds),
-        //     loan_fee,
-        // )?;
-        // token::transfer(
-        //     ctx.accounts
-        //         .to_transfer_receiver_context()
-        //         .with_signer(signer_seeds),
-        //     received_amount,
-        // )?;
-        //
-        // let cpi_accounts = MintTo {
-        //     mint: ctx.accounts.mint_nft.to_account_info().clone(),
-        //     to: ctx.accounts.nft_token_account.to_account_info().clone(),
-        //     authority: ctx.accounts.loan_pda.to_account_info().clone(),
-        // };
-        //
-        // // Mint NFT
-        // let signer_seeds = ctx
-        //     .accounts
-        //     .loan
-        //     .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
-        // let signer_seeds = &[&signer_seeds.value()[..]];
-        // let cpi_program = ctx.accounts.token_program.to_account_info();
-        // let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts).with_signer(signer_seeds);
-        // token::mint_to(cpi_ctx, 1)?;
+    pub fn init_loan(ctx: Context<InitLoan>, amount: u64, loan_term: LoanTerm) -> Result<()> {
+        let curve = ConstantProduct;
+        let pool = &ctx.accounts.pool;
+        let loan = &mut ctx.accounts.loan;
+
+        loan.interest_rate = pool.interest_rate.clone();
+        loan.pool = pool.to_account_info().key().clone();
+        loan.owner = ctx.accounts.nft_account.key().clone();
+        loan.borrower = ctx.accounts.borrower.to_account_info().key();
+
+        loan.vault_account = ctx.accounts.vault_account.key().clone();
+        loan.vault_mint = ctx.accounts.vault_mint.key().clone();
+        loan.collateral_account = ctx.accounts.collateral_account.key().clone();
+        loan.collateral_mint = ctx.accounts.collateral_mint.key().clone();
+
+        loan.loan_term = loan_term;
+        loan.fees = Fees {
+            loan_fee: SYSTEM_LOAN_FEE,
+            transfer_fee: SYSTEM_TRANSFER_FEE,
+        };
+        loan.min_loan_amount = pool.min_loan_amount.clone();
+        loan.max_loan_amount = pool.max_loan_amount.clone();
+        loan.max_loan_threshold = pool.max_loan_threshold.clone();
+        loan.status = LoanStatus::Opening;
+
+        let signer_seeds = ctx
+            .accounts
+            .pool
+            .signer_seeds(&ctx.accounts.pool_pda, ctx.program_id)?;
+        let signer_seeds = &[&signer_seeds.value()[..]];
+
+        // Transfer to the borrower
+        // amount >= min_loan
+        // && amount <= current_pool_amount - loan_fee
+        // && amount <= max_loan
+        let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
+        let token_a_amount = ctx.accounts.pool_vault.amount;
+        require_gte!(amount, pool.min_loan_amount);
+        require_gte!(pool.max_loan_amount, amount);
+        let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount);
+        // require_gte!(token_a_amount - loan_fee, max_return_amount);
+
+        loan.received_amount = received_amount;
+        loan.fee = loan_fee;
+
+        token::transfer(ctx.accounts.to_transfer_vault_context(), amount)?;
+        token::transfer(
+            ctx.accounts
+                .to_transfer_fee_context()
+                .with_signer(signer_seeds),
+            loan_fee,
+        )?;
+        token::transfer(
+            ctx.accounts
+                .to_transfer_receiver_context()
+                .with_signer(signer_seeds),
+            received_amount,
+        )?;
+
+        // Mint NFT
+        let signer_seeds = ctx
+            .accounts
+            .loan
+            .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
+        let signer_seeds = &[&signer_seeds.value()[..]];
+        token::mint_to(ctx.accounts.to_mint_nft_context().with_signer(signer_seeds), 1)?;
+
         // let account_info = vec![
         //     ctx.accounts.metadata.to_account_info(),
         //     ctx.accounts.mint_nft.to_account_info(),
@@ -182,6 +182,17 @@ pub mod hello_anchor {
         //     account_info.as_slice(),
         //     signer_seeds
         // )?;
+
+        Ok(())
+    }
+
+    pub fn claim_nft(ctx: Context<ClaimNft>) -> Result<()> {
+        let signer_seeds = ctx
+            .accounts
+            .loan
+            .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
+        let signer_seeds = &[&signer_seeds.value()[..]];
+        token::transfer(ctx.accounts.to_transfer_nft_context().with_signer(signer_seeds), 1)?;
 
         Ok(())
     }
@@ -236,9 +247,9 @@ pub mod hello_anchor {
         token::transfer(ctx.accounts.to_transfer_vault_context(), amount)?;
         token::transfer(
             ctx.accounts
-                .to_transfer_recevier_context()
+                .to_transfer_receiver_context()
                 .with_signer(signer_seeds),
-            ctx.accounts.loan_a_vault.amount,
+            ctx.accounts.collateral_account.amount,
         )?;
         ctx.accounts.loan.status = LoanStatus::Done;
 
@@ -251,7 +262,7 @@ pub mod hello_anchor {
             .loan
             .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
         let signer_seeds = &[&signer_seeds.value()[..]];
-        let amount = ctx.accounts.loan_vault.amount;
+        let amount = ctx.accounts.vault.amount;
         token::transfer(
             ctx.accounts
                 .to_transfer_receiver_context()
@@ -275,6 +286,28 @@ pub mod hello_anchor {
 }
 
 #[derive(Accounts)]
+pub struct ClaimNft<'info> {
+    pub loan: Box<Account<'info, Loan>>,
+    #[account(mut)]
+    pub nft_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub token_account: Box<Account<'info, TokenAccount>>,
+    pub token_program: Program<'info, Token>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    pub loan_pda: AccountInfo<'info>,
+}
+
+impl<'info> ClaimNft<'info> {
+    fn to_transfer_nft_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.nft_account.to_account_info().clone(),
+            to: self.token_account.to_account_info().clone(),
+            authority: self.loan_pda.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+}
+#[derive(Accounts)]
 pub struct MergeLoan<'info> {
     pub loan: Box<Account<'info, Loan>>,
 }
@@ -296,9 +329,9 @@ pub struct ClaimLoan<'info> {
     pub token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
-    pub mint_nft: UncheckedAccount<'info>,
+    pub nft_mint: UncheckedAccount<'info>,
     #[account(mut)]
-    pub loan_vault: Box<Account<'info, TokenAccount>>,
+    pub vault: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub loan_pda: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
@@ -307,7 +340,7 @@ pub struct ClaimLoan<'info> {
 impl<'info> ClaimLoan<'info> {
     fn to_transfer_receiver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.loan_vault.to_account_info().clone(),
+            from: self.vault.to_account_info().clone(),
             to: self.token_account.to_account_info().clone(),
             authority: self.loan_pda.clone(),
         };
@@ -316,7 +349,7 @@ impl<'info> ClaimLoan<'info> {
 
     fn to_burn_nft_context(&self) -> CpiContext<'_, '_, '_, 'info, Burn<'info>> {
         let cpi_accounts = Burn {
-            mint: self.mint_nft.to_account_info().clone(),
+            mint: self.nft_mint.to_account_info().clone(),
             from: self.nft_account.to_account_info().clone(),
             authority: self.owner.to_account_info().clone(),
         };
@@ -347,9 +380,9 @@ pub struct FinalSettlement<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub loan_pda: AccountInfo<'info>,
     #[account(mut)]
-    pub loan_a_vault: Box<Account<'info, TokenAccount>>,
+    pub collateral_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub loan_b_vault: Box<Account<'info, TokenAccount>>,
+    pub vault_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub token_depositor: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
@@ -361,15 +394,15 @@ impl<'info> FinalSettlement<'info> {
     fn to_transfer_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.token_depositor.to_account_info().clone(),
-            to: self.loan_b_vault.to_account_info().clone(),
+            to: self.vault_account.to_account_info().clone(),
             authority: self.depositor.to_account_info().clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 
-    fn to_transfer_recevier_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn to_transfer_receiver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.loan_a_vault.to_account_info().clone(),
+            from: self.collateral_account.to_account_info().clone(),
             to: self.token_receiver.to_account_info().clone(),
             authority: self.loan_pda.clone(),
         };
@@ -424,7 +457,6 @@ impl<'a> SignerSeeds<'a> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum LoanStatus {
-    Listing,
     Opening,
     Disabled,
     Closed,
@@ -436,8 +468,10 @@ pub struct Loan {
     pool: Pubkey,
     owner: Pubkey,
     borrower: Pubkey,
-    token_a_account: Pubkey,
-    token_b_account: Pubkey,
+    collateral_mint: Pubkey,
+    collateral_account: Pubkey,
+    vault_account: Pubkey,
+    vault_mint: Pubkey,
     interest_rate: u64,
     loan_term: LoanTerm,
     fees: Fees,
@@ -462,76 +496,96 @@ impl Loan {
 }
 
 #[derive(Accounts)]
-pub struct CreateLoan<'info> {
+pub struct InitLoan<'info> {
     #[account(zero)]
     pub loan: Box<Account<'info, Loan>>,
-    pub pool: Box<Account<'info, Pool>>,
+    #[account(mut)]
+    pub pool: Account<'info, Pool>,
+
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub pool_pda: AccountInfo<'info>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub loan_pda: AccountInfo<'info>,
-    pub token_program: Program<'info, Token>,
+
     #[account(mut)]
     pub pool_vault: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub loan_a_vault: Box<Account<'info, TokenAccount>>,
-    #[account(mut)]
-    pub loan_b_vault: Box<Account<'info, TokenAccount>>,
+
+    pub vault_mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = borrower, token::mint = vault_mint, token::authority = loan_pda)]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+
+    pub collateral_mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = borrower, token::mint = collateral_mint, token::authority = loan_pda)]
+    pub collateral_account: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub token_depositor: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub token_receiver: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub system_fee_account: Box<Account<'info, TokenAccount>>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
+
+    #[account(init, payer = borrower, mint::decimals = 0, mint::authority = loan_pda)]
+    pub nft_mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = borrower, token::mint = nft_mint, token::authority = loan_pda)]
+    pub nft_account: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
-    pub mint_nft: UncheckedAccount<'info>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    #[account(mut)]
-    pub nft_token_account: UncheckedAccount<'info>,
-    pub system_program: Program<'info, System>,
     pub borrower: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
-// impl<'info> CreateLoan<'info> {
-//     fn to_transfer_receiver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
-//         let cpi_accounts = Transfer {
-//             from: self.pool_vault.to_account_info().clone(),
-//             to: self.token_receiver.to_account_info().clone(),
-//             authority: self.pool_pda.clone(),
-//         };
-//         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
-//     }
-//
-//     fn to_transfer_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
-//         let cpi_accounts = Transfer {
-//             from: self.token_depositor.to_account_info().clone(),
-//             to: self.loan_a_vault.to_account_info().clone(),
-//             authority: self.borrower.to_account_info().clone(),
-//         };
-//         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
-//     }
-//
-//     fn to_transfer_fee_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
-//         let cpi_accounts = Transfer {
-//             from: self.pool_vault.to_account_info().clone(),
-//             to: self.system_fee_account.to_account_info().clone(),
-//             authority: self.pool_pda.clone(),
-//         };
-//         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
-//     }
-// }
+impl<'info> InitLoan<'info> {
+    fn to_mint_nft_context(&self)-> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.nft_mint.to_account_info().clone(),
+            to: self.nft_account.to_account_info().clone(),
+            authority: self.loan_pda.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+
+    fn to_transfer_receiver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.pool_vault.to_account_info().clone(),
+            to: self.token_receiver.to_account_info().clone(),
+            authority: self.pool_pda.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+
+    fn to_transfer_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.token_depositor.to_account_info().clone(),
+            to: self.collateral_account.to_account_info().clone(),
+            authority: self.borrower.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+
+    fn to_transfer_fee_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.pool_vault.to_account_info().clone(),
+            to: self.system_fee_account.to_account_info().clone(),
+            authority: self.pool_pda.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+}
 
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct Deposit<'info> {
     pub depositor: Signer<'info>,
     #[account(mut)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     #[account(mut)]
-    pub token_depositor: Account<'info, TokenAccount>,
+    pub token_depositor: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub loan_vault: Account<'info, TokenAccount>,
+    pub loan_vault: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
 }
 
@@ -569,8 +623,10 @@ pub enum PoolStatus {
 
 #[account]
 pub struct Pool {
-    pub token_b_account: Pubkey,
-    pub token_b_mint: Pubkey,
+    pub owner: Pubkey,
+    pub vault_account: Pubkey,
+    pub vault_mint: Pubkey,
+    pub collateral_mint: Pubkey,
     pub pool_fee_account: Pubkey,
     pub fees: Fees,
     pub interest_rate: u64,
@@ -582,7 +638,7 @@ pub struct Pool {
 
 impl Pool {
     fn signer_seeds<'a>(&'a self, pda: &AccountInfo, program_id: &Pubkey) -> Result<SignerSeeds> {
-        let seeds = [b"pool".as_ref(), self.token_b_mint.as_ref()];
+        let seeds = [b"pool".as_ref(), self.vault_mint.as_ref()];
         let (pubkey, bump) = Pubkey::find_program_address(&seeds, program_id);
         if pubkey != pda.key() {
             return Err(ProgramError::InvalidArgument.into());
@@ -593,39 +649,32 @@ impl Pool {
 }
 
 #[derive(Accounts)]
-#[instruction(fees: Fees)]
 pub struct InitPool<'info> {
+    #[account(mut)]
     pub depositor: Signer<'info>,
     #[account(zero)]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub pda: AccountInfo<'info>,
+    #[account(init, payer = depositor, token::mint = vault_mint, token::authority = pda)]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+    pub vault_mint: Box<Account<'info, Mint>>,
+    pub collateral_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
-    pub vault: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub token_depositor: Account<'info, TokenAccount>,
-    pub system_fee_account: Account<'info, TokenAccount>,
+    pub token_depositor: Box<Account<'info, TokenAccount>>,
+    pub system_fee_account: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 impl<'info> InitPool<'info> {
     fn to_transfer_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.token_depositor.to_account_info().clone(),
-            to: self.vault.to_account_info().clone(),
+            to: self.vault_account.to_account_info().clone(),
             authority: self.depositor.to_account_info().clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_a() {
-        let a = 100_u64 * 10_u64.pow(9);
-        let b = 800000000_u64;
-        println!("{}", (a / 10_u64.pow(9)) * b);
     }
 }
