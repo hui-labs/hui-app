@@ -1,7 +1,12 @@
 import useIsMounted from "../hooks/useIsMounted"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import styles from "../styles/Home.module.css"
-import { LAMPORTS_PER_SOL, PublicKey, Transaction } from "@solana/web3.js"
+import {
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  Transaction,
+} from "@solana/web3.js"
 import { useGetMint } from "@/hooks/useGetMint"
 import {
   SystemFeeUSDCPubKey,
@@ -29,6 +34,7 @@ import { useCreateAccount } from "@/hooks/useCreateAccount"
 import { createSetAuthorityInstruction } from "@solana/spl-token/src/instructions/setAuthority"
 import { BN, web3 } from "@project-serum/anchor"
 import { useState } from "react"
+import base58 from "bs58"
 
 export const Airdrop = () => {
   const workspace = useWorkspace()
@@ -203,70 +209,83 @@ export default function Home() {
                   associatedAccount,
                   commitmentLevel
                 )
-
-                console.log(poolVaultUSDTAccount)
               }
 
-              const DECIMALS = 10 ** 9
-              const topUpAmount = new BN(parseInt(amount) * DECIMALS)
-              const estimatedLoanFee: BN = await program.methods
-                .estimateLoanFee(topUpAmount)
-                .accounts({
-                  mint: usdtMint.value.address,
-                })
-                .view()
+              try {
+                const DECIMALS = 10 ** 9
+                const topUpAmount = new BN(10 * DECIMALS)
+                // const estimatedLoanFee: BN = await program.methods
+                //   .estimateLoanFee(topUpAmount)
+                //   .accounts({
+                //     mint: usdtMint.value.address,
+                //   })
+                //   .view()
 
-              const aliceUSDTAssociatedAccount =
-                await getAssociatedTokenAddress(
-                  usdtMint.value.address,
-                  wallet.publicKey,
-                  false,
-                  TOKEN_PROGRAM_ID,
-                  ASSOCIATED_TOKEN_PROGRAM_ID
+                const aliceUSDTAssociatedAccount =
+                  await getAssociatedTokenAddress(
+                    usdtMint.value.address,
+                    wallet.publicKey,
+                    false,
+                    TOKEN_PROGRAM_ID,
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                  )
+                const aliceUSDTAccount = await getAccount(
+                  connection,
+                  aliceUSDTAssociatedAccount,
+                  commitmentLevel
                 )
-              const aliceUSDTAccount = await getAccount(
-                connection,
-                aliceUSDTAssociatedAccount,
-                commitmentLevel
-              )
-              const pool = web3.Keypair.generate()
-              const tx = await program.methods
-                .initPool(
-                  {
-                    interestRate: new BN(10),
-                    maxLoanAmount: new BN(100 * DECIMALS),
-                    maxLoanThreshold: new BN(0.8 * DECIMALS),
-                    minLoanAmount: new BN(10 * DECIMALS),
-                  },
-                  topUpAmount,
-                  estimatedLoanFee
+                // console.log("estimatedLoanFee", estimatedLoanFee.toString())
+                console.log(
+                  "aliceUSDTAccount",
+                  aliceUSDTAccount.amount.toString()
                 )
-                .accounts({
-                  pool: pool.publicKey,
-                  pda: poolPDA,
-                  vault: poolVaultUSDTAccount.address,
-                  depositor: wallet.publicKey,
-                  systemFeeAccount: SystemFeeUSDTPubKey,
-                  tokenDepositor: aliceUSDTAccount.address,
-                  tokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .preInstructions([
-                  await program.account.pool.createInstruction(pool),
-                ])
-                .signers([pool])
-                .transaction()
 
-              const { blockhash } = await connection.getRecentBlockhash(
-                commitmentLevel
-              )
-              tx.recentBlockhash = blockhash
-              tx.feePayer = wallet.publicKey
+                const pool = web3.Keypair.generate()
+                // const alice = Keypair.fromSecretKey(
+                //   base58.decode(
+                //     "8QF1Wa6h4e18RALjNo8ZRB9nPwXgjpwtLcDjNnMeiTuTyNLjuDr1N1tLmJ3Ai2vGMC4uH4AiAFeaWkogyKNPJm6"
+                //   )
+                // )
+                const ins = await program.account.pool.createInstruction(pool)
+                const tx = await program.methods
+                  .initPool(
+                    {
+                      interestRate: new BN(10),
+                      maxLoanAmount: new BN(100 * DECIMALS),
+                      maxLoanThreshold: new BN(0.8 * DECIMALS),
+                      minLoanAmount: new BN(10 * DECIMALS),
+                    },
+                    topUpAmount,
+                    new BN("2200000000")
+                  )
+                  .accounts({
+                    pool: pool.publicKey,
+                    pda: poolPDA,
+                    vault: poolVaultUSDTAccount.address,
+                    depositor: wallet.publicKey,
+                    systemFeeAccount: SystemFeeUSDTPubKey,
+                    tokenDepositor: aliceUSDTAccount.address,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                  })
+                  .preInstructions([ins])
+                  .signers([pool])
+                  .rpc()
+                console.log(tx)
 
-              const signed = await wallet.signTransaction(tx)
-              const txId = await connection.sendRawTransaction(
-                signed.serialize()
-              )
-              await connection.confirmTransaction(txId, commitmentLevel)
+                // const { blockhash } = await connection.getRecentBlockhash(
+                //   commitmentLevel
+                // )
+                // tx.recentBlockhash = blockhash
+                // tx.feePayer = wallet.publicKey
+                //
+                // const signed = await wallet.signTransaction(tx)
+                // const txId = await connection.sendRawTransaction(
+                //   signed.serialize()
+                // )
+                // await connection.confirmTransaction(txId, commitmentLevel)
+              } catch (e) {
+                console.log(e)
+              }
             }
           }}
         >

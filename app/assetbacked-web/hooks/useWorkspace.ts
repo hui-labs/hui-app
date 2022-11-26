@@ -5,6 +5,7 @@ import { AnchorProvider, Program } from "@project-serum/anchor"
 import { HelloAnchor } from "@/contracts/types/hello_anchor"
 import { useEffect, useState } from "react"
 import { AsyncState } from "react-use/lib/useAsyncFn"
+import * as anchor from "@project-serum/anchor"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
 const programId = new PublicKey("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz")
