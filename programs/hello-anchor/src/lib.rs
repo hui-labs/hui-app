@@ -113,8 +113,8 @@ pub mod hello_anchor {
         // && amount <= max_loan
         let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
         let token_a_amount = ctx.accounts.pool_vault.amount;
-        require_gte!(amount, pool.min_loan_amount);
-        require_gte!(pool.max_loan_amount, amount);
+        // require_gte!(amount, pool.min_loan_amount);
+        // require_gte!(pool.max_loan_amount, amount);
         let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount);
         // require_gte!(token_a_amount - loan_fee, max_return_amount);
 

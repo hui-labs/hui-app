@@ -1,14 +1,14 @@
 import { PublicKey } from "@solana/web3.js"
 
 export const USDCPubKey = new PublicKey(
-  "GrpiyY1AuKESHPPgwu5AVianwUL591mceLVDZpUMAEcL"
+  "6MiyjcsrAogzBFK4eg7VUGE1CJZDdZqromW6523GT8hn"
 )
 export const USDTPubKey = new PublicKey(
-  "FWm14xtKZWQydF6qcmRLQ8oyPxxZFyqJeqNoRWXyXGS9"
+  "2cakbZfLktNfmgm5ARRPRZopypJBEdp1pxyx7FRnzifd"
 )
 export const SystemFeeUSDCPubKey = new PublicKey(
-  "FBCZxM1jQ4NBEG6iRK1hYTutEG6CmLE268RBQzPW3MLY"
+  "7RC9DzgNzrSSdry5MHPCPiBWtjCGr31gcJaz5Vi3fhXA"
 )
 export const SystemFeeUSDTPubKey = new PublicKey(
-  "xHNsQDur9LdLMJbMK5Fu2x2XxBq6G6ZdJHgXLzhH462"
+  "51Dns2pQnX1ssQRpPRMYgytjSrtc3MuEvpHrYqyhVbRk"
 )

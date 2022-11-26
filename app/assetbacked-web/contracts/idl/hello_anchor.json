@@ -18,7 +18,7 @@
       "accounts": [
         {
           "name": "depositor",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -32,8 +32,18 @@
           "isSigner": false
         },
         {
-          "name": "vault",
+          "name": "vaultAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vaultMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralMint",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -48,6 +58,16 @@
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -136,7 +156,7 @@
         },
         {
           "name": "pool",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -150,24 +170,29 @@
           "isSigner": false
         },
         {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "poolVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanAVault",
-          "isMut": true,
+          "name": "vaultMint",
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "loanBVault",
+          "name": "vaultAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "collateralMint",
+          "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "collateralAccount",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "tokenDepositor",
@@ -185,13 +210,23 @@
           "isSigner": false
         },
         {
-          "name": "mintNft",
+          "name": "nftMint",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
-          "name": "nftTokenAccount",
+          "name": "nftAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "borrower",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -200,9 +235,9 @@
           "isSigner": false
         },
         {
-          "name": "borrower",
+          "name": "rent",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         }
       ],
       "args": [
@@ -217,6 +252,37 @@
           }
         }
       ]
+    },
+    {
+      "name": "claimNft",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdraw",
@@ -290,12 +356,12 @@
           "isSigner": false
         },
         {
-          "name": "loanAVault",
+          "name": "collateralAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanBVault",
+          "name": "vaultAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -351,12 +417,12 @@
           "isSigner": false
         },
         {
-          "name": "mintNft",
+          "name": "nftMint",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanVault",
+          "name": "vault",
           "isMut": true,
           "isSigner": false
         },
@@ -415,11 +481,19 @@
             "type": "publicKey"
           },
           {
-            "name": "tokenAAccount",
+            "name": "collateralMint",
             "type": "publicKey"
           },
           {
-            "name": "tokenBAccount",
+            "name": "collateralAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
             "type": "publicKey"
           },
           {
@@ -473,11 +547,19 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "tokenBAccount",
+            "name": "owner",
             "type": "publicKey"
           },
           {
-            "name": "tokenBMint",
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralMint",
             "type": "publicKey"
           },
           {
@@ -615,9 +697,6 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "Listing"
-          },
-          {
             "name": "Opening"
           },
           {
@@ -649,5 +728,8 @@
         ]
       }
     }
-  ]
+  ],
+  "metadata": {
+    "address": "7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz"
+  }
 }

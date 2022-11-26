@@ -18,7 +18,7 @@ export type HelloAnchor = {
       "accounts": [
         {
           "name": "depositor",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -32,8 +32,18 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "vault",
+          "name": "vaultAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vaultMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralMint",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -48,6 +58,16 @@ export type HelloAnchor = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -136,7 +156,7 @@ export type HelloAnchor = {
         },
         {
           "name": "pool",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -150,24 +170,29 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "poolVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanAVault",
-          "isMut": true,
+          "name": "vaultMint",
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "loanBVault",
+          "name": "vaultAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "collateralMint",
+          "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "collateralAccount",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "tokenDepositor",
@@ -185,13 +210,23 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "mintNft",
+          "name": "nftMint",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
-          "name": "nftTokenAccount",
+          "name": "nftAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "borrower",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -200,9 +235,9 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "borrower",
+          "name": "rent",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         }
       ],
       "args": [
@@ -217,6 +252,37 @@ export type HelloAnchor = {
           }
         }
       ]
+    },
+    {
+      "name": "claimNft",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdraw",
@@ -290,12 +356,12 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "loanAVault",
+          "name": "collateralAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanBVault",
+          "name": "vaultAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -351,12 +417,12 @@ export type HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "mintNft",
+          "name": "nftMint",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanVault",
+          "name": "vault",
           "isMut": true,
           "isSigner": false
         },
@@ -415,11 +481,19 @@ export type HelloAnchor = {
             "type": "publicKey"
           },
           {
-            "name": "tokenAAccount",
+            "name": "collateralMint",
             "type": "publicKey"
           },
           {
-            "name": "tokenBAccount",
+            "name": "collateralAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
             "type": "publicKey"
           },
           {
@@ -473,11 +547,19 @@ export type HelloAnchor = {
         "kind": "struct",
         "fields": [
           {
-            "name": "tokenBAccount",
+            "name": "owner",
             "type": "publicKey"
           },
           {
-            "name": "tokenBMint",
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralMint",
             "type": "publicKey"
           },
           {
@@ -614,9 +696,6 @@ export type HelloAnchor = {
       "type": {
         "kind": "enum",
         "variants": [
-          {
-            "name": "Listing"
-          },
           {
             "name": "Opening"
           },
@@ -672,7 +751,7 @@ export const IDL: HelloAnchor = {
       "accounts": [
         {
           "name": "depositor",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -686,8 +765,18 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "vault",
+          "name": "vaultAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "vaultMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "collateralMint",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -702,6 +791,16 @@ export const IDL: HelloAnchor = {
         },
         {
           "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -790,7 +889,7 @@ export const IDL: HelloAnchor = {
         },
         {
           "name": "pool",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -804,24 +903,29 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "poolVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanAVault",
-          "isMut": true,
+          "name": "vaultMint",
+          "isMut": false,
           "isSigner": false
         },
         {
-          "name": "loanBVault",
+          "name": "vaultAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "collateralMint",
+          "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "collateralAccount",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "tokenDepositor",
@@ -839,13 +943,23 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "mintNft",
+          "name": "nftMint",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
-          "name": "nftTokenAccount",
+          "name": "nftAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "borrower",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -854,9 +968,9 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "borrower",
+          "name": "rent",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         }
       ],
       "args": [
@@ -871,6 +985,37 @@ export const IDL: HelloAnchor = {
           }
         }
       ]
+    },
+    {
+      "name": "claimNft",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanPda",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdraw",
@@ -944,12 +1089,12 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "loanAVault",
+          "name": "collateralAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanBVault",
+          "name": "vaultAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -1005,12 +1150,12 @@ export const IDL: HelloAnchor = {
           "isSigner": false
         },
         {
-          "name": "mintNft",
+          "name": "nftMint",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanVault",
+          "name": "vault",
           "isMut": true,
           "isSigner": false
         },
@@ -1069,11 +1214,19 @@ export const IDL: HelloAnchor = {
             "type": "publicKey"
           },
           {
-            "name": "tokenAAccount",
+            "name": "collateralMint",
             "type": "publicKey"
           },
           {
-            "name": "tokenBAccount",
+            "name": "collateralAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
             "type": "publicKey"
           },
           {
@@ -1127,11 +1280,19 @@ export const IDL: HelloAnchor = {
         "kind": "struct",
         "fields": [
           {
-            "name": "tokenBAccount",
+            "name": "owner",
             "type": "publicKey"
           },
           {
-            "name": "tokenBMint",
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "collateralMint",
             "type": "publicKey"
           },
           {
@@ -1268,9 +1429,6 @@ export const IDL: HelloAnchor = {
       "type": {
         "kind": "enum",
         "variants": [
-          {
-            "name": "Listing"
-          },
           {
             "name": "Opening"
           },

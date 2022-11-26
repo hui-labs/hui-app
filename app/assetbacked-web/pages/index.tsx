@@ -36,7 +36,7 @@ import {
   getMint,
 } from "@solana/spl-token"
 import { BN, web3 } from "@project-serum/anchor"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Account } from "@solana/spl-token/src/state/account"
 
 export const Airdrop = () => {
@@ -118,12 +118,16 @@ export default function Home() {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [amount, setAmount] = useState("2200")
-  const [fee, setFee] = useState("0")
 
   const usdcMint = useGetMint(workspace, USDCPubKey)
   const usdtMint = useGetMint(workspace, USDTPubKey)
   const usdcAccount = useAccount(workspace, usdcMint)
   const usdtAccount = useAccount(workspace, usdtMint)
+
+  const estimatedLoanFee = useMemo(() => {
+    const SYSTEM_LOAN_FEE = 1_000_000
+    return (parseInt(amount) / 10 ** 9) * SYSTEM_LOAN_FEE
+  }, [amount])
 
   async function getOrCreateAssociatedTokenAccount(
     owner: PublicKey,
@@ -198,29 +202,10 @@ export default function Home() {
           onChange={(e) => setAmount(e.target.value)}
         />
         <br />
-        <p>Fee: {fee}</p>
+        <p>Fee: {estimatedLoanFee} USD</p>
         <button
           onClick={async () => {
-            if (!workspace.value) return
-            if (!usdtMint.value) return
-
-            const program = workspace.value.program
-            const DECIMALS = 10 ** 9
-            const topUpAmount = new BN(parseInt(amount) * DECIMALS)
-            const estimatedLoanFee: BN = await program.methods
-              .estimateLoanFee(topUpAmount)
-              .accounts({
-                mint: usdtMint.value.address,
-              })
-              .view()
-            setFee(estimatedLoanFee.toString())
-          }}
-        >
-          Estimate
-        </button>
-        <button
-          onClick={async () => {
-            if (workspace.value && usdtMint.value) {
+            if (workspace.value && usdtMint.value && usdcMint.value) {
               const { wallet, program, connection } = workspace.value
 
               const [poolPDA] = await PublicKey.findProgramAddress(
@@ -241,25 +226,22 @@ export default function Home() {
                 const DECIMALS = 10 ** 9
                 const topUpAmount = new BN(10 * DECIMALS)
 
-                const aliceUSDTAssociatedAccount =
-                  await getAssociatedTokenAddress(
-                    usdtMint.value.address,
-                    wallet.publicKey,
-                    false,
-                    TOKEN_PROGRAM_ID,
-                    ASSOCIATED_TOKEN_PROGRAM_ID
-                  )
-                const aliceUSDTAccount = await getAccount(
+                const usdtAssociatedAccount = await getAssociatedTokenAddress(
+                  usdtMint.value.address,
+                  wallet.publicKey,
+                  false,
+                  TOKEN_PROGRAM_ID,
+                  ASSOCIATED_TOKEN_PROGRAM_ID
+                )
+                const usdtAccount = await getAccount(
                   connection,
-                  aliceUSDTAssociatedAccount,
+                  usdtAssociatedAccount,
                   commitmentLevel
                 )
                 // console.log("estimatedLoanFee", estimatedLoanFee.toString())
-                console.log(
-                  "aliceUSDTAccount",
-                  aliceUSDTAccount.amount.toString()
-                )
+                console.log("usdtAccount", usdtAccount.amount.toString())
 
+                const vaultKeypair = web3.Keypair.generate()
                 const pool = web3.Keypair.generate()
                 const ins = await program.account.pool.createInstruction(pool)
                 const tx = await program.methods
@@ -276,16 +258,20 @@ export default function Home() {
                   .accounts({
                     pool: pool.publicKey,
                     pda: poolPDA,
-                    vault: poolVaultUSDTAccount.address,
+                    systemProgram: SystemProgram.programId,
+                    rent: web3.SYSVAR_RENT_PUBKEY,
+                    vaultMint: usdtMint.value.address,
+                    collateralMint: usdcMint.value.address,
+                    vaultAccount: vaultKeypair.publicKey,
                     depositor: wallet.publicKey,
                     systemFeeAccount: SystemFeeUSDTPubKey,
-                    tokenDepositor: aliceUSDTAccount.address,
+                    tokenDepositor: usdtAccount.address,
                     tokenProgram: TOKEN_PROGRAM_ID,
                   })
                   .preInstructions([ins])
-                  .signers([pool])
+                  .signers([pool, vaultKeypair])
                   .rpc()
-                console.log(tx)
+                console.log(pool.publicKey.toBase58())
               } catch (e) {
                 console.log(e)
               }
@@ -299,7 +285,7 @@ export default function Home() {
             if (workspace.value && usdtMint.value) {
               const { wallet, program, connection } = workspace.value
               const pools = await program.account.pool.all()
-              console.log(pools[0].publicKey.toBase58())
+              console.log(pools)
             }
           }}
         >
@@ -309,7 +295,7 @@ export default function Home() {
         <button
           onClick={async () => {
             const poolPubkey = new PublicKey(
-              "o4reYjc56u8xQGKNo63Khr1UCHcFL13VxQKd8zTsukW"
+              "6tmV5DgDgLjy6zgDeTAiULQoTgrbyUcyGPPZNQTK6fhm"
             )
             if (
               workspace.value &&
@@ -317,110 +303,46 @@ export default function Home() {
               usdcAccount.value &&
               usdtAccount.value
             ) {
-              const { wallet, program, connection } = workspace.value
+              const { wallet, program } = workspace.value
               const DECIMALS = 10 ** 9
 
               const poolAccount = await program.account.pool.fetch(poolPubkey)
-              console.log(poolAccount)
 
               const [poolPDA] = await PublicKey.findProgramAddress(
                 [Buffer.from("pool"), usdtMint.value.address.toBuffer()],
                 program.programId
               )
 
-              console.log(poolPDA.toBase58())
-              // Create mint
-              const lamports = await getMinimumBalanceForRentExemptMint(
-                connection
-              )
-
-              const nftKeypair = Keypair.generate()
-              const tx = new Transaction().add(
-                SystemProgram.createAccount({
-                  fromPubkey: wallet.publicKey,
-                  newAccountPubkey: nftKeypair.publicKey,
-                  space: MINT_SIZE,
-                  lamports,
-                  programId: TOKEN_PROGRAM_ID,
-                }),
-                createInitializeMint2Instruction(
-                  nftKeypair.publicKey,
-                  0,
-                  poolPDA,
-                  null,
-                  TOKEN_PROGRAM_ID
-                )
-              )
-
-              const { blockhash } = await connection.getRecentBlockhash(
-                commitmentLevel
-              )
-              tx.recentBlockhash = blockhash
-              tx.feePayer = wallet.publicKey
-
-              const signed = await wallet.signTransaction(tx)
-              signed.partialSign(nftKeypair)
-              const txId = await connection.sendRawTransaction(
-                signed.serialize()
-              )
-              await connection.confirmTransaction(txId, commitmentLevel)
-
-              // Create nft token account
-              const nftMint = await getMint(
-                workspace.value.connection,
-                nftKeypair.publicKey,
-                commitmentLevel,
-                TOKEN_PROGRAM_ID
-              )
-              const nftTokenAccount = await getOrCreateAssociatedTokenAccount(
-                wallet.publicKey,
-                nftMint
-              )
-              if (!nftTokenAccount)
-                throw new Error("Can not create pool vault usdt account")
-              console.log(nftTokenAccount)
-
               const loan = web3.Keypair.generate()
               const [loanPDA] = await PublicKey.findProgramAddress(
                 [Buffer.from("loan"), poolPubkey.toBuffer()],
                 program.programId
               )
-              const loanVaultUSDCAccount =
-                await getOrCreateAssociatedTokenAccount(
-                  loanPDA,
-                  usdcMint.value!,
-                  true
-                )
-              if (!loanVaultUSDCAccount)
-                throw new Error("Can not create loan vault usdc account")
-
-              const loanVaultUSDTAccount =
-                await getOrCreateAssociatedTokenAccount(
-                  loanPDA,
-                  usdtMint.value,
-                  true
-                )
-              if (!loanVaultUSDTAccount)
-                throw new Error("Can not create loan vault usdt account")
-
               console.log("publicKey", loan.publicKey)
 
+              const vaultKeypair = Keypair.generate()
+              const collateralAccountKeypair = Keypair.generate()
+              const nftMintKeypair = Keypair.generate()
+              const nftAccountKeypair = Keypair.generate()
               const ins = await program.account.loan.createInstruction(loan)
               await program.methods
                 .initLoan(new BN(2 * DECIMALS), {
                   oneMonth: {},
                 })
                 .accounts({
-                  mintNft: nftMint.address,
-                  nftTokenAccount: nftTokenAccount.address,
+                  vaultAccount: vaultKeypair.publicKey,
+                  vaultMint: usdtMint.value.address,
+                  collateralMint: usdcMint.value!.address,
+                  collateralAccount: collateralAccountKeypair.publicKey,
+                  rent: web3.SYSVAR_RENT_PUBKEY,
+                  nftMint: nftMintKeypair.publicKey,
+                  nftAccount: nftAccountKeypair.publicKey,
                   loan: loan.publicKey,
                   pool: poolPubkey,
                   poolPda: poolPDA,
                   loanPda: loanPDA,
                   tokenProgram: TOKEN_PROGRAM_ID,
-                  poolVault: poolAccount.tokenBAccount,
-                  loanAVault: loanVaultUSDCAccount.address,
-                  loanBVault: loanVaultUSDTAccount.address,
+                  poolVault: poolAccount.vaultAccount,
                   borrower: wallet.publicKey,
                   systemProgram: SystemProgram.programId,
                   systemFeeAccount: SystemFeeUSDTPubKey,
@@ -428,7 +350,13 @@ export default function Home() {
                   tokenReceiver: usdtAccount.value.address,
                 })
                 .preInstructions([ins])
-                .signers([loan])
+                .signers([
+                  loan,
+                  nftMintKeypair,
+                  nftAccountKeypair,
+                  collateralAccountKeypair,
+                  vaultKeypair,
+                ])
                 .rpc()
               console.log("created")
             }
