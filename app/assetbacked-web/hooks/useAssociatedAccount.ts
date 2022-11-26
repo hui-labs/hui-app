@@ -12,7 +12,8 @@ import { AsyncState } from "react-use/lib/useAsyncFn"
 export const useAssociatedAccount = (
   workspace: AsyncState<Workspace | null>,
   address: AsyncState<Mint | null>,
-  owner?: PublicKey
+  owner?: PublicKey,
+  shouldRefresh = false
 ) => {
   return useAsync(async () => {
     if (workspace.value && address.value) {
@@ -26,5 +27,5 @@ export const useAssociatedAccount = (
     }
 
     return null
-  }, [workspace.value, address, owner])
+  }, [workspace.value, address, owner, shouldRefresh])
 }
