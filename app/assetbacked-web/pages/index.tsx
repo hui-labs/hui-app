@@ -214,12 +214,6 @@ export default function Home() {
               try {
                 const DECIMALS = 10 ** 9
                 const topUpAmount = new BN(10 * DECIMALS)
-                // const estimatedLoanFee: BN = await program.methods
-                //   .estimateLoanFee(topUpAmount)
-                //   .accounts({
-                //     mint: usdtMint.value.address,
-                //   })
-                //   .view()
 
                 const aliceUSDTAssociatedAccount =
                   await getAssociatedTokenAddress(
@@ -241,11 +235,6 @@ export default function Home() {
                 )
 
                 const pool = web3.Keypair.generate()
-                // const alice = Keypair.fromSecretKey(
-                //   base58.decode(
-                //     "8QF1Wa6h4e18RALjNo8ZRB9nPwXgjpwtLcDjNnMeiTuTyNLjuDr1N1tLmJ3Ai2vGMC4uH4AiAFeaWkogyKNPJm6"
-                //   )
-                // )
                 const ins = await program.account.pool.createInstruction(pool)
                 const tx = await program.methods
                   .initPool(
@@ -271,18 +260,6 @@ export default function Home() {
                   .signers([pool])
                   .rpc()
                 console.log(tx)
-
-                // const { blockhash } = await connection.getRecentBlockhash(
-                //   commitmentLevel
-                // )
-                // tx.recentBlockhash = blockhash
-                // tx.feePayer = wallet.publicKey
-                //
-                // const signed = await wallet.signTransaction(tx)
-                // const txId = await connection.sendRawTransaction(
-                //   signed.serialize()
-                // )
-                // await connection.confirmTransaction(txId, commitmentLevel)
               } catch (e) {
                 console.log(e)
               }
@@ -290,6 +267,17 @@ export default function Home() {
           }}
         >
           Create pool
+        </button>
+        <button
+          onClick={async () => {
+            if (workspace.value && usdtMint.value) {
+              const { wallet, program, connection } = workspace.value
+              const pools = await program.account.pool.all()
+              console.log(pools)
+            }
+          }}
+        >
+          Load
         </button>
       </div>
     </div>
