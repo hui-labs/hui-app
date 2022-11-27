@@ -254,6 +254,22 @@
       ]
     },
     {
+      "name": "closePool",
+      "accounts": [
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimNft",
       "accounts": [
         {
@@ -728,8 +744,5 @@
         ]
       }
     }
-  ],
-  "metadata": {
-    "address": "7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz"
-  }
+  ]
 }

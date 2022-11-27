@@ -1,6 +1,6 @@
 import * as anchor from "@project-serum/anchor"
 import { BN, Program, web3 } from "@project-serum/anchor"
-import { HelloAnchor } from "../target/types/hello_anchor"
+import { Hui } from "../target/types/hui"
 import {
   closeAccount,
   createAccount,
@@ -23,7 +23,7 @@ describe("test hui flow", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env())
 
-  const program = anchor.workspace.HelloAnchor as Program<HelloAnchor>
+  const program = anchor.workspace.Hui as Program<Hui>
   const connection = program.provider.connection
 
   it("Is initialized!", async () => {
@@ -515,6 +515,16 @@ describe("test hui flow", () => {
       alice.publicKey,
       alice
     )
+
+    console.log("Closing pool account")
+    await program.methods
+      .closePool()
+      .accounts({
+        pool: pool.publicKey,
+        owner: alice.publicKey,
+      })
+      .rpc()
+    console.log("Closed pool account")
   })
 })
 

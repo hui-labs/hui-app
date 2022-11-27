@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Button, Col, Row, Space, Table, Tag } from "antd"
+import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
@@ -7,10 +7,20 @@ import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { TOKEN_LISTS } from "@/common/constants"
-import { formatUnits } from "@ethersproject/units"
+import { formatUnits, parseUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
-import { getAccount } from "@solana/spl-token"
+import {
+  closeAccount,
+  getAccount,
+  getMint,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
+import * as anchor from "@project-serum/anchor"
+import { BN } from "@project-serum/anchor"
+import { getOrCreateAssociatedTokenAccount } from "@/services"
+
+const { Title } = Typography
 
 interface DataType {
   key: React.Key
@@ -23,6 +33,8 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  onClose: () => void
+  onWithdraw: (amount: BN) => void
 }
 
 const columns: ColumnsType<DataType> = [
@@ -80,7 +92,22 @@ const columns: ColumnsType<DataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: () => <a>Loan</a>,
+    render: (_, { onWithdraw, onClose, availableAmount }) => {
+      return (
+        <Space>
+          <Button
+            onClick={() =>
+              onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
+            }
+          >
+            Withdraw
+          </Button>
+          <Button danger type="primary" onClick={() => onClose()}>
+            Close
+          </Button>
+        </Space>
+      )
+    },
   },
 ]
 
@@ -91,9 +118,58 @@ const LenderPage: React.FC = () => {
   const [data, setData] = useState<DataType[]>([])
   const decimals = 9
 
-  const loadData = async () => {
+  const onWithdraw = async (
+    poolPubKey: PublicKey,
+    poolVaultPubkey: PublicKey,
+    mintPubKey: PublicKey,
+    amount: BN
+  ) => {
     if (workspace.value) {
-      setData(data)
+      const { program, wallet, connection } = workspace.value
+
+      const [poolPDA] = await PublicKey.findProgramAddress(
+        [Buffer.from("pool"), mintPubKey.toBuffer()],
+        program.programId
+      )
+
+      const mint = await getMint(
+        connection,
+        mintPubKey,
+        commitmentLevel,
+        TOKEN_PROGRAM_ID
+      )
+      const tokenDepositor = await getOrCreateAssociatedTokenAccount(
+        workspace.value,
+        wallet.publicKey,
+        mint
+      )
+      const tx = await program.methods
+        .withdraw(amount)
+        .accounts({
+          depositor: wallet.publicKey,
+          pool: poolPubKey,
+          poolPda: poolPDA,
+          tokenDepositor: tokenDepositor.address,
+          poolVault: poolVaultPubkey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc()
+
+      console.log(tx)
+    }
+  }
+
+  const onClose = async (poolPubKey: PublicKey) => {
+    if (workspace.value) {
+      const { program, wallet } = workspace.value
+      const tx = await program.methods
+        .closePool()
+        .accounts({
+          pool: poolPubKey,
+          owner: wallet.publicKey,
+        })
+        .rpc()
+      console.log(tx)
     }
   }
 
@@ -117,11 +193,19 @@ const LenderPage: React.FC = () => {
             account.maxLoanAmount.toString(),
             decimals
           ),
-          interestRate: formatUnits(account.interestRate.toString(), decimals),
+          interestRate: account.interestRate.toString(),
           maxLoanThreshold: formatUnits(
             account.maxLoanThreshold.toString(),
             decimals
           ),
+          onClose: () => onClose(publicKey),
+          onWithdraw: (amount: BN) =>
+            onWithdraw(
+              publicKey,
+              account.vaultAccount,
+              account.vaultMint,
+              amount
+            ),
         }
       })
 
@@ -154,12 +238,10 @@ const LenderPage: React.FC = () => {
       <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
       <Space wrap>
         <Button type="primary" onClick={() => router.push("/lender/add")}>
-          Create Loan
-        </Button>
-        <Button type="primary" onClick={loadData}>
-          Load
+          Create Pool
         </Button>
       </Space>
+      <Title level={3}>Your Pool</Title>
       <Row>
         <Col span={24}>
           <Table

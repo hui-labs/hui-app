@@ -254,6 +254,22 @@ export type Hui = {
       ]
     },
     {
+      "name": "closePool",
+      "accounts": [
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimNft",
       "accounts": [
         {
@@ -985,6 +1001,22 @@ export const IDL: Hui = {
           }
         }
       ]
+    },
+    {
+      "name": "closePool",
+      "accounts": [
+        {
+          "name": "pool",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
     },
     {
       "name": "claimNft",

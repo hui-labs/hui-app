@@ -73,9 +73,7 @@ const AddPool: React.FC = () => {
         await program.methods
           .initPool(
             {
-              interestRate: new BN(
-                (form.getFieldValue("interestRate") / 100) * DECIMALS
-              ),
+              interestRate: new BN(form.getFieldValue("interestRate")),
               maxLoanAmount: new BN(
                 form.getFieldValue("maxLoanAmount") * DECIMALS
               ),

@@ -11,6 +11,10 @@ declare_id!("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz");
 
 #[program]
 pub mod hui {
+    use std::io::{Cursor, Write};
+    use std::ops::DerefMut;
+    use anchor_lang::__private::CLOSED_ACCOUNT_DISCRIMINATOR;
+    use anchor_lang::AccountsClose;
     use super::*;
     use crate::curve::to_u64;
     use mpl_token_metadata::instruction::{
@@ -186,6 +190,16 @@ pub mod hui {
         Ok(())
     }
 
+    pub fn close_pool(ctx: Context<ClosePool>) -> Result<()> {
+        let data_account = &ctx.accounts.pool;
+        let owner_info = ctx.accounts.owner.to_account_info();
+        data_account.close(owner_info)?;
+        // let data_account_info: &AccountInfo = data_account.as_ref();
+        // require_keys_eq!(*data_account_info.owner, System::id());
+
+        Ok(())
+    }
+
     pub fn claim_nft(ctx: Context<ClaimNft>) -> Result<()> {
         let signer_seeds = ctx
             .accounts
@@ -283,6 +297,15 @@ pub mod hui {
     pub fn merge_loan(ctx: Context<MergeLoan>) -> Result<()> {
         Ok(())
     }
+}
+
+#[derive(Accounts)]
+pub struct ClosePool<'info> {
+    #[account(mut, close = owner)]
+    pub pool: Account<'info, Pool>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub owner: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
