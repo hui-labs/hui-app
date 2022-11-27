@@ -13,7 +13,7 @@ use anchor_spl::{mint, token};
 use mpl_token_metadata::instruction::{create_metadata_accounts_v2, create_metadata_accounts_v3};
 use spl_token::solana_program::program::{invoke, invoke_signed};
 
-declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
+declare_id!("AE8LAvZBiDFWFX1P6apvXrTzDxsQumwmDS23RUvXp86D");
 
 #[program]
 pub mod hui {

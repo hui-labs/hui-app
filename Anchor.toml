@@ -3,14 +3,14 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-hui = "7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV"
+hui = "AE8LAvZBiDFWFX1P6apvXrTzDxsQumwmDS23RUvXp86D"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "localnet"
-wallet = "/Users/linh.tran/.config/solana/id.json"
+wallet = "/Users/ducskt/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

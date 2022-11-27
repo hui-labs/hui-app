@@ -191,7 +191,7 @@ const LenderPage: React.FC = () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
-      console.log(pools)
+      console.log("pools", pools)
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -251,6 +251,7 @@ const LenderPage: React.FC = () => {
         [[], []] as [DataType[], DataType[]]
       )
 
+      console.log("data", data)
       setMyPools(data[0])
     }
   }, [workspace.value])
