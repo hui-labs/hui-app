@@ -31,8 +31,6 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
-  onClose: () => void
-  onWithdraw: (amount: BN) => void
 }
 
 const columns: ColumnsType<DataType> = [
@@ -90,102 +88,21 @@ const columns: ColumnsType<DataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, { onWithdraw, onClose, availableAmount, isAdmin }) => {
-      if (isAdmin) {
-        return (
-          <Space>
-            <Button
-              onClick={() =>
-                onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-              }
-            >
-              Withdraw
-            </Button>
-            <Button danger type="primary" onClick={() => onClose()}>
-              Close
-            </Button>
-          </Space>
-        )
-      }
-
-      return null
-      // return (
-      //   <Space>
-      //     <Button
-      //       type="primary"
-      //       onClick={() =>
-      //         onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-      //       }
-      //     >
-      //       Loan
-      //     </Button>
-      //   </Space>
-      // )
+    render: (_, {}) => {
+      return (
+        <Space>
+          <Button type="primary">Loan</Button>
+        </Space>
+      )
     },
   },
 ]
 
-const LenderPage: React.FC = () => {
-  const router = useRouter()
+const BorrowerPage: React.FC = () => {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
-  const [myPools, setMyPools] = useState<DataType[]>([])
+  const [availablePools, setAvailablePools] = useState<DataType[]>([])
   const decimals = 9
-
-  const onWithdraw = async (
-    poolPubKey: PublicKey,
-    poolVaultPubkey: PublicKey,
-    mintPubKey: PublicKey,
-    amount: BN
-  ) => {
-    if (workspace.value) {
-      const { program, wallet, connection } = workspace.value
-
-      const [poolPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("pool"), mintPubKey.toBuffer()],
-        program.programId
-      )
-
-      const mint = await getMint(
-        connection,
-        mintPubKey,
-        commitmentLevel,
-        TOKEN_PROGRAM_ID
-      )
-      const tokenDepositor = await getOrCreateAssociatedTokenAccount(
-        workspace.value,
-        wallet.publicKey,
-        mint
-      )
-      const tx = await program.methods
-        .withdraw(amount)
-        .accounts({
-          depositor: wallet.publicKey,
-          pool: poolPubKey,
-          poolPda: poolPDA,
-          tokenDepositor: tokenDepositor.address,
-          poolVault: poolVaultPubkey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc()
-
-      console.log(tx)
-    }
-  }
-
-  const onClose = async (poolPubKey: PublicKey) => {
-    if (workspace.value) {
-      const { program, wallet } = workspace.value
-      const tx = await program.methods
-        .closePool()
-        .accounts({
-          pool: poolPubKey,
-          owner: wallet.publicKey,
-        })
-        .rpc()
-      console.log(tx)
-    }
-  }
 
   useAsyncEffect(async () => {
     if (workspace.value) {
@@ -212,14 +129,6 @@ const LenderPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
-          onClose: () => onClose(publicKey),
-          onWithdraw: (amount: BN) =>
-            onWithdraw(
-              publicKey,
-              account.vaultAccount,
-              account.vaultMint,
-              amount
-            ),
         }
       })
 
@@ -251,65 +160,17 @@ const LenderPage: React.FC = () => {
         [[], []] as [DataType[], DataType[]]
       )
 
-      setMyPools(data[0])
+      setAvailablePools(data[1])
     }
   }, [workspace.value])
 
   return (
     <div>
       <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
-      <Title level={2}>Lender</Title>
-      <Space wrap>
-        <Button type="primary" onClick={() => router.push("/lender/add")}>
-          Create Pool
-        </Button>
-        <Button
-          type="primary"
-          onClick={async () => {
-            if (workspace.value) {
-              const { connection } = workspace.value
-              const discriminator = Buffer.from(
-                sha256.digest("account:Pool")
-              ).slice(0, 8)
-              const accounts = await connection.getProgramAccounts(programId, {
-                dataSlice: {
-                  offset: 0,
-                  length: 0,
-                },
-                filters: [
-                  {
-                    memcmp: {
-                      offset: 0,
-                      bytes: bs58.encode(discriminator),
-                    },
-                  }, // Ensure it's a CandyMachine account.
-                ],
-              })
-              const accountPublicKeys = accounts.map(
-                (account) => account.pubkey
-              )
-
-              const getPage = async (page: number, limit: number = 10) => {
-                const paginatedPublicKeys = accountPublicKeys.slice(
-                  (page - 1) * limit,
-                  page * limit
-                )
-
-                if (paginatedPublicKeys.length === 0) {
-                  return []
-                }
-
-                return connection.getMultipleAccountsInfo(paginatedPublicKeys)
-              }
-            }
-          }}
-        >
-          Load Data
-        </Button>
-      </Space>
+      <Title level={2}>Borrower</Title>
 
       <div>
-        <Title level={3}>Your Pools</Title>
+        <Title level={3}>Available Pools</Title>
         <Row>
           <Col span={24}>
             <Table
@@ -319,7 +180,7 @@ const LenderPage: React.FC = () => {
                 expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
                 // rowExpandable: (record) => record.name !== "Not Expandable",
               }}
-              dataSource={myPools}
+              dataSource={availablePools}
             />
           </Col>
         </Row>
@@ -328,4 +189,4 @@ const LenderPage: React.FC = () => {
   )
 }
 
-export default LenderPage
+export default BorrowerPage

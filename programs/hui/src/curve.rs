@@ -16,6 +16,7 @@ pub struct ConstantProduct;
 
 impl ConstantProduct {
     pub const DECIMALS: u64 = 10_u64.pow(9);
+    pub const PERCENTAGE_DECIMALS: u64 = 10_u64.pow(4);
     // Decimals equals 2
     pub fn calc_loan_fee(&self, loan_fee: u64, amount: u64) -> u64 {
         (amount / 10_u64.pow(9)) * loan_fee
@@ -27,7 +28,7 @@ impl ConstantProduct {
 
     pub fn calc_interest_amount(&self, amount: u64, interest_rate: u64, loan_term: LoanTerm) -> Result<u128> {
         let received_amount = to_u128(amount)?;
-        let interest_rate = to_u128(interest_rate * ConstantProduct::DECIMALS)?;
+        let interest_rate = to_u128(interest_rate * ConstantProduct::PERCENTAGE_DECIMALS)?;
         let interest_rate = interest_rate.div(100);
 
         let interest_rate_1m = interest_rate.div(12);

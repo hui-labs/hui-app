@@ -52,6 +52,7 @@ const AddPool: React.FC = () => {
 
       try {
         const DECIMALS = 10 ** 9
+        const PERCENTAGE_DECIMALS = 10 ** 4
 
         const usdtAssociatedAccount = await getAssociatedTokenAddress(
           usdtMint.value.address,
@@ -73,12 +74,14 @@ const AddPool: React.FC = () => {
         await program.methods
           .initPool(
             {
-              interestRate: new BN(form.getFieldValue("interestRate")),
+              interestRate: new BN(
+                form.getFieldValue("interestRate") * PERCENTAGE_DECIMALS
+              ),
               maxLoanAmount: new BN(
                 form.getFieldValue("maxLoanAmount") * DECIMALS
               ),
               maxLoanThreshold: new BN(
-                (form.getFieldValue("maxLoanThreshold") / 100) * DECIMALS
+                form.getFieldValue("maxLoanThreshold") * PERCENTAGE_DECIMALS
               ),
               minLoanAmount: new BN(
                 form.getFieldValue("minLoanAmount") * DECIMALS
