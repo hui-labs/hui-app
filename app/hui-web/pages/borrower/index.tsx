@@ -1,17 +1,31 @@
 import React, { useState } from "react"
-import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
+import {
+  Button,
+  Col,
+  Form,
+  InputNumber,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
-import { TOKEN_LISTS } from "@/common/constants"
+import { SystemFeeUSDTPubKey, TOKEN_LISTS } from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
-import { PublicKey } from "@solana/web3.js"
-import { getAccount } from "@solana/spl-token"
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
+import { getAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
+import { BN, web3 } from "@project-serum/anchor"
 
 const { Title } = Typography
+const { Option } = Select
 
 interface PoolDataType {
   key: React.Key
@@ -26,6 +40,7 @@ interface PoolDataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  showModal: () => void
 }
 
 const poolColumns: ColumnsType<PoolDataType> = [
@@ -83,10 +98,12 @@ const poolColumns: ColumnsType<PoolDataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, {}) => {
+    render: (_, { showModal }) => {
       return (
         <Space>
-          <Button type="primary">Loan</Button>
+          <Button type="primary" onClick={showModal}>
+            Loan
+          </Button>
         </Space>
       )
     },
@@ -164,12 +181,103 @@ const loanColumns: ColumnsType<LoanDataType> = [
   },
 ]
 
+const decimals = 9
+
 const BorrowerPage: React.FC = () => {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
+  const [form] = Form.useForm()
   const [availablePools, setAvailablePools] = useState<PoolDataType[]>([])
   const [myLoans, setMyLoans] = useState<LoanDataType[]>([])
-  const decimals = 9
+  const [open, setOpen] = useState(false)
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [modalText, setModalText] = useState("Content of the modal")
+
+  const showModal = () => {
+    console.log("zzz")
+    setOpen(true)
+  }
+
+  const handleOk = () => {
+    setModalText("The modal will be closed after two seconds")
+    setConfirmLoading(true)
+    setTimeout(() => {
+      setOpen(false)
+      setConfirmLoading(false)
+    }, 2000)
+  }
+
+  const handleCancel = () => {
+    console.log("Clicked cancel button")
+    setOpen(false)
+  }
+  const onCreateLoan = async (
+    poolPubkey: PublicKey,
+    vaultPubkey: PublicKey,
+    vaultMintPubkey: PublicKey,
+    collateralMintPubkey: PublicKey,
+    tokenDepositorPubkey: PublicKey,
+    tokenReceiverPubkey: PublicKey
+  ) => {
+    if (workspace.value) {
+      const { wallet, program } = workspace.value
+      const DECIMALS = 10 ** 9
+
+      const poolAccount = await program.account.pool.fetch(poolPubkey)
+
+      const [poolPDA] = await PublicKey.findProgramAddress(
+        [Buffer.from("pool"), vaultPubkey.toBuffer()],
+        program.programId
+      )
+
+      const loan = web3.Keypair.generate()
+      const [loanPDA] = await PublicKey.findProgramAddress(
+        [Buffer.from("loan"), poolPubkey.toBuffer()],
+        program.programId
+      )
+      console.log("publicKey", loan.publicKey)
+
+      const vaultKeypair = Keypair.generate()
+      const collateralAccountKeypair = Keypair.generate()
+      const nftMintKeypair = Keypair.generate()
+      const nftAccountKeypair = Keypair.generate()
+      const ins = await program.account.loan.createInstruction(loan)
+      await program.methods
+        .initLoan(new BN(2 * DECIMALS), {
+          oneMonth: {},
+        })
+        .accounts({
+          vaultAccount: vaultKeypair.publicKey,
+          vaultMint: vaultMintPubkey,
+          collateralMint: collateralMintPubkey,
+          collateralAccount: collateralAccountKeypair.publicKey,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          nftMint: nftMintKeypair.publicKey,
+          nftAccount: nftAccountKeypair.publicKey,
+          loan: loan.publicKey,
+          pool: poolPubkey,
+          poolPda: poolPDA,
+          loanPda: loanPDA,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          poolVault: poolAccount.vaultAccount,
+          borrower: wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+          systemFeeAccount: SystemFeeUSDTPubKey,
+          tokenDepositor: tokenDepositorPubkey,
+          tokenReceiver: tokenReceiverPubkey,
+        })
+        .preInstructions([ins])
+        .signers([
+          loan,
+          nftMintKeypair,
+          nftAccountKeypair,
+          collateralAccountKeypair,
+          vaultKeypair,
+        ])
+        .rpc()
+      console.log("created")
+    }
+  }
 
   useAsyncEffect(async () => {
     if (workspace.value) {
@@ -228,7 +336,7 @@ const BorrowerPage: React.FC = () => {
 
       setMyLoans(data[1])
     }
-  }, [])
+  }, [workspace.value])
 
   useAsyncEffect(async () => {
     if (workspace.value) {
@@ -255,6 +363,7 @@ const BorrowerPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
+          showModal,
         }
       })
 
@@ -296,7 +405,7 @@ const BorrowerPage: React.FC = () => {
       <Title level={2}>Borrower</Title>
 
       <div>
-        <Title level={3}>Available Pools</Title>
+        <Title level={3}>Your Loans</Title>
         <Row>
           <Col span={24}>
             <Table
@@ -328,6 +437,59 @@ const BorrowerPage: React.FC = () => {
           </Col>
         </Row>
       </div>
+
+      <Modal
+        title="Title"
+        open={open}
+        onOk={handleOk}
+        confirmLoading={confirmLoading}
+        onCancel={handleCancel}
+      >
+        <Row>
+          <Col span={24}>
+            <Form
+              layout="vertical"
+              form={form}
+              name="control-hooks"
+              onFinish={() => {}}
+            >
+              <Form.Item
+                name="loanTerm"
+                label="Loan Term"
+                rules={[{ required: true }]}
+              >
+                <Select
+                  placeholder="Select a option and change input text above"
+                  allowClear
+                >
+                  <Option value="twoMinutes">2 Minutes - Test</Option>
+                  <Option value="oneMonth">1 Month</Option>
+                  <Option value="threeMonths">3 Months</Option>
+                  <Option value="sixMonths">6 Months</Option>
+                  <Option value="nineMonths">9 Months</Option>
+                  <Option value="twelveMonths">12 Months</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                name="loanAmount"
+                label="Loan Amount"
+                rules={[{ required: true }]}
+              >
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
+
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit">
+                    Submit
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Col>
+        </Row>
+      </Modal>
     </div>
   )
 }

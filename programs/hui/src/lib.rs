@@ -1,27 +1,23 @@
 mod curve;
 mod errors;
 
+use crate::curve::to_u64;
 use crate::curve::{ConstantProduct, LoanTerm};
 use crate::errors::AppError;
 use anchor_lang::prelude::*;
-use anchor_spl::{token, mint};
-use anchor_spl::token::{Burn, CloseAccount, Mint, MintTo, Token, TokenAccount, Transfer, InitializeAccount};
+use anchor_lang::AccountsClose;
+use anchor_spl::token::{
+    Burn, CloseAccount, InitializeAccount, Mint, MintTo, Token, TokenAccount, Transfer,
+};
+use anchor_spl::{mint, token};
+use mpl_token_metadata::instruction::{create_metadata_accounts_v2, create_metadata_accounts_v3};
+use spl_token::solana_program::program::{invoke, invoke_signed};
 
-declare_id!("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz");
+declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 
 #[program]
 pub mod hui {
-    use std::io::{Cursor, Write};
-    use std::ops::DerefMut;
-    use anchor_lang::__private::CLOSED_ACCOUNT_DISCRIMINATOR;
-    use anchor_lang::AccountsClose;
     use super::*;
-    use crate::curve::to_u64;
-    use mpl_token_metadata::instruction::{
-        create_metadata_accounts_v2, create_metadata_accounts_v3,
-    };
-    use spl_token::solana_program::program::{invoke, invoke_signed};
-
     // Decimals is 9
     const SYSTEM_LOAN_FEE: u64 = 1_000_000; // 0.1%
     const SYSTEM_TRANSFER_FEE: u64 = 1_000_000; // 0.1%
@@ -145,7 +141,10 @@ pub mod hui {
             .loan
             .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
         let signer_seeds = &[&signer_seeds.value()[..]];
-        token::mint_to(ctx.accounts.to_mint_nft_context().with_signer(signer_seeds), 1)?;
+        token::mint_to(
+            ctx.accounts.to_mint_nft_context().with_signer(signer_seeds),
+            1,
+        )?;
 
         // let account_info = vec![
         //     ctx.accounts.metadata.to_account_info(),
@@ -200,13 +199,29 @@ pub mod hui {
         Ok(())
     }
 
+    // Only for testing
+    pub fn close_loan(ctx: Context<CloseLoan>) -> Result<()> {
+        let data_account = &ctx.accounts.loan;
+        let owner_info = ctx.accounts.owner.to_account_info();
+        data_account.close(owner_info)?;
+        // let data_account_info: &AccountInfo = data_account.as_ref();
+        // require_keys_eq!(*data_account_info.owner, System::id());
+
+        Ok(())
+    }
+
     pub fn claim_nft(ctx: Context<ClaimNft>) -> Result<()> {
         let signer_seeds = ctx
             .accounts
             .loan
             .signer_seeds(&ctx.accounts.loan_pda, ctx.program_id)?;
         let signer_seeds = &[&signer_seeds.value()[..]];
-        token::transfer(ctx.accounts.to_transfer_nft_context().with_signer(signer_seeds), 1)?;
+        token::transfer(
+            ctx.accounts
+                .to_transfer_nft_context()
+                .with_signer(signer_seeds),
+            1,
+        )?;
 
         Ok(())
     }
@@ -297,6 +312,15 @@ pub mod hui {
     pub fn merge_loan(ctx: Context<MergeLoan>) -> Result<()> {
         Ok(())
     }
+}
+
+#[derive(Accounts)]
+pub struct CloseLoan<'info> {
+    #[account(mut, close = owner)]
+    pub loan: Account<'info, Loan>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub owner: AccountInfo<'info>,
 }
 
 #[derive(Accounts)]
@@ -503,7 +527,7 @@ pub struct Loan {
     max_loan_threshold: u64,
     fee: u64,
     received_amount: u64,
-    status: LoanStatus
+    status: LoanStatus,
 }
 
 impl Loan {
@@ -562,7 +586,7 @@ pub struct InitLoan<'info> {
 }
 
 impl<'info> InitLoan<'info> {
-    fn to_mint_nft_context(&self)-> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+    fn to_mint_nft_context(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
         let cpi_accounts = MintTo {
             mint: self.nft_mint.to_account_info().clone(),
             to: self.nft_account.to_account_info().clone(),

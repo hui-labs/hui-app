@@ -8,7 +8,7 @@ import { AsyncState } from "react-use/lib/useAsyncFn"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
 export const programId = new PublicKey(
-  "7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz"
+  "7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV"
 )
 
 export interface Workspace {

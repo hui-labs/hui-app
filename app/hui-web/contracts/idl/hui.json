@@ -270,6 +270,22 @@
       "args": []
     },
     {
+      "name": "closeLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimNft",
       "accounts": [
         {
@@ -661,7 +677,7 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "OneHour"
+            "name": "TwoMinutes"
           },
           {
             "name": "OneMonth"
@@ -676,7 +692,7 @@
             "name": "NineMonths"
           },
           {
-            "name": "OneYear"
+            "name": "TwelveMonths"
           }
         ]
       }

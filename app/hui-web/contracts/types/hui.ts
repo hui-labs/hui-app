@@ -270,6 +270,22 @@ export type Hui = {
       "args": []
     },
     {
+      "name": "closeLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimNft",
       "accounts": [
         {
@@ -661,7 +677,7 @@ export type Hui = {
         "kind": "enum",
         "variants": [
           {
-            "name": "OneHour"
+            "name": "TwoMinutes"
           },
           {
             "name": "OneMonth"
@@ -676,7 +692,7 @@ export type Hui = {
             "name": "NineMonths"
           },
           {
-            "name": "OneYear"
+            "name": "TwelveMonths"
           }
         ]
       }
@@ -1019,6 +1035,22 @@ export const IDL: Hui = {
       "args": []
     },
     {
+      "name": "closeLoan",
+      "accounts": [
+        {
+          "name": "loan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimNft",
       "accounts": [
         {
@@ -1410,7 +1442,7 @@ export const IDL: Hui = {
         "kind": "enum",
         "variants": [
           {
-            "name": "OneHour"
+            "name": "TwoMinutes"
           },
           {
             "name": "OneMonth"
@@ -1425,7 +1457,7 @@ export const IDL: Hui = {
             "name": "NineMonths"
           },
           {
-            "name": "OneYear"
+            "name": "TwelveMonths"
           }
         ]
       }

@@ -4,12 +4,12 @@ use crate::errors::AppError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum LoanTerm {
-    OneHour,
+    TwoMinutes,
     OneMonth,
     ThreeMonths,
     SixMonths,
     NineMonths,
-    OneYear,
+    TwelveMonths,
 }
 
 pub struct ConstantProduct;
@@ -33,11 +33,11 @@ impl ConstantProduct {
 
         let interest_rate_1m = interest_rate.div(12);
         let interest_rate_by_term = match loan_term {
-            LoanTerm::OneHour | LoanTerm::OneMonth => interest_rate_1m,
+            LoanTerm::TwoMinutes | LoanTerm::OneMonth => interest_rate_1m,
             LoanTerm::ThreeMonths => interest_rate_1m.mul(3),
             LoanTerm::SixMonths => interest_rate_1m.mul(6),
             LoanTerm::NineMonths => interest_rate_1m.mul(9),
-            LoanTerm::OneYear => interest_rate_1m.mul(12),
+            LoanTerm::TwelveMonths => interest_rate_1m.mul(12),
         };
         let interest_amount = received_amount
             .mul(interest_rate_by_term)

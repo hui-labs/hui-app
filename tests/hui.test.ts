@@ -22,7 +22,6 @@ import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
 describe("test hui flow", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env())
-
   const program = anchor.workspace.Hui as Program<Hui>
   const connection = program.provider.connection
 

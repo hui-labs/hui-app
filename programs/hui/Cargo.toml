@@ -1,12 +1,12 @@
 [package]
-name = "hello-anchor"
+name = "hui"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "A project empowering everyone to access financial"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "hello_anchor"
+name = "hui"
 
 [features]
 no-entrypoint = []

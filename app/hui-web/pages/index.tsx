@@ -6,7 +6,6 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
-  Transaction,
 } from "@solana/web3.js"
 import { useGetMint } from "@/hooks/useGetMint"
 import {
@@ -16,28 +15,14 @@ import {
   USDTPubKey,
 } from "@/common/constants"
 import { useAssociatedAccount } from "@/hooks/useAssociatedAccount"
-import { commitmentLevel, useWorkspace, Workspace } from "@/hooks/useWorkspace"
+import { useWorkspace } from "@/hooks/useWorkspace"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useBalance } from "@/hooks/useBalance"
 import { useMintTo } from "@/hooks/useMintTo"
 import { useAccount } from "@/hooks/useAccount"
-import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
-  getAccount,
-  getAssociatedTokenAddress,
-  TOKEN_PROGRAM_ID,
-  getMinimumBalanceForRentExemptMint,
-  createInitializeMint2Instruction,
-  MINT_SIZE,
-  createMint,
-  createAccount,
-  Mint,
-  getMint,
-} from "@solana/spl-token"
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { BN, web3 } from "@project-serum/anchor"
-import { useMemo, useState } from "react"
-import { Account } from "@solana/spl-token/src/state/account"
+import { useState } from "react"
 
 export const Airdrop = () => {
   const workspace = useWorkspace()
@@ -117,17 +102,11 @@ const SystemInfo = () => {
 export default function Home() {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
-  const [amount, setAmount] = useState("2200")
 
   const usdcMint = useGetMint(workspace, USDCPubKey)
   const usdtMint = useGetMint(workspace, USDTPubKey)
   const usdcAccount = useAccount(workspace, usdcMint)
   const usdtAccount = useAccount(workspace, usdtMint)
-
-  const estimatedLoanFee = useMemo(() => {
-    const SYSTEM_LOAN_FEE = 1_000_000
-    return (parseInt(amount) / 10 ** 9) * SYSTEM_LOAN_FEE
-  }, [amount])
 
   return (
     <div>
