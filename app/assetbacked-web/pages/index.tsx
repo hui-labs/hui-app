@@ -16,7 +16,7 @@ import {
   USDTPubKey,
 } from "@/common/constants"
 import { useAssociatedAccount } from "@/hooks/useAssociatedAccount"
-import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
+import { commitmentLevel, useWorkspace, Workspace } from "@/hooks/useWorkspace"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useBalance } from "@/hooks/useBalance"
 import { useMintTo } from "@/hooks/useMintTo"
@@ -114,6 +114,54 @@ const SystemInfo = () => {
   )
 }
 
+async function getOrCreateAssociatedTokenAccount(
+  workspace: Workspace,
+  owner: PublicKey,
+  mint: Mint,
+  allowOwnerOffCurve = false
+) {
+  const { wallet, connection } = workspace
+
+  const associatedAccount = await getAssociatedTokenAddress(
+    mint.address,
+    owner,
+    allowOwnerOffCurve,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
+
+  let account: Account
+  try {
+    account = await getAccount(connection, associatedAccount, commitmentLevel)
+
+    console.log(account)
+  } catch (e) {
+    console.log(e)
+    const tx = new Transaction().add(
+      createAssociatedTokenAccountInstruction(
+        wallet.publicKey,
+        associatedAccount,
+        owner,
+        mint.address,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    )
+
+    const { blockhash } = await connection.getRecentBlockhash(commitmentLevel)
+    tx.recentBlockhash = blockhash
+    tx.feePayer = wallet.publicKey
+
+    const signed = await wallet.signTransaction(tx)
+    const txId = await connection.sendRawTransaction(signed.serialize())
+    await connection.confirmTransaction(txId, commitmentLevel)
+
+    account = await getAccount(connection, associatedAccount, commitmentLevel)
+  }
+
+  return account
+}
+
 export default function Home() {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
@@ -129,65 +177,6 @@ export default function Home() {
     return (parseInt(amount) / 10 ** 9) * SYSTEM_LOAN_FEE
   }, [amount])
 
-  async function getOrCreateAssociatedTokenAccount(
-    owner: PublicKey,
-    mint: Mint,
-    allowOwnerOffCurve = false
-  ) {
-    if (workspace.value && usdtMint.value && usdcMint.value) {
-      const { wallet, connection } = workspace.value
-
-      const associatedAccount = await getAssociatedTokenAddress(
-        mint.address,
-        owner,
-        allowOwnerOffCurve,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      )
-
-      let account: Account
-      try {
-        account = await getAccount(
-          connection,
-          associatedAccount,
-          commitmentLevel
-        )
-
-        console.log(account)
-      } catch (e) {
-        console.log(e)
-        const tx = new Transaction().add(
-          createAssociatedTokenAccountInstruction(
-            wallet.publicKey,
-            associatedAccount,
-            owner,
-            mint.address,
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
-          )
-        )
-
-        const { blockhash } = await connection.getRecentBlockhash(
-          commitmentLevel
-        )
-        tx.recentBlockhash = blockhash
-        tx.feePayer = wallet.publicKey
-
-        const signed = await wallet.signTransaction(tx)
-        const txId = await connection.sendRawTransaction(signed.serialize())
-        await connection.confirmTransaction(txId, commitmentLevel)
-
-        account = await getAccount(
-          connection,
-          associatedAccount,
-          commitmentLevel
-        )
-      }
-
-      return account
-    }
-  }
-
   return (
     <div>
       <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
@@ -196,90 +185,6 @@ export default function Home() {
       <SystemInfo />
       <hr />
       <div>
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <br />
-        <p>Fee: {estimatedLoanFee} USD</p>
-        <button
-          onClick={async () => {
-            if (workspace.value && usdtMint.value && usdcMint.value) {
-              const { wallet, program, connection } = workspace.value
-
-              const [poolPDA] = await PublicKey.findProgramAddress(
-                [Buffer.from("pool"), usdtMint.value.address.toBuffer()],
-                program.programId
-              )
-
-              const poolVaultUSDTAccount =
-                await getOrCreateAssociatedTokenAccount(
-                  poolPDA,
-                  usdtMint.value,
-                  true
-                )
-              if (!poolVaultUSDTAccount)
-                throw new Error("Can not create pool vault usdt account")
-
-              try {
-                const DECIMALS = 10 ** 9
-                const topUpAmount = new BN(10 * DECIMALS)
-
-                const usdtAssociatedAccount = await getAssociatedTokenAddress(
-                  usdtMint.value.address,
-                  wallet.publicKey,
-                  false,
-                  TOKEN_PROGRAM_ID,
-                  ASSOCIATED_TOKEN_PROGRAM_ID
-                )
-                const usdtAccount = await getAccount(
-                  connection,
-                  usdtAssociatedAccount,
-                  commitmentLevel
-                )
-                // console.log("estimatedLoanFee", estimatedLoanFee.toString())
-                console.log("usdtAccount", usdtAccount.amount.toString())
-
-                const vaultKeypair = web3.Keypair.generate()
-                const pool = web3.Keypair.generate()
-                const ins = await program.account.pool.createInstruction(pool)
-                const tx = await program.methods
-                  .initPool(
-                    {
-                      interestRate: new BN(10),
-                      maxLoanAmount: new BN(100 * DECIMALS),
-                      maxLoanThreshold: new BN(0.8 * DECIMALS),
-                      minLoanAmount: new BN(10 * DECIMALS),
-                    },
-                    topUpAmount,
-                    new BN("2200000000")
-                  )
-                  .accounts({
-                    pool: pool.publicKey,
-                    pda: poolPDA,
-                    systemProgram: SystemProgram.programId,
-                    rent: web3.SYSVAR_RENT_PUBKEY,
-                    vaultMint: usdtMint.value.address,
-                    collateralMint: usdcMint.value.address,
-                    vaultAccount: vaultKeypair.publicKey,
-                    depositor: wallet.publicKey,
-                    systemFeeAccount: SystemFeeUSDTPubKey,
-                    tokenDepositor: usdtAccount.address,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                  })
-                  .preInstructions([ins])
-                  .signers([pool, vaultKeypair])
-                  .rpc()
-                console.log(pool.publicKey.toBase58())
-              } catch (e) {
-                console.log(e)
-              }
-            }
-          }}
-        >
-          Create pool
-        </button>
         <button
           onClick={async () => {
             if (workspace.value && usdtMint.value) {
