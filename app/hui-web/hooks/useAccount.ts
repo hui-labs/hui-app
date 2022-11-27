@@ -11,6 +11,7 @@ export const useAccount = (
   owner?: PublicKey
 ) => {
   const associatedAccount = useAssociatedAccount(workspace, address, owner)
+
   return useAsync(async () => {
     if (workspace.value && associatedAccount.value) {
       return getAccount(

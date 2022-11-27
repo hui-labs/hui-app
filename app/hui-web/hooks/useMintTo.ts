@@ -4,37 +4,31 @@ import { Account, Mint } from "@solana/spl-token"
 import { Workspace } from "@/hooks/useWorkspace"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 import { doAirdrop } from "@/services/airdrop"
-import { useCreateAccount } from "@/hooks/useCreateAccount"
+import { getOrCreateAssociatedTokenAccount } from "@/services"
 
 export interface MintToConfig {
   workspace: AsyncState<Workspace | null>
   mint: AsyncState<Mint | null>
   account: AsyncState<Account | null>
-  associatedAccount: AsyncState<PublicKey | null>
-  decimals: number
+  owner?: AsyncState<PublicKey | null>
 }
 
 export const useMintTo = ({
-  decimals,
   account,
   workspace,
   mint,
-  associatedAccount,
+  owner,
 }: MintToConfig) => {
-  const [state, createAccount] = useCreateAccount({
-    account,
-    workspace,
-    mint,
-    associatedAccount,
-  })
-
   return useAsyncFn(async () => {
-    if (!account.value && account.error) {
-      await createAccount()
-    }
+    if (workspace.value && mint.value) {
+      const { wallet } = workspace.value
+      const account = await getOrCreateAssociatedTokenAccount(
+        workspace.value,
+        owner ? owner.value! : wallet.publicKey,
+        mint.value
+      )
 
-    if (mint.value && account.value) {
-      return doAirdrop(mint.value.address, account.value.address)
+      await doAirdrop(mint.value.address, account.address)
     }
-  }, [state.value, mint.value, account.value])
+  }, [mint.value, account.value])
 }
