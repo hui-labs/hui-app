@@ -18,7 +18,7 @@ const keypair = Keypair.fromSecretKey(
   base58.decode(process.env.NEXT_FAUCET_PRIVATE_KEY!)
 )
 const connection = new Connection(
-  process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!,
+  process.env.NEXT_PUBLIC_RPC_URL!,
   commitmentLevel
 )
 export default async function handler(

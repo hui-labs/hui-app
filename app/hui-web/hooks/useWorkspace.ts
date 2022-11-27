@@ -5,11 +5,9 @@ import { AnchorProvider, Program } from "@project-serum/anchor"
 import { Hui } from "@/contracts/types/hui"
 import { useEffect, useState } from "react"
 import { AsyncState } from "react-use/lib/useAsyncFn"
+import { programId } from "@/common/constants"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
-export const programId = new PublicKey(
-  "7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV"
-)
 
 export interface Workspace {
   wallet: AnchorWallet
@@ -27,7 +25,7 @@ export const useWorkspace = (): AsyncState<Workspace | null> => {
   useEffect(() => {
     if (wallet) {
       const connection = new Connection(
-        process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!,
+        process.env.NEXT_PUBLIC_RPC_URL!,
         commitmentLevel
       )
       const provider = new AnchorProvider(connection, wallet, {
