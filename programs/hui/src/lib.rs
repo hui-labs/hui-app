@@ -10,7 +10,7 @@ use anchor_spl::token::{Burn, CloseAccount, Mint, MintTo, Token, TokenAccount, T
 declare_id!("7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz");
 
 #[program]
-pub mod hello_anchor {
+pub mod hui {
     use super::*;
     use crate::curve::to_u64;
     use mpl_token_metadata::instruction::{

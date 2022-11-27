@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor"
 import { Program } from "@project-serum/anchor"
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
 import { createAccount, createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
-import { HelloAnchor } from "./app/assetbacked-web/contracts/types/hello_anchor"
+import { HelloAnchor } from "./app/hui-web/contracts/types/hello_anchor"
 import { PublicKey } from "@solana/web3.js"
 
 anchor.setProvider(anchor.AnchorProvider.env())

@@ -19,7 +19,7 @@ import {
 } from "@solana/web3.js"
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
 
-describe("hello-anchor", () => {
+describe("test hui flow", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env())
 
