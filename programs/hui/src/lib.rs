@@ -1,25 +1,28 @@
-mod curve;
-mod errors;
-
-use crate::curve::to_u64;
-use crate::curve::{ConstantProduct, LoanTerm};
-use crate::errors::AppError;
-use anchor_lang::prelude::*;
 use anchor_lang::AccountsClose;
+use anchor_lang::prelude::*;
+use anchor_spl::{mint, token};
 use anchor_spl::token::{
     Burn, CloseAccount, InitializeAccount, Mint, MintTo, Token, TokenAccount, Transfer,
 };
-use anchor_spl::{mint, token};
 use mpl_token_metadata::instruction::{create_metadata_accounts_v2, create_metadata_accounts_v3};
 use spl_token::solana_program::program::{invoke, invoke_signed};
+
+use crate::curve::{ConstantProduct, LoanTerm};
+use crate::curve::to_u64;
+use crate::errors::AppError;
+
+mod curve;
+mod errors;
 
 declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 
 #[program]
 pub mod hui {
     use super::*;
+
     // Decimals is 9
-    const SYSTEM_LOAN_FEE: u64 = 1_000_000; // 0.1%
+    const SYSTEM_LOAN_FEE: u64 = 1_000_000;
+    // 0.1%
     const SYSTEM_TRANSFER_FEE: u64 = 1_000_000; // 0.1%
 
     pub fn init_system(ctx: Context<InitSystem>) -> Result<()> {
@@ -115,7 +118,7 @@ pub mod hui {
         let token_a_amount = ctx.accounts.pool_vault.amount;
         // require_gte!(amount, pool.min_loan_amount);
         // require_gte!(pool.max_loan_amount, amount);
-        let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount);
+        let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount)?;
         // require_gte!(token_a_amount - loan_fee, max_return_amount);
 
         loan.received_amount = received_amount;
@@ -354,6 +357,7 @@ impl<'info> ClaimNft<'info> {
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
+
 #[derive(Accounts)]
 pub struct MergeLoan<'info> {
     pub loan: Box<Account<'info, Loan>>,

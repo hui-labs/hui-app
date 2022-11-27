@@ -13,6 +13,7 @@ import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useBalance } from "@/hooks/useBalance"
 import { useAccount } from "@/hooks/useAccount"
 import { useMintTo } from "@/hooks/useMintTo"
+import { useEffect } from "react"
 
 export const Airdrop = () => {
   const workspace = useWorkspace()
@@ -30,6 +31,9 @@ export const Airdrop = () => {
     mint: usdtMint,
     account: usdtAccount,
   })
+  useEffect(() => {
+    console.log("usdcAccount", usdcAccount.value?.amount)
+  }, [usdcAccount])
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const balance = useBalance(workspace)

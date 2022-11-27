@@ -1,5 +1,7 @@
 use std::ops::{Div, Mul};
+
 use anchor_lang::prelude::*;
+
 use crate::errors::AppError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -16,20 +18,20 @@ pub struct ConstantProduct;
 
 impl ConstantProduct {
     pub const DECIMALS: u64 = 10_u64.pow(9);
-    pub const PERCENTAGE_DECIMALS: u64 = 10_u64.pow(4);
     // Decimals equals 2
     pub fn calc_loan_fee(&self, loan_fee: u64, amount: u64) -> u64 {
-        (amount / 10_u64.pow(9)) * loan_fee
+        (amount / Self::DECIMALS) * loan_fee
     }
 
-    pub fn calc_max_loan_amount(&self, threshold: u64, amount: u64) -> u64 {
-        (amount / 10_u64.pow(9)) * threshold
+    pub fn calc_max_loan_amount(&self, threshold: u64, amount: u64) -> Result<u64> {
+        let amount = to_u128(amount)?;
+        let threshold = to_u128(threshold * 100)?;
+        to_u64(amount.mul(threshold).div(100_00))
     }
 
     pub fn calc_interest_amount(&self, amount: u64, interest_rate: u64, loan_term: LoanTerm) -> Result<u128> {
         let received_amount = to_u128(amount)?;
-        let interest_rate = to_u128(interest_rate * ConstantProduct::PERCENTAGE_DECIMALS)?;
-        let interest_rate = interest_rate.div(100);
+        let interest_rate = to_u128(interest_rate * 100)?;
 
         let interest_rate_1m = interest_rate.div(12);
         let interest_rate_by_term = match loan_term {
