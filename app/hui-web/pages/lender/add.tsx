@@ -18,8 +18,6 @@ import useIsMounted from "@/hooks/useIsMounted"
 
 const { Option } = Select
 
-const decimals = 9
-
 const AddPool: React.FC = () => {
   const mounted = useIsMounted()
   const [form] = Form.useForm()

@@ -13,7 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
   const phantomWallet = new PhantomWalletAdapter()
 
   return (
-    <ConnectionProvider endpoint={process.env.NEXT_PUBLIC_ALCHEMY_RPC_URL!}>
+    <ConnectionProvider endpoint={process.env.NEXT_PUBLIC_RPC_URL!}>
       <WalletProvider wallets={[phantomWallet]}>
         <WalletModalProvider>
           <Component {...pageProps} />
