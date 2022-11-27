@@ -8,8 +8,6 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
 import { commitmentLevel, Workspace } from "@/hooks/useWorkspace"
-import { doAirdrop } from "@/services/airdrop"
-import { MintToConfig } from "@/hooks/useMintTo"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 
 export interface CreateAccountConfig {
@@ -26,12 +24,13 @@ export const useCreateAccount = ({
   associatedAccount,
 }: CreateAccountConfig) => {
   return useAsyncFn(async () => {
-    console.log(mint.value, associatedAccount.value, mint.value, account.error)
+    console.log(
+      workspace.value && mint.value && associatedAccount.value && account.error
+    )
     if (
       workspace.value &&
       mint.value &&
       associatedAccount.value &&
-      mint.value &&
       account.error
     ) {
       const tx = new Transaction().add(
@@ -56,12 +55,6 @@ export const useCreateAccount = ({
         signed.serialize()
       )
       await workspace.value.connection.confirmTransaction(txId, commitmentLevel)
-
-      return null
-    }
-
-    if (mint.value && account.value) {
-      return doAirdrop(mint.value.address, account.value.address)
     }
   }, [account, workspace, mint, associatedAccount])
 }

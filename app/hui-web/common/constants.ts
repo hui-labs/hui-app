@@ -1,6 +1,7 @@
 import { PublicKey } from "@solana/web3.js"
 
 export const programId = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID!)
+
 export const USDCPubKey = new PublicKey(
   process.env.NEXT_PUBLIC_USDC_MINT_PUBKEY!
 )

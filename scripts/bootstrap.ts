@@ -10,6 +10,7 @@ import base58 from "bs58"
 anchor.setProvider(anchor.AnchorProvider.env())
 const program = anchor.workspace.Hui as Program<Hui>
 const connection = program.provider.connection
+const PROGRAM_ID = "7ncy1ZWKme22jhAusPq1Ltk5AZuFJrJMqHFy2KPeosHz"
 
 async function main() {
   const wallet = NodeWallet.local()
@@ -69,7 +70,7 @@ async function main() {
 
   const env = `NEXT_FAUCET_PRIVATE_KEY=${privateKey}
 NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8899
-NEXT_PUBLIC_PROGRAM_ID=AE8LAvZBiDFWFX1P6apvXrTzDxsQumwmDS23RUvXp86D
+NEXT_PUBLIC_PROGRAM_ID=${PROGRAM_ID}
 NEXT_PUBLIC_USDC_MINT_PUBKEY=${usdcMintPubkey.toBase58()}
 NEXT_PUBLIC_USDT_MINT_PUBKEY=${usdtMintPubkey.toBase58()}
 NEXT_PUBLIC_SYSTEM_USDC_FEE_PUBKEY=${systemUSDCFeeAccount.toBase58()}
