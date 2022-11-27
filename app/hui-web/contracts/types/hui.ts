@@ -1,6 +1,6 @@
-export type HelloAnchor = {
+export type Hui = {
   "version": "0.1.0",
-  "name": "hello_anchor",
+  "name": "hui",
   "instructions": [
     {
       "name": "initSystem",
@@ -731,9 +731,9 @@ export type HelloAnchor = {
   ]
 };
 
-export const IDL: HelloAnchor = {
+export const IDL: Hui = {
   "version": "0.1.0",
-  "name": "hello_anchor",
+  "name": "hui",
   "instructions": [
     {
       "name": "initSystem",

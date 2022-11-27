@@ -2,11 +2,11 @@ import * as anchor from "@project-serum/anchor"
 import { Program } from "@project-serum/anchor"
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
 import { createAccount, createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
-import { HelloAnchor } from "./app/hui-web/contracts/types/hello_anchor"
+import { Hui } from "./app/hui-web/contracts/types/hui"
 import { PublicKey } from "@solana/web3.js"
 
 anchor.setProvider(anchor.AnchorProvider.env())
-const program = anchor.workspace.HelloAnchor as Program<HelloAnchor>
+const program = anchor.workspace.HelloAnchor as Program<Hui>
 const connection = program.provider.connection
 
 async function main() {
@@ -59,15 +59,4 @@ async function main() {
   console.log("System USDT Fee Account", systemUSDTFeeAccount.toBase58())
 }
 
-// console.log(
-//   web3.Keypair.fromSecretKey(
-//     Uint8Array.from([
-//       127, 154, 238, 81, 208, 124, 154, 182, 151, 191, 245, 148, 25, 168, 132,
-//       77, 162, 6, 217, 206, 85, 2, 94, 216, 135, 64, 198, 178, 133, 198, 105,
-//       103, 184, 81, 44, 239, 59, 228, 62, 48, 129, 81, 145, 58, 111, 125, 199,
-//       233, 15, 28, 112, 227, 131, 81, 20, 201, 77, 71, 229, 169, 232, 29, 212,
-//       203,
-//     ])
-//   ).secretKey
-// )
 main().catch(console.log)
