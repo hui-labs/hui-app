@@ -1,24 +1,19 @@
 import React, { useState } from "react"
 import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
-import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
-import { commitmentLevel, programId, useWorkspace } from "@/hooks/useWorkspace"
+import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { TOKEN_LISTS } from "@/common/constants"
-import { formatUnits, parseUnits } from "@ethersproject/units"
+import { formatUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
-import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { getAccount } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
-import { BN } from "@project-serum/anchor"
-import { getOrCreateAssociatedTokenAccount } from "@/services"
-import bs58 from "bs58"
-import { sha256 } from "js-sha256"
 
 const { Title } = Typography
 
-interface DataType {
+interface PoolDataType {
   key: React.Key
   isAdmin: boolean
   owner: PublicKey
@@ -33,7 +28,7 @@ interface DataType {
   status: string
 }
 
-const columns: ColumnsType<DataType> = [
+const poolColumns: ColumnsType<PoolDataType> = [
   {
     title: "Vault Token",
     dataIndex: "vaultMint",
@@ -98,18 +93,149 @@ const columns: ColumnsType<DataType> = [
   },
 ]
 
+interface LoanDataType {
+  key: React.Key
+  isAdmin: boolean
+  owner: PublicKey
+  vaultMint: PublicKey
+  vaultAccount: PublicKey
+  collateralMint: PublicKey
+  interestRate: string
+  maxLoanAmount: string
+  minLoanAmount: string
+  maxLoanThreshold: string
+  status: string
+}
+
+const loanColumns: ColumnsType<LoanDataType> = [
+  {
+    title: "Vault Token",
+    dataIndex: "vaultMint",
+    key: "vaultMint",
+    render: (_, { vaultMint }) => {
+      return <span>{TOKEN_LISTS[vaultMint.toBase58()]}</span>
+    },
+  },
+  {
+    title: "Collateral Token",
+    dataIndex: "collateralMint",
+    key: "collateralMint",
+    render: (_, { collateralMint }) => {
+      return <span>{TOKEN_LISTS[collateralMint.toBase58()]}</span>
+    },
+  },
+  {
+    title: "Status",
+    dataIndex: "status",
+    key: "status",
+    render: (_, { status }) => (
+      <div>
+        <Tag color={"blue"}>{status.toUpperCase()}</Tag>
+      </div>
+    ),
+  },
+  { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
+  {
+    title: "Max Loan Amount",
+    dataIndex: "maxLoanAmount",
+    key: "maxLoanAmount",
+  },
+  {
+    title: "Min Loan Amount",
+    dataIndex: "minLoanAmount",
+    key: "minLoanAmount",
+  },
+  {
+    title: "Max Loan Threshold",
+    dataIndex: "maxLoanThreshold",
+    key: "maxLoanThreshold",
+  },
+  {
+    title: "Action",
+    dataIndex: "",
+    key: "x",
+    render: (_, {}) => {
+      return (
+        <Space>
+          <Button type="primary">Final</Button>
+        </Space>
+      )
+    },
+  },
+]
+
 const BorrowerPage: React.FC = () => {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
-  const [availablePools, setAvailablePools] = useState<DataType[]>([])
+  const [availablePools, setAvailablePools] = useState<PoolDataType[]>([])
+  const [myLoans, setMyLoans] = useState<LoanDataType[]>([])
   const decimals = 9
+
+  useAsyncEffect(async () => {
+    if (workspace.value) {
+      const { connection, program, wallet } = workspace.value
+      const loans = await program.account.loan.all()
+      console.log(loans)
+      const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
+        return {
+          key: publicKey.toBase58(),
+          owner: account.owner,
+          isAdmin: account.owner.toBase58() === wallet.publicKey.toBase58(),
+          vaultMint: account.vaultMint,
+          vaultAccount: account.vaultAccount,
+          collateralMint: account.collateralMint,
+          status: Object.keys(account.status)[0],
+          minLoanAmount: formatUnits(
+            account.minLoanAmount.toString(),
+            decimals
+          ),
+          maxLoanAmount: formatUnits(
+            account.maxLoanAmount.toString(),
+            decimals
+          ),
+          interestRate: formatUnits(account.interestRate.toString(), 4),
+          maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
+        }
+      })
+
+      // const accounts = await Promise.all(
+      //   rawData.map((item) =>
+      //     getAccount(connection, item.vaultAccount, commitmentLevel)
+      //   )
+      // )
+
+      const cache = rawData.reduce((acc, cur) => {
+        acc[cur.vaultAccount.toBase58()] = cur
+        return acc
+      }, {} as Record<string, LoanDataType>)
+
+      // accounts.forEach((account) => {
+      //   if (account.address.toBase58() in cache) {
+      //     cache[account.address.toBase58()].availableAmount = formatUnits(
+      //       account.amount,
+      //       9
+      //     )
+      //   }
+      // })
+
+      const data = Object.values(cache).reduce(
+        (acc, cur) => {
+          acc[cur.isAdmin ? 0 : 1].push(cur)
+          return acc
+        },
+        [[], []] as [LoanDataType[], LoanDataType[]]
+      )
+
+      setMyLoans(data[1])
+    }
+  }, [])
 
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
       console.log(pools)
-      const rawData: DataType[] = pools.map(({ publicKey, account }) => {
+      const rawData: PoolDataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
           owner: account.owner,
@@ -141,7 +267,7 @@ const BorrowerPage: React.FC = () => {
       const cache = rawData.reduce((acc, cur) => {
         acc[cur.vaultAccount.toBase58()] = cur
         return acc
-      }, {} as Record<string, DataType>)
+      }, {} as Record<string, PoolDataType>)
 
       accounts.forEach((account) => {
         if (account.address.toBase58() in cache) {
@@ -157,7 +283,7 @@ const BorrowerPage: React.FC = () => {
           acc[cur.isAdmin ? 0 : 1].push(cur)
           return acc
         },
-        [[], []] as [DataType[], DataType[]]
+        [[], []] as [PoolDataType[], PoolDataType[]]
       )
 
       setAvailablePools(data[1])
@@ -174,7 +300,24 @@ const BorrowerPage: React.FC = () => {
         <Row>
           <Col span={24}>
             <Table
-              columns={columns}
+              columns={loanColumns}
+              pagination={false}
+              expandable={{
+                expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
+                // rowExpandable: (record) => record.name !== "Not Expandable",
+              }}
+              dataSource={myLoans}
+            />
+          </Col>
+        </Row>
+      </div>
+
+      <div>
+        <Title level={3}>Available Pools</Title>
+        <Row>
+          <Col span={24}>
+            <Table
+              columns={poolColumns}
               pagination={false}
               expandable={{
                 expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
