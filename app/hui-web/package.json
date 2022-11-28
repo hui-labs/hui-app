@@ -7,8 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "idl": "cp -r ../../target/idl contracts && cp -r ../../target/types ./contracts"
+    "lint": "next lint"
   },
   "dependencies": {
     "@ethersproject/units": "^5.7.0",
