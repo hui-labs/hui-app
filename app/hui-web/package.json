@@ -12,6 +12,7 @@
   "dependencies": {
     "@ethersproject/units": "^5.7.0",
     "@project-serum/anchor": "^0.25.0",
+    "@solana/spl-token": "^0.3.6",
     "@solana/wallet-adapter-base": "^0.9.18",
     "@solana/wallet-adapter-react": "^0.15.24",
     "@solana/wallet-adapter-react-ui": "^0.9.22",
