@@ -1,5 +1,14 @@
-import React, { useMemo } from "react"
-import { Button, Col, Form, InputNumber, Row, Select, Space } from "antd"
+import React, { useCallback, useMemo } from "react"
+import {
+  Button,
+  Col,
+  Form,
+  InputNumber,
+  Row,
+  Select,
+  Space,
+  FormRule,
+} from "antd"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import { BN, web3 } from "@project-serum/anchor"
 import {
@@ -14,6 +23,7 @@ import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import useIsMounted from "@/hooks/useIsMounted"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Option } = Select
 
@@ -28,14 +38,113 @@ const AddPool: React.FC = () => {
   const usdtAccount = useAccount(workspace, usdtMint)
   const topUpAmount = Form.useWatch("topUpAmount", form)
   const vaultMint = Form.useWatch("vaultMint", form)
+  const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
+  const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
 
   const estimatedLoanFee = useMemo(() => {
     const SYSTEM_LOAN_FEE = 1_000_000
     return ((topUpAmount || 0) / 10 ** 9) * SYSTEM_LOAN_FEE
   }, [topUpAmount])
+
   const totalTopUpAmount = useMemo(
     () => estimatedLoanFee + (topUpAmount || 0),
     [estimatedLoanFee, topUpAmount]
+  )
+
+  const currentBalace: number = useMemo(() => {
+    switch (vaultMint) {
+      case "usdt":
+        return parseFloat(usdtBalance)
+      case "usdc":
+        return parseFloat(usdcBalance)
+      default:
+        return 0
+    }
+  }, [vaultMint, usdtBalance, usdcBalance])
+
+  const validateRules = useCallback(
+    (key: string): FormRule[] | undefined => {
+      const rulesMap = new Map<string, FormRule[]>([
+        [
+          "topUpAmount",
+          [
+            { required: true },
+            {
+              type: "number",
+              max: currentBalace,
+              message: "You don't enough token",
+            },
+            { type: "number", min: 0, message: "min value is 0" },
+          ],
+        ],
+        [
+          "interestRate",
+          [
+            { required: true },
+            {
+              type: "number",
+              max: 100,
+              message: "You can't set Interest Rate bigger than 100",
+            },
+            {
+              type: "number",
+              min: 0,
+              message: "You can't set Interest Rate smaller than 0",
+            },
+          ],
+        ],
+        [
+          "maxLoanAmount",
+          [
+            { required: true },
+            {
+              type: "number",
+              max: topUpAmount,
+              message: `You can't set Max Loan Amount bigger than ${topUpAmount}`,
+            },
+            {
+              type: "number",
+              min: 0,
+              message: "You can't set Max Loan Amount smaller than 0",
+            },
+          ],
+        ],
+        [
+          "minLoanAmount",
+          [
+            { required: true },
+            {
+              type: "number",
+              max: topUpAmount,
+              message: ` You can't set Min Loan Amount bigger than ${topUpAmount}`,
+            },
+            {
+              type: "number",
+              min: 0,
+              message: "You can't set Min Loan Amount smaller than 0",
+            },
+          ],
+        ],
+        [
+          "maxLoanThreshold",
+          [
+            { required: true },
+            {
+              type: "number",
+              max: 90,
+              message: "You can't set Max Loan Threshold bigger than 90",
+            },
+            {
+              type: "number",
+              min: 0,
+              message: "You can't set Max LoanThreshold smaller than 0",
+            },
+          ],
+        ],
+      ])
+      return rulesMap.get(key)
+    },
+    [currentBalace, topUpAmount]
   )
 
   const onSubmit = async () => {
@@ -142,6 +251,7 @@ const AddPool: React.FC = () => {
                 <Option value="usdc">USDC</Option>
               </Select>
             </Form.Item>
+            <p>{`${currentBalace}`}</p>
 
             <Form.Item
               name="collateralMint"
@@ -160,7 +270,7 @@ const AddPool: React.FC = () => {
             <Form.Item
               name="topUpAmount"
               label="Top Up Amount"
-              rules={[{ required: true }]}
+              rules={validateRules("topUpAmount")}
             >
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
@@ -180,7 +290,7 @@ const AddPool: React.FC = () => {
             <Form.Item
               name="interestRate"
               label="Interest Rate"
-              rules={[{ required: true }]}
+              rules={validateRules("interestRate")}
             >
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
@@ -188,15 +298,15 @@ const AddPool: React.FC = () => {
             <Form.Item
               name="maxLoanAmount"
               label="Max Loan Amount"
-              rules={[{ required: true }]}
+              rules={validateRules("maxLoanAmount")}
             >
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
 
             <Form.Item
               name="minLoanAmount"
-              label="Min Loan Threshold"
-              rules={[{ required: true }]}
+              label="Min Loan Amount"
+              rules={validateRules("minLoanAmount")}
             >
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
@@ -204,9 +314,12 @@ const AddPool: React.FC = () => {
             <Form.Item
               name="maxLoanThreshold"
               label="Max Loan Threshold"
-              rules={[{ required: true }]}
+              rules={validateRules("maxLoanThreshold")}
             >
-              <InputNumber prefix="%" style={{ width: "100%" }} />
+              <InputNumber
+                formatter={(value) => `${value}%`}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
 
             <Form.Item>
