@@ -314,7 +314,6 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
       const loans = await program.account.loan.all()
-      console.log(loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -373,7 +372,9 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
-      console.log(pools)
+
+      console.log("pools", pools)
+
       const rawData: PoolDataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -429,7 +430,8 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [PoolDataType[], PoolDataType[]]
       )
 
-      setAvailablePools(data[1])
+      console.log("data", data)
+      setAvailablePools(data[1]) // mình là nguoi di vay => pool khong phải cua minh => admin = 1
     }
   }, [workspace.value])
 

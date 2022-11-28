@@ -187,11 +187,43 @@ const LenderPage: React.FC = () => {
     }
   }
 
+  const handleAA = async (rawData, connection) => {
+    const accounts = await Promise.all(
+      rawData.map((item) =>
+        getAccount(connection, item.vaultAccount, commitmentLevel)
+      )
+    )
+
+    const cache = rawData.reduce((acc, cur) => {
+      acc[cur.vaultAccount.toBase58()] = cur
+      return acc
+    }, {} as Record<string, DataType>)
+
+    accounts.forEach((account) => {
+      if (account.address.toBase58() in cache) {
+        cache[account.address.toBase58()].availableAmount = formatUnits(
+          account.amount,
+          9
+        )
+      }
+    })
+
+    return Object.values(cache).reduce(
+      (acc, cur) => {
+        acc[cur.isAdmin ? 0 : 1].push(cur)
+        return acc
+      },
+      [[], []] as [DataType[], DataType[]]
+    )
+  }
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
+      const loan = await program.account.loan.all()
       console.log("pools", pools)
+      console.log("loan", loan[0])
+
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -223,35 +255,45 @@ const LenderPage: React.FC = () => {
         }
       })
 
-      const accounts = await Promise.all(
-        rawData.map((item) =>
-          getAccount(connection, item.vaultAccount, commitmentLevel)
-        )
+      const data = await handleAA(rawData, connection)
+      const loanOfPool = loan.filter(
+        (item) => item.account.pool.toBase58() === data[0][0].key
       )
 
-      const cache = rawData.reduce((acc, cur) => {
-        acc[cur.vaultAccount.toBase58()] = cur
-        return acc
-      }, {} as Record<string, DataType>)
-
-      accounts.forEach((account) => {
-        if (account.address.toBase58() in cache) {
-          cache[account.address.toBase58()].availableAmount = formatUnits(
-            account.amount,
-            9
-          )
+      const loanOfPoolFormat: DataType[] = loanOfPool.map(
+        ({ publicKey, account }) => {
+          return {
+            key: publicKey.toBase58(),
+            owner: account.owner,
+            interestRate: formatUnits(
+              account.interestRate.toString(),
+              decimals
+            ),
+            receivedAmount: formatUnits(
+              account.receivedAmount.toString(),
+              decimals
+            ),
+            fee: formatUnits(account.fee.toString(), decimals),
+            status: Object.keys(account.status)[0],
+            minLoanAmount: formatUnits(
+              account.minLoanAmount.toString(),
+              decimals
+            ),
+            maxLoanAmount: formatUnits(
+              account.maxLoanAmount.toString(),
+              decimals
+            ),
+            interestRate: formatUnits(account.interestRate.toString(), 4),
+            maxLoanThreshold: formatUnits(
+              account.maxLoanThreshold.toString(),
+              4
+            ),
+          }
         }
-      })
-
-      const data = Object.values(cache).reduce(
-        (acc, cur) => {
-          acc[cur.isAdmin ? 0 : 1].push(cur)
-          return acc
-        },
-        [[], []] as [DataType[], DataType[]]
       )
-
-      console.log("data", data)
+      console.log("loan", loan)
+      console.log("loanOfPoolFormat", loanOfPoolFormat)
+      console.log("pools", data)
       setMyPools(data[0])
     }
   }, [workspace.value])
@@ -317,7 +359,12 @@ const LenderPage: React.FC = () => {
               columns={columns}
               pagination={false}
               expandable={{
-                expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
+                expandedRowRender: (_) => (
+                  <>
+                    <p style={{ margin: 0 }}>haha: </p>
+                    <p style={{ margin: 0 }}>haha: </p>
+                  </>
+                ),
                 // rowExpandable: (record) => record.name !== "Not Expandable",
               }}
               dataSource={myPools}
