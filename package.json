@@ -1,5 +1,7 @@
 {
-  "license": "MIT",
+  "name": "hui-app",
+  "license": "Apache License",
+  "private": false,
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
