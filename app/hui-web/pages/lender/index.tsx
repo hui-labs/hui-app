@@ -3,7 +3,6 @@ import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { programId, TOKEN_LISTS } from "@/common/constants"
@@ -257,7 +256,7 @@ const LenderPage: React.FC = () => {
 
   return (
     <div>
-      <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
+      <div>{mounted && <WalletMultiButton />}</div>
       <Title level={2}>Lender</Title>
       <Space wrap>
         <Button type="primary" onClick={() => router.push("/lender/add")}>

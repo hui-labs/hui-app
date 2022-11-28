@@ -1,6 +1,5 @@
 import useIsMounted from "../hooks/useIsMounted"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
-import styles from "../styles/Home.module.css"
 import { useGetMint } from "@/hooks/useGetMint"
 import {
   SystemFeeUSDCPubKey,
@@ -91,7 +90,7 @@ export default function Home() {
   const mounted = useIsMounted()
   return (
     <div>
-      <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
+      <div>{mounted && <WalletMultiButton />}</div>
       <Airdrop />
       <hr />
       <SystemInfo />

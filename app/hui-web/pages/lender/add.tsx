@@ -12,7 +12,6 @@ import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { SystemFeeUSDTPubKey, USDCPubKey, USDTPubKey } from "@/common/constants"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
-import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import useIsMounted from "@/hooks/useIsMounted"
 
@@ -121,7 +120,7 @@ const AddPool: React.FC = () => {
 
   return (
     <div>
-      <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
+      <div>{mounted && <WalletMultiButton />}</div>
       <Row>
         <Col span={6}>
           <Form
