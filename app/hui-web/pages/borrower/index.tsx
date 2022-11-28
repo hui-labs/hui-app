@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useRef, useState } from "react"
 import {
   Button,
   Col,
@@ -17,12 +17,19 @@ import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
-import { SystemFeeUSDTPubKey, TOKEN_LISTS } from "@/common/constants"
+import {
+  SystemFeeUSDTPubKey,
+  TOKEN_LISTS,
+  USDTPubKey,
+} from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
-import { getAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN, web3 } from "@project-serum/anchor"
+import { FormInstance } from "antd/es/form/hooks/useForm"
+import { Values } from "async-validator"
+import { getOrCreateAssociatedTokenAccount } from "@/services"
 
 const { Title } = Typography
 const { Option } = Select
@@ -191,42 +198,66 @@ const BorrowerPage: React.FC = () => {
   const [myLoans, setMyLoans] = useState<LoanDataType[]>([])
   const [open, setOpen] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
-  const [modalText, setModalText] = useState("Content of the modal")
+  const formRef = useRef<FormInstance<Values> | null>(null)
 
   const showModal = () => {
     console.log("zzz")
     setOpen(true)
   }
 
-  const handleOk = () => {
-    setModalText("The modal will be closed after two seconds")
-    setConfirmLoading(true)
-    setTimeout(() => {
-      setOpen(false)
+  const handleOk = async () => {
+    if (formRef.current && selectedPool && workspace.value) {
+      const loanTerm = formRef.current.getFieldValue("loanTerm")
+      const loanAmount = formRef.current?.getFieldValue("loanAmount")
+
+      setConfirmLoading(true)
+      const pool = availablePools.find((v) => v.key === selectedPool.toBase58())
+      console.log(pool)
+      if (pool) {
+        const { wallet, connection } = workspace.value
+        const depositorMint = await getMint(connection, pool.collateralMint)
+        const depositorAccount = await getOrCreateAssociatedTokenAccount(
+          workspace.value,
+          wallet.publicKey,
+          depositorMint
+        )
+
+        const receiverMint = await getMint(connection, USDTPubKey)
+        const receiverAccount = await getOrCreateAssociatedTokenAccount(
+          workspace.value,
+          wallet.publicKey,
+          receiverMint
+        )
+        console.log(formatUnits(receiverAccount.amount.toString(), 9))
+
+        await onCreateLoan(
+          loanAmount.toString(),
+          loanTerm,
+          selectedPool,
+          depositorAccount.address,
+          receiverAccount.address
+        )
+      }
       setConfirmLoading(false)
-    }, 2000)
+    }
   }
 
   const handleCancel = () => {
-    console.log("Clicked cancel button")
     setOpen(false)
   }
   const onCreateLoan = async (
+    amount: string,
+    loanTerm: string,
     poolPubkey: PublicKey,
-    vaultPubkey: PublicKey,
-    vaultMintPubkey: PublicKey,
-    collateralMintPubkey: PublicKey,
     tokenDepositorPubkey: PublicKey,
     tokenReceiverPubkey: PublicKey
   ) => {
     if (workspace.value) {
       const { wallet, program } = workspace.value
-      const DECIMALS = 10 ** 9
-
       const poolAccount = await program.account.pool.fetch(poolPubkey)
 
       const [poolPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("pool"), vaultPubkey.toBuffer()],
+        [Buffer.from("pool"), poolAccount.vaultMint.toBuffer()],
         program.programId
       )
 
@@ -235,7 +266,6 @@ const BorrowerPage: React.FC = () => {
         [Buffer.from("loan"), poolPubkey.toBuffer()],
         program.programId
       )
-      console.log("publicKey", loan.publicKey)
 
       const vaultKeypair = Keypair.generate()
       const collateralAccountKeypair = Keypair.generate()
@@ -243,13 +273,13 @@ const BorrowerPage: React.FC = () => {
       const nftAccountKeypair = Keypair.generate()
       const ins = await program.account.loan.createInstruction(loan)
       await program.methods
-        .initLoan(new BN(2 * DECIMALS), {
+        .initLoan(new BN(100 * 10 ** 9), {
           oneMonth: {},
         })
         .accounts({
           vaultAccount: vaultKeypair.publicKey,
-          vaultMint: vaultMintPubkey,
-          collateralMint: collateralMintPubkey,
+          vaultMint: poolAccount.vaultMint,
+          collateralMint: poolAccount.collateralMint,
           collateralAccount: collateralAccountKeypair.publicKey,
           rent: web3.SYSVAR_RENT_PUBKEY,
           nftMint: nftMintKeypair.publicKey,
@@ -278,10 +308,11 @@ const BorrowerPage: React.FC = () => {
       console.log("created")
     }
   }
+  const [selectedPool, setSelectedPool] = useState<PublicKey | null>(null)
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet } = workspace.value
+      const { program, wallet } = workspace.value
       const loans = await program.account.loan.all()
       console.log(loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
@@ -363,7 +394,10 @@ const BorrowerPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
-          showModal,
+          showModal: () => {
+            setSelectedPool(publicKey)
+            showModal()
+          },
         }
       })
 
@@ -448,10 +482,10 @@ const BorrowerPage: React.FC = () => {
         <Row>
           <Col span={24}>
             <Form
+              ref={formRef}
               layout="vertical"
               form={form}
               name="control-hooks"
-              onFinish={() => {}}
             >
               <Form.Item
                 name="loanTerm"
@@ -477,14 +511,6 @@ const BorrowerPage: React.FC = () => {
                 rules={[{ required: true }]}
               >
                 <InputNumber style={{ width: "100%" }} />
-              </Form.Item>
-
-              <Form.Item>
-                <Space>
-                  <Button type="primary" htmlType="submit">
-                    Submit
-                  </Button>
-                </Space>
               </Form.Item>
             </Form>
           </Col>

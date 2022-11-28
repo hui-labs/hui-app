@@ -6,7 +6,8 @@ export function useFormatUnit(value?: bigint, d?: number): string
 export function useFormatUnit(value?: any, decimals = 9): string {
   return useMemo(() => {
     if (value) {
-      return formatUnits(value, decimals)
+      // return value.toString()
+      return formatUnits(value.toString(), decimals)
     }
 
     return "0"
