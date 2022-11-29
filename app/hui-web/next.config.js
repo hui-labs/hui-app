@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */
+/** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
@@ -7,6 +7,9 @@ const nextConfig = {
       config.resolve.fallback.fs = false
     }
     return config
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
 }
 

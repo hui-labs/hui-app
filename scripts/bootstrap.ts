@@ -64,8 +64,29 @@ async function main() {
     undefined,
     TOKEN_PROGRAM_ID
   )
+  const wethMintPubkey = await createMint(
+    connection,
+    admin,
+    admin.publicKey,
+    null,
+    9,
+    undefined,
+    undefined,
+    TOKEN_PROGRAM_ID
+  )
+  const wbtcMintPubkey = await createMint(
+    connection,
+    admin,
+    admin.publicKey,
+    null,
+    9,
+    undefined,
+    undefined,
+    TOKEN_PROGRAM_ID
+  )
   console.log("USDC Mint", usdcMintPubkey.toBase58())
   console.log("USDT Mint", usdtMintPubkey.toBase58())
+  console.log("WETH Mint", wethMintPubkey.toBase58())
 
   const systemUSDTFeeAccount = await createAccount(
     connection,
@@ -95,6 +116,8 @@ NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8899
 NEXT_PUBLIC_PROGRAM_ID=${programId}
 NEXT_PUBLIC_USDC_MINT_PUBKEY=${usdcMintPubkey.toBase58()}
 NEXT_PUBLIC_USDT_MINT_PUBKEY=${usdtMintPubkey.toBase58()}
+NEXT_PUBLIC_WETH_MINT_PUBKEY=${wethMintPubkey.toBase58()}
+NEXT_PUBLIC_WBTC_MINT_PUBKEY=${wbtcMintPubkey.toBase58()}
 NEXT_PUBLIC_SYSTEM_USDC_FEE_PUBKEY=${systemUSDCFeeAccount.toBase58()}
 NEXT_PUBLIC_SYSTEM_USDT_FEE_PUBKEY=${systemUSDTFeeAccount.toBase58()}`
 

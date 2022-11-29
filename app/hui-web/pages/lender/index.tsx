@@ -3,7 +3,6 @@ import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import styles from "@/styles/Home.module.css"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { programId, TOKEN_LISTS } from "@/common/constants"
@@ -15,7 +14,6 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
-import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Title } = Typography
 
@@ -267,7 +265,6 @@ const LenderPage: React.FC = () => {
         if (loanOfPool) {
           // @ts-ignore
           loans[item.key] = loanOfPool.map(({ publicKey, account }) => {
-            console.log("account", account)
             return {
               key: publicKey.toBase58(),
               owner: account.owner,
@@ -281,6 +278,7 @@ const LenderPage: React.FC = () => {
         }
       })
 
+      console.log("loansloans", loans)
       setLoans(loans)
       setMyPools(data[0])
     }
@@ -326,7 +324,7 @@ const LenderPage: React.FC = () => {
 
   return (
     <div>
-      <div className={styles.navbar}>{mounted && <WalletMultiButton />}</div>
+      <div>{mounted && <WalletMultiButton />}</div>
       <Title level={2}>Lender</Title>
       <Space wrap>
         <Button type="primary" onClick={() => router.push("/lender/add")}>
@@ -346,7 +344,6 @@ const LenderPage: React.FC = () => {
               pagination={false}
               expandable={{
                 expandedRowRender: (data) => {
-                  console.log("data", loans[data.key])
                   return (
                     <>
                       <p style={{ margin: 0 }}>
@@ -356,6 +353,14 @@ const LenderPage: React.FC = () => {
                   )
                 },
                 // rowExpandable: (data) => loans[data.key]?.receivedAmount,
+              }}
+              onRow={(record, rowIndex) => {
+                return {
+                  onClick: (event) => {
+                    console.log("record", record)
+                    router.push(`/lender/pool?id=${record.key}`)
+                  }, // click row
+                }
               }}
               dataSource={myPools}
             />
