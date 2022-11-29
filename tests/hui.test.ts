@@ -165,12 +165,7 @@ describe("test hui flow", () => {
       100 * DECIMALS
     )
     const topUpAmount = new BN(100 * DECIMALS)
-    const requiredLoanFee: BN = await program.methods
-      .estimateLoanFee(topUpAmount)
-      .accounts({
-        mint: usdtMint.address,
-      })
-      .view()
+    const loanFee = topUpAmount.div(new BN(DECIMALS)).mul(new BN(1_000_000))
 
     const pool = web3.Keypair.generate()
     const poolVaultKeypair = web3.Keypair.generate()
@@ -179,11 +174,11 @@ describe("test hui flow", () => {
         {
           interestRate: new BN(10), // 0.001
           maxLoanAmount: new BN(100 * DECIMALS),
-          maxLoanThreshold: new BN(0.8 * DECIMALS),
+          maxLoanThreshold: new BN(80),
           minLoanAmount: new BN(10 * DECIMALS),
         },
         topUpAmount,
-        requiredLoanFee
+        loanFee
       )
       .accounts({
         pool: pool.publicKey,
@@ -237,7 +232,16 @@ describe("test hui flow", () => {
     const collateralKeypair = Keypair.generate()
     const vaultKeypair = Keypair.generate()
 
-    const printTable = async () => {
+    const poolVaultAccount = await getAccount(
+      connection,
+      poolVaultKeypair.publicKey
+    )
+
+    const printTable = async (message: string) => {
+      if (message) {
+        console.log(message)
+      }
+
       console.table([
         {
           name: "Tom USDT",
@@ -264,9 +268,14 @@ describe("test hui flow", () => {
           address: bobUSDTAccount.toBase58(),
           amount: await getTokenBalance(connection, bobUSDTAccount),
         },
+        {
+          name: "Pool Vault USDT",
+          address: poolVaultAccount.address.toBase58(),
+          amount: await getTokenBalance(connection, poolVaultAccount.address),
+        },
       ])
     }
-    await printTable()
+    await printTable("Created pool")
 
     await program.methods
       .initLoan(new BN(100 * DECIMALS), {
@@ -306,16 +315,16 @@ describe("test hui flow", () => {
       ])
       .rpc()
 
-    const poolVaultAccount = await getAccount(
-      connection,
-      poolVaultKeypair.publicKey
-    )
     const collateralAccount = await getAccount(
       connection,
       collateralKeypair.publicKey
     )
     const vaultAccount = await getAccount(connection, vaultKeypair.publicKey)
-    const printTableAll = async () => {
+    const printTableAll = async (message?: string) => {
+      if (message) {
+        console.log(message)
+      }
+
       console.table([
         {
           name: "Tom USDT",
@@ -364,18 +373,15 @@ describe("test hui flow", () => {
         },
       ])
     }
-    await printTableAll()
+    await printTableAll("Created loan")
 
     // Deposit USDC to the pool
     const depositTopUpAmount = new anchor.BN(10 * DECIMALS)
-    const requiredDepositLoanFee: BN = await program.methods
-      .estimateLoanFee(depositTopUpAmount)
-      .accounts({
-        mint: usdtMint.address,
-      })
-      .view()
+    const depositLoanFee = depositTopUpAmount
+      .div(new BN(DECIMALS))
+      .mul(new BN(1_000_000))
     await program.methods
-      .deposit(depositTopUpAmount, requiredDepositLoanFee)
+      .deposit(depositTopUpAmount, depositLoanFee)
       .accounts({
         depositor: alice.publicKey,
         pool: pool.publicKey,
@@ -386,10 +392,9 @@ describe("test hui flow", () => {
       .signers([alice])
       .rpc()
     await sleep()
-    await printTableAll()
+    await printTableAll("Deposit successfully")
 
     // Withdraw USDC to the pool
-    console.log("withdraw")
     await program.methods
       .withdraw(new anchor.BN(30 * DECIMALS))
       .accounts({
@@ -403,17 +408,7 @@ describe("test hui flow", () => {
       .signers([alice])
       .rpc()
     await sleep()
-    await printTableAll()
-
-    const interestRate = await program.methods
-      .settlementAmount()
-      .accounts({
-        loan: loan.publicKey,
-      })
-      .view()
-    console.log("interestRate", formatUnit(interestRate))
-    // const loanAccount = await program.account.loan.fetch(loan.publicKey)
-    // console.log(loanAccount)
+    await printTableAll("Withdraw successfully")
 
     await mintTo(
       connection,
@@ -426,7 +421,6 @@ describe("test hui flow", () => {
     await sleep()
     await printTableAll()
 
-    console.log("finalSettlement")
     await program.methods
       .finalSettlement(new BN((80 + 5.99999976) * DECIMALS))
       .accounts({
@@ -441,10 +435,9 @@ describe("test hui flow", () => {
       })
       .signers([bob])
       .rpc()
-    await printTableAll()
+    await printTableAll("Final settlement")
 
     // Claims
-    console.log("Claim NFT")
     const aliceNftTokenAccount = await createAccount(
       connection,
       alice,
@@ -462,7 +455,9 @@ describe("test hui flow", () => {
         loanPda: loanPDA,
         tokenAccount: aliceNftTokenAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
+        owner: alice.publicKey,
       })
+      .signers([alice])
       .rpc()
     const tomNftTokenAccount = await createAccount(
       connection,
@@ -473,6 +468,24 @@ describe("test hui flow", () => {
       undefined,
       TOKEN_PROGRAM_ID
     )
+    const printNft = async () => {
+      console.log("NFTs")
+      console.table([
+        {
+          name: "Alice",
+          nft: (
+            await connection.getTokenAccountBalance(aliceNftTokenAccount)
+          ).value.amount.toString(),
+        },
+        {
+          name: "Tom",
+          nft: (
+            await connection.getTokenAccountBalance(tomNftTokenAccount)
+          ).value.amount.toString(),
+        },
+      ])
+    }
+    await printNft()
     await transfer(
       connection,
       alice,
@@ -481,12 +494,7 @@ describe("test hui flow", () => {
       alice,
       1
     )
-    console.log(
-      (await connection.getTokenAccountBalance(aliceNftTokenAccount)).value
-    )
-    console.log(
-      (await connection.getTokenAccountBalance(tomNftTokenAccount)).value
-    )
+    await printNft()
     await program.methods
       .claimLoan()
       .accounts({
@@ -504,9 +512,8 @@ describe("test hui flow", () => {
       .rpc()
     await sleep()
     await printTableAll()
-    console.log(
-      (await connection.getTokenAccountBalance(tomNftTokenAccount)).value
-    )
+    await printNft()
+
     await closeAccount(
       connection,
       alice,
@@ -515,7 +522,6 @@ describe("test hui flow", () => {
       alice
     )
 
-    console.log("Closing pool account")
     await program.methods
       .closePool()
       .accounts({

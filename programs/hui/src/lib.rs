@@ -1,15 +1,12 @@
 use anchor_lang::AccountsClose;
 use anchor_lang::prelude::*;
-use anchor_spl::{mint, token};
+use anchor_spl::token;
 use anchor_spl::token::{
-    Burn, CloseAccount, InitializeAccount, Mint, MintTo, Token, TokenAccount, Transfer,
+    Burn, Mint, MintTo, Token, TokenAccount, Transfer,
 };
-use mpl_token_metadata::instruction::{create_metadata_accounts_v2, create_metadata_accounts_v3};
-use spl_token::solana_program::program::{invoke, invoke_signed};
 
 use crate::curve::{ConstantProduct, LoanTerm};
 use crate::curve::to_u64;
-use crate::errors::AppError;
 
 mod curve;
 mod errors;
@@ -20,24 +17,29 @@ declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 pub mod hui {
     use super::*;
 
-    // Decimals is 9
+    // 0.1%
     const SYSTEM_LOAN_FEE: u64 = 1_000_000;
     // 0.1%
-    const SYSTEM_TRANSFER_FEE: u64 = 1_000_000; // 0.1%
+    const SYSTEM_TRANSFER_FEE: u64 = 1_000_000;
 
-    pub fn init_system(ctx: Context<InitSystem>) -> Result<()> {
-        Ok(())
-    }
+    // pub fn init_hui(ctx: Context<InitHui>) -> Result<()> {
+    //     let hui = &mut ctx.accounts.hui;
+    //     hui.loan_fee = 1_000_000;
+    //     hui.transfer_fee = 1_000_000;
+    //
+    //     Ok(())
+    // }
 
     pub fn init_pool(
         ctx: Context<InitPool>,
         config: PoolConfig,
         amount: u64,
-        fee_amount: u64,
+        fee: u64,
     ) -> Result<()> {
         let curve = ConstantProduct;
         let required_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
-        require_gte!(fee_amount + amount, amount + required_fee);
+        require!(amount != 0, AppError::AmountIsZero);
+        require!(fee == required_fee, AppError::FeeNotEnough);
 
         let pool = &mut ctx.accounts.pool;
         pool.vault_account = ctx.accounts.vault_account.key();
@@ -55,26 +57,23 @@ pub mod hui {
         pool.status = PoolStatus::Opening;
         pool.owner = ctx.accounts.depositor.key();
 
+        let total = amount + required_fee;
         token::transfer(
             ctx.accounts.to_transfer_vault_context(),
-            amount + fee_amount,
+            total,
         )?;
 
         Ok(())
     }
 
-    pub fn estimate_loan_fee(ctx: Context<EstimateFee>, amount: u64) -> Result<u64> {
-        let curve = ConstantProduct;
-        Ok(curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount))
-    }
-
     pub fn deposit(ctx: Context<Deposit>, amount: u64, fee: u64) -> Result<()> {
         let curve = ConstantProduct;
-        let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
-        require_gte!(amount, 0);
-        require_gte!(fee, loan_fee);
+        let required_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
+        require!(amount != 0, AppError::AmountIsZero);
+        require!(fee >= required_fee, AppError::FeeNotEnough);
 
-        token::transfer(ctx.accounts.to_transfer_a_context(), amount + fee)?;
+        let total = amount + required_fee;
+        token::transfer(ctx.accounts.to_transfer_vault_ctx(), total)?;
 
         Ok(())
     }
@@ -114,22 +113,22 @@ pub mod hui {
         // amount >= min_loan
         // && amount <= current_pool_amount - loan_fee
         // && amount <= max_loan
-        let loan_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
-        let token_a_amount = ctx.accounts.pool_vault.amount;
-        // require_gte!(amount, pool.min_loan_amount);
-        // require_gte!(pool.max_loan_amount, amount);
+        let required_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
         let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount)?;
-        // require_gte!(token_a_amount - loan_fee, max_return_amount);
+        let pool_vault_amount = ctx.accounts.pool_vault.amount;
+        require!(amount >= pool.min_loan_amount, AppError::AmountTooSmall);
+        require!(amount <= pool.max_loan_amount, AppError::AmountTooLarge);
+        require!(pool_vault_amount - required_fee >= amount, AppError::PoolAmountNotEnough);
 
         loan.received_amount = received_amount;
-        loan.fee = loan_fee;
+        loan.fee = required_fee;
 
         token::transfer(ctx.accounts.to_transfer_vault_context(), amount)?;
         token::transfer(
             ctx.accounts
                 .to_transfer_fee_context()
                 .with_signer(signer_seeds),
-            loan_fee,
+            required_fee,
         )?;
         token::transfer(
             ctx.accounts
@@ -214,6 +213,7 @@ pub mod hui {
     }
 
     pub fn claim_nft(ctx: Context<ClaimNft>) -> Result<()> {
+        // require_keys_eq!(ctx.accounts.loan.owner, ctx.accounts.)
         let signer_seeds = ctx
             .accounts
             .loan
@@ -248,17 +248,6 @@ pub mod hui {
         )?;
 
         Ok(())
-    }
-
-    pub fn settlement_amount(ctx: Context<SettlementAmount>) -> Result<u128> {
-        let curve = ConstantProduct;
-        let interest_amount = curve.calc_interest_amount(
-            ctx.accounts.loan.received_amount,
-            ctx.accounts.loan.interest_rate,
-            ctx.accounts.loan.loan_term.clone(),
-        )?;
-
-        Ok(interest_amount)
     }
 
     pub fn final_settlement(ctx: Context<FinalSettlement>, amount: u64) -> Result<()> {
@@ -308,14 +297,45 @@ pub mod hui {
         Ok(())
     }
 
-    pub fn split_loan(ctx: Context<SplitLoan>) -> Result<()> {
-        Ok(())
-    }
-
-    pub fn merge_loan(ctx: Context<MergeLoan>) -> Result<()> {
+    pub fn split_loan(_: Context<SplitLoan>) -> Result<()> {
         Ok(())
     }
 }
+
+#[error_code]
+pub enum AppError {
+    #[msg("Signer is not nft owner")]
+    SignerIsNotNftOwner,
+    #[msg("Pool amount is not enough")]
+    PoolAmountNotEnough,
+    #[msg("Provided amount is too large")]
+    AmountTooLarge,
+    #[msg("Provided amount is too small")]
+    AmountTooSmall,
+    #[msg("Provided amount is zero")]
+    AmountIsZero,
+    #[msg("Provided fee is invalid")]
+    FeeNotEnough,
+}
+
+// const DISCRIMINATOR_SIZE: usize = 8;
+//
+// #[account]
+// pub struct Hui {
+//     loan_fee: u64,
+//     transfer_fee: u64,
+// }
+//
+// impl Hui {
+//     pub const MAX_SIZE: usize = DISCRIMINATOR_SIZE + 8 + 8;
+// }
+//
+// #[derive(Accounts)]
+// pub struct InitHui<'info> {
+//     #[account(init, payer = owner, space = Hui::MAX_SIZE)]
+//     hui: Account<'info, Hui>,
+//     owner: Signer<'info>,
+// }
 
 #[derive(Accounts)]
 pub struct CloseLoan<'info> {
@@ -337,6 +357,7 @@ pub struct ClosePool<'info> {
 
 #[derive(Accounts)]
 pub struct ClaimNft<'info> {
+    pub owner: Signer<'info>,
     pub loan: Box<Account<'info, Loan>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
@@ -356,11 +377,6 @@ impl<'info> ClaimNft<'info> {
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
-}
-
-#[derive(Accounts)]
-pub struct MergeLoan<'info> {
-    pub loan: Box<Account<'info, Loan>>,
 }
 
 #[derive(Accounts)]
@@ -406,20 +422,6 @@ impl<'info> ClaimLoan<'info> {
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
-
-    fn to_close_nft_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
-        let cpi_accounts = CloseAccount {
-            account: self.nft_account.to_account_info().clone(),
-            destination: self.nft_destination.to_account_info().clone(),
-            authority: self.loan_pda.clone(),
-        };
-        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
-    }
-}
-
-#[derive(Accounts)]
-pub struct SettlementAmount<'info> {
-    pub loan: Box<Account<'info, Loan>>,
 }
 
 #[derive(Accounts)]
@@ -485,17 +487,6 @@ impl<'info> Withdraw<'info> {
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
-}
-
-#[derive(Accounts)]
-pub struct EstimateFee<'info> {
-    pub mint: Account<'info, Mint>,
-}
-
-#[derive(Accounts)]
-pub struct InitSystem<'info> {
-    #[account(mut)]
-    pub system_fee_account: Box<Account<'info, TokenAccount>>,
 }
 
 pub struct SignerSeeds<'a>([&'a [u8]; 2], [u8; 1]);
@@ -633,7 +624,7 @@ pub struct Deposit<'info> {
     pub depositor: Signer<'info>,
     #[account(mut)]
     pub pool: Box<Account<'info, Pool>>,
-    #[account(mut)]
+    #[account(mut, constraint = token_depositor.owner == depositor.key())]
     pub token_depositor: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub loan_vault: Box<Account<'info, TokenAccount>>,
@@ -641,7 +632,7 @@ pub struct Deposit<'info> {
 }
 
 impl<'info> Deposit<'info> {
-    fn to_transfer_a_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    fn to_transfer_vault_ctx(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.token_depositor.to_account_info().clone(),
             to: self.loan_vault.to_account_info().clone(),
@@ -711,7 +702,7 @@ pub struct InitPool<'info> {
     pub vault_account: Box<Account<'info, TokenAccount>>,
     pub vault_mint: Box<Account<'info, Mint>>,
     pub collateral_mint: Box<Account<'info, Mint>>,
-    #[account(mut)]
+    #[account(mut, constraint = token_depositor.mint == vault_mint.key())]
     pub token_depositor: Box<Account<'info, TokenAccount>>,
     pub system_fee_account: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
