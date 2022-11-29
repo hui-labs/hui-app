@@ -14,10 +14,11 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Title } = Typography
 
-interface DataType {
+export interface DataType {
   key: React.Key
   isAdmin: boolean
   owner: PublicKey
@@ -129,7 +130,6 @@ const LenderPage: React.FC = () => {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
-  const [loans, setLoans] = useState<{ [key: string]: DataType }>({})
   const decimals = 9
 
   const onWithdraw = async (
@@ -187,43 +187,12 @@ const LenderPage: React.FC = () => {
     }
   }
 
-  const handleAA = async (rawData, connection) => {
-    const accounts = await Promise.all(
-      rawData.map((item) =>
-        getAccount(connection, item.vaultAccount, commitmentLevel)
-      )
-    )
-
-    const cache = rawData.reduce((acc, cur) => {
-      acc[cur.vaultAccount.toBase58()] = cur
-      return acc
-    }, {} as Record<string, DataType>)
-
-    accounts.forEach((account) => {
-      if (account.address.toBase58() in cache) {
-        cache[account.address.toBase58()].availableAmount = formatUnits(
-          account.amount,
-          9
-        )
-      }
-    })
-
-    return Object.values(cache).reduce(
-      (acc, cur) => {
-        acc[cur.isAdmin ? 0 : 1].push(cur)
-        return acc
-      },
-      [[], []] as [DataType[], DataType[]]
-    )
-  }
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
-      const loan = await program.account.loan.all()
-      console.log("pools", pools)
-      console.log("loan", loan)
 
+      console.log("pools", pools)
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -255,31 +224,34 @@ const LenderPage: React.FC = () => {
         }
       })
 
-      const data = await handleAA(rawData, connection)
-      let loans = {}
-      // @ts-ignore
-      data[0].map(async (item) => {
-        const loanOfPool = loan.filter(
-          (itemLoan) => itemLoan.account.pool.toBase58() === item.key
+      const accounts = await Promise.all(
+        rawData.map((item) =>
+          getAccount(connection, item.vaultAccount, commitmentLevel)
         )
-        if (loanOfPool) {
-          // @ts-ignore
-          loans[item.key] = loanOfPool.map(({ publicKey, account }) => {
-            return {
-              key: publicKey.toBase58(),
-              owner: account.owner,
-              receivedAmount: formatUnits(
-                account.receivedAmount.toString(),
-                decimals
-              ),
-              status: Object.keys(account.status)[0],
-            }
-          })
+      )
+      console.log("accounts", accounts)
+      const cache = rawData.reduce((acc, cur) => {
+        acc[cur.vaultAccount.toBase58()] = cur
+        return acc
+      }, {} as Record<string, DataType>)
+
+      accounts.forEach((account) => {
+        if (account.address.toBase58() in cache) {
+          cache[account.address.toBase58()].availableAmount = formatUnits(
+            account.amount,
+            9
+          )
         }
       })
 
-      console.log("loansloans", loans)
-      setLoans(loans)
+      const data = Object.values(cache).reduce(
+        (acc, cur) => {
+          acc[cur.isAdmin ? 0 : 1].push(cur)
+          return acc
+        },
+        [[], []] as [DataType[], DataType[]]
+      )
+
       setMyPools(data[0])
     }
   }, [workspace.value])
@@ -342,18 +314,20 @@ const LenderPage: React.FC = () => {
             <Table
               columns={columns}
               pagination={false}
-              expandable={{
-                expandedRowRender: (data) => {
-                  return (
-                    <>
-                      <p style={{ margin: 0 }}>
-                        loan: {loans[data.key]?.receivedAmount}
-                      </p>
-                    </>
-                  )
-                },
-                // rowExpandable: (data) => loans[data.key]?.receivedAmount,
-              }}
+              expandable={
+                {
+                  // expandedRowRender: (data) => {
+                  //   return (
+                  //     <>
+                  //       <p style={{ margin: 0 }}>
+                  //         loan: {loans[data.key]?.receivedAmount}
+                  //       </p>
+                  //     </>
+                  //   )
+                  // },
+                  // rowExpandable: (data) => loans[data.key]?.receivedAmount,
+                }
+              }
               onRow={(record, rowIndex) => {
                 return {
                   onClick: (event) => {
