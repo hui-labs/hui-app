@@ -124,13 +124,9 @@ const LoansOfPool: React.FC = () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
       const allLoanOnProgram = await program.account.loan.all()
-      let loans: any = []
-      const loanOfPool = allLoanOnProgram.filter(
-        (itemLoan) => itemLoan.account.pool.toBase58() === id
-      )
-      if (loanOfPool) {
-        // @ts-ignore
-        loans = loanOfPool.map(({ publicKey, account }) => {
+      const loans = allLoanOnProgram
+        .filter((itemLoan) => itemLoan.account.pool.toBase58() === id)
+        .map(({ publicKey, account }) => {
           const {
             collateralAccount,
             fee,
@@ -173,7 +169,6 @@ const LoansOfPool: React.FC = () => {
             ),
           }
         })
-      }
 
       setLoans(loans)
     }
