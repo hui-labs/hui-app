@@ -29,6 +29,7 @@ import { BN, web3 } from "@project-serum/anchor"
 import { FormInstance } from "antd/es/form/hooks/useForm"
 import { Values } from "async-validator"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
 const { Option } = Select
@@ -190,6 +191,7 @@ const loanColumns: ColumnsType<LoanDataType> = [
 const decimals = 9
 
 const BorrowerPage: React.FC = () => {
+  useAutoConnectWallet()
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [form] = Form.useForm()
@@ -313,7 +315,6 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
       const loans = await program.account.loan.all()
-      console.log(loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -372,7 +373,7 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
-      console.log(pools)
+
       const rawData: PoolDataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
