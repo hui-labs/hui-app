@@ -24,6 +24,7 @@ import { useAccount } from "@/hooks/useAccount"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import useIsMounted from "@/hooks/useIsMounted"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Option } = Select
 
@@ -31,7 +32,7 @@ const AddPool: React.FC = () => {
   const mounted = useIsMounted()
   const [form] = Form.useForm()
   const workspace = useWorkspace()
-
+  useAutoConnectWallet()
   const usdcMint = useGetMint(workspace, USDCPubKey)
   const usdtMint = useGetMint(workspace, USDTPubKey)
   const usdcAccount = useAccount(workspace, usdcMint)

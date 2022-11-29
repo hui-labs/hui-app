@@ -14,6 +14,7 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
 
@@ -130,6 +131,7 @@ const LenderPage: React.FC = () => {
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
+  useAutoConnectWallet()
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
