@@ -29,6 +29,7 @@ import { BN, web3 } from "@project-serum/anchor"
 import { FormInstance } from "antd/es/form/hooks/useForm"
 import { Values } from "async-validator"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
 const { Option } = Select
@@ -190,6 +191,7 @@ const loanColumns: ColumnsType<LoanDataType> = [
 const decimals = 9
 
 const BorrowerPage: React.FC = () => {
+  useAutoConnectWallet()
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [form] = Form.useForm()

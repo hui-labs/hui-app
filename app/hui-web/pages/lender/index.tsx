@@ -15,6 +15,7 @@ import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
 
@@ -126,6 +127,7 @@ const columns: ColumnsType<DataType> = [
 ]
 
 const LenderPage: React.FC = () => {
+  useAutoConnectWallet()
   const router = useRouter()
   const mounted = useIsMounted()
   const workspace = useWorkspace()

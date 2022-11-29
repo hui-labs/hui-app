@@ -13,6 +13,7 @@ import { useBalance } from "@/hooks/useBalance"
 import { useAccount } from "@/hooks/useAccount"
 import { useMintTo } from "@/hooks/useMintTo"
 import { useEffect } from "react"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 export const Airdrop = () => {
   const workspace = useWorkspace()
@@ -87,7 +88,9 @@ const SystemInfo = () => {
 }
 
 export default function Home() {
+  useAutoConnectWallet()
   const mounted = useIsMounted()
+
   return (
     <div>
       <div>{mounted && <WalletMultiButton />}</div>
