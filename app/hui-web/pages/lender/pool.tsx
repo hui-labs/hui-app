@@ -120,13 +120,10 @@ const LoansOfPool: React.FC = () => {
   const workspace = useWorkspace()
   const [loans, setLoans] = useState([])
   const decimals = 9
-  const AA = useFormatUnit(100000000000n)
-  console.log("AA", AA)
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet } = workspace.value
+      const { program, wallet } = workspace.value
       const allLoanOnProgram = await program.account.loan.all()
-      // console.log("allLoanOnProgram", allLoanOnProgram)
       let loans: any = []
       const loanOfPool = allLoanOnProgram.filter(
         (itemLoan) => itemLoan.account.pool.toBase58() === id
@@ -177,17 +174,7 @@ const LoansOfPool: React.FC = () => {
           }
         })
       }
-      const aa = await getAccount(
-        connection,
-        loans[0].collateralAccount,
-        commitmentLevel
-      )
-      const bb = await getMint(connection, loans[0].collateralMint)
 
-      console.log("aa", aa)
-      console.log("bb", bb)
-      // console.log("cc", bb.address.toBase58())
-      console.log("loans", loans)
       setLoans(loans)
     }
   }, [id, workspace.value])

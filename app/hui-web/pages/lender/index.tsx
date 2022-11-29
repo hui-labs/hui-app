@@ -227,7 +227,7 @@ const LenderPage: React.FC = () => {
           getAccount(connection, item.vaultAccount, commitmentLevel)
         )
       )
-      console.log("accounts", accounts)
+
       const cache = rawData.reduce((acc, cur) => {
         acc[cur.vaultAccount.toBase58()] = cur
         return acc
@@ -315,7 +315,6 @@ const LenderPage: React.FC = () => {
               onRow={(record, rowIndex) => {
                 return {
                   onClick: (event) => {
-                    console.log("record", record)
                     router.push(`/lender/pool?id=${record.key}`)
                   },
                 }
