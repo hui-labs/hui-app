@@ -15,6 +15,7 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Title } = Typography
 
@@ -130,6 +131,7 @@ const LenderPage: React.FC = () => {
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
+  const [loans, setLoans] = useState<{ [key: string]: DataType }>({})
   const decimals = 9
 
   const onWithdraw = async (
@@ -222,7 +224,7 @@ const LenderPage: React.FC = () => {
       const pools = await program.account.pool.all()
       const loan = await program.account.loan.all()
       console.log("pools", pools)
-      console.log("loan", loan[0])
+      console.log("loan", loan)
 
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
@@ -256,47 +258,71 @@ const LenderPage: React.FC = () => {
       })
 
       const data = await handleAA(rawData, connection)
-      const loanOfPool = loan.filter(
-        (item) => item.account.pool.toBase58() === data[0][0].key
-      )
-
-      const loanOfPoolFormat: DataType[] = loanOfPool.map(
-        ({ publicKey, account }) => {
-          return {
-            key: publicKey.toBase58(),
-            owner: account.owner,
-            interestRate: formatUnits(
-              account.interestRate.toString(),
-              decimals
-            ),
-            receivedAmount: formatUnits(
-              account.receivedAmount.toString(),
-              decimals
-            ),
-            fee: formatUnits(account.fee.toString(), decimals),
-            status: Object.keys(account.status)[0],
-            minLoanAmount: formatUnits(
-              account.minLoanAmount.toString(),
-              decimals
-            ),
-            maxLoanAmount: formatUnits(
-              account.maxLoanAmount.toString(),
-              decimals
-            ),
-            interestRate: formatUnits(account.interestRate.toString(), 4),
-            maxLoanThreshold: formatUnits(
-              account.maxLoanThreshold.toString(),
-              4
-            ),
-          }
+      let loans = {}
+      // @ts-ignore
+      data[0].map(async (item) => {
+        const loanOfPool = loan.filter(
+          (itemLoan) => itemLoan.account.pool.toBase58() === item.key
+        )
+        if (loanOfPool) {
+          // @ts-ignore
+          loans[item.key] = loanOfPool.map(({ publicKey, account }) => {
+            console.log("account", account)
+            return {
+              key: publicKey.toBase58(),
+              owner: account.owner,
+              receivedAmount: formatUnits(
+                account.receivedAmount.toString(),
+                decimals
+              ),
+              status: Object.keys(account.status)[0],
+            }
+          })
         }
-      )
-      console.log("loan", loan)
-      console.log("loanOfPoolFormat", loanOfPoolFormat)
-      console.log("pools", data)
+      })
+
+      setLoans(loans)
       setMyPools(data[0])
     }
   }, [workspace.value])
+
+  const onLoadData = async () => {
+    if (workspace.value) {
+      const { connection } = workspace.value
+      const discriminator = Buffer.from(sha256.digest("account:Pool")).slice(
+        0,
+        8
+      )
+      const accounts = await connection.getProgramAccounts(programId, {
+        dataSlice: {
+          offset: 0,
+          length: 0,
+        },
+        filters: [
+          {
+            memcmp: {
+              offset: 0,
+              bytes: bs58.encode(discriminator),
+            },
+          }, // Ensure it's a CandyMachine account.
+        ],
+      })
+      const accountPublicKeys = accounts.map((account) => account.pubkey)
+
+      const getPage = async (page: number, limit: number = 10) => {
+        const paginatedPublicKeys = accountPublicKeys.slice(
+          (page - 1) * limit,
+          page * limit
+        )
+
+        if (paginatedPublicKeys.length === 0) {
+          return []
+        }
+
+        return connection.getMultipleAccountsInfo(paginatedPublicKeys)
+      }
+    }
+  }
 
   return (
     <div>
@@ -306,47 +332,7 @@ const LenderPage: React.FC = () => {
         <Button type="primary" onClick={() => router.push("/lender/add")}>
           Create Pool
         </Button>
-        <Button
-          type="primary"
-          onClick={async () => {
-            if (workspace.value) {
-              const { connection } = workspace.value
-              const discriminator = Buffer.from(
-                sha256.digest("account:Pool")
-              ).slice(0, 8)
-              const accounts = await connection.getProgramAccounts(programId, {
-                dataSlice: {
-                  offset: 0,
-                  length: 0,
-                },
-                filters: [
-                  {
-                    memcmp: {
-                      offset: 0,
-                      bytes: bs58.encode(discriminator),
-                    },
-                  }, // Ensure it's a CandyMachine account.
-                ],
-              })
-              const accountPublicKeys = accounts.map(
-                (account) => account.pubkey
-              )
-
-              const getPage = async (page: number, limit: number = 10) => {
-                const paginatedPublicKeys = accountPublicKeys.slice(
-                  (page - 1) * limit,
-                  page * limit
-                )
-
-                if (paginatedPublicKeys.length === 0) {
-                  return []
-                }
-
-                return connection.getMultipleAccountsInfo(paginatedPublicKeys)
-              }
-            }
-          }}
-        >
+        <Button type="primary" onClick={onLoadData}>
           Load Data
         </Button>
       </Space>
@@ -359,13 +345,17 @@ const LenderPage: React.FC = () => {
               columns={columns}
               pagination={false}
               expandable={{
-                expandedRowRender: (_) => (
-                  <>
-                    <p style={{ margin: 0 }}>haha: </p>
-                    <p style={{ margin: 0 }}>haha: </p>
-                  </>
-                ),
-                // rowExpandable: (record) => record.name !== "Not Expandable",
+                expandedRowRender: (data) => {
+                  console.log("data", loans[data.key])
+                  return (
+                    <>
+                      <p style={{ margin: 0 }}>
+                        loan: {loans[data.key]?.receivedAmount}
+                      </p>
+                    </>
+                  )
+                },
+                // rowExpandable: (data) => loans[data.key]?.receivedAmount,
               }}
               dataSource={myPools}
             />
