@@ -14,10 +14,11 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Title } = Typography
 
-interface DataType {
+export interface DataType {
   key: React.Key
   isAdmin: boolean
   owner: PublicKey
@@ -190,7 +191,6 @@ const LenderPage: React.FC = () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
-      console.log(pools)
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -254,6 +254,44 @@ const LenderPage: React.FC = () => {
     }
   }, [workspace.value])
 
+  const onLoadData = async () => {
+    if (workspace.value) {
+      const { connection } = workspace.value
+      const discriminator = Buffer.from(sha256.digest("account:Pool")).slice(
+        0,
+        8
+      )
+      const accounts = await connection.getProgramAccounts(programId, {
+        dataSlice: {
+          offset: 0,
+          length: 0,
+        },
+        filters: [
+          {
+            memcmp: {
+              offset: 0,
+              bytes: bs58.encode(discriminator),
+            },
+          }, // Ensure it's a CandyMachine account.
+        ],
+      })
+      const accountPublicKeys = accounts.map((account) => account.pubkey)
+
+      const getPage = async (page: number, limit: number = 10) => {
+        const paginatedPublicKeys = accountPublicKeys.slice(
+          (page - 1) * limit,
+          page * limit
+        )
+
+        if (paginatedPublicKeys.length === 0) {
+          return []
+        }
+
+        return connection.getMultipleAccountsInfo(paginatedPublicKeys)
+      }
+    }
+  }
+
   return (
     <div>
       <div>{mounted && <WalletMultiButton />}</div>
@@ -262,47 +300,7 @@ const LenderPage: React.FC = () => {
         <Button type="primary" onClick={() => router.push("/lender/add")}>
           Create Pool
         </Button>
-        <Button
-          type="primary"
-          onClick={async () => {
-            if (workspace.value) {
-              const { connection } = workspace.value
-              const discriminator = Buffer.from(
-                sha256.digest("account:Pool")
-              ).slice(0, 8)
-              const accounts = await connection.getProgramAccounts(programId, {
-                dataSlice: {
-                  offset: 0,
-                  length: 0,
-                },
-                filters: [
-                  {
-                    memcmp: {
-                      offset: 0,
-                      bytes: bs58.encode(discriminator),
-                    },
-                  }, // Ensure it's a CandyMachine account.
-                ],
-              })
-              const accountPublicKeys = accounts.map(
-                (account) => account.pubkey
-              )
-
-              const getPage = async (page: number, limit: number = 10) => {
-                const paginatedPublicKeys = accountPublicKeys.slice(
-                  (page - 1) * limit,
-                  page * limit
-                )
-
-                if (paginatedPublicKeys.length === 0) {
-                  return []
-                }
-
-                return connection.getMultipleAccountsInfo(paginatedPublicKeys)
-              }
-            }
-          }}
-        >
+        <Button type="primary" onClick={onLoadData}>
           Load Data
         </Button>
       </Space>
@@ -314,9 +312,12 @@ const LenderPage: React.FC = () => {
             <Table
               columns={columns}
               pagination={false}
-              expandable={{
-                expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                // rowExpandable: (record) => record.name !== "Not Expandable",
+              onRow={(record, rowIndex) => {
+                return {
+                  onClick: (event) => {
+                    router.push(`/lender/pool?id=${record.key}`)
+                  },
+                }
               }}
               dataSource={myPools}
             />
