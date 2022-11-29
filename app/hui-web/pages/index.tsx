@@ -88,8 +88,8 @@ const SystemInfo = () => {
 }
 
 export default function Home() {
-  const mounted = useIsMounted()
   useAutoConnectWallet()
+  const mounted = useIsMounted()
 
   return (
     <div>

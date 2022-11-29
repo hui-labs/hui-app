@@ -191,9 +191,9 @@ const loanColumns: ColumnsType<LoanDataType> = [
 const decimals = 9
 
 const BorrowerPage: React.FC = () => {
+  useAutoConnectWallet()
   const mounted = useIsMounted()
   const workspace = useWorkspace()
-  useAutoConnectWallet()
   const [form] = Form.useForm()
   const [availablePools, setAvailablePools] = useState<PoolDataType[]>([])
   const [myLoans, setMyLoans] = useState<LoanDataType[]>([])

@@ -126,12 +126,12 @@ const columns: ColumnsType<DataType> = [
 ]
 
 const LenderPage: React.FC = () => {
+  useAutoConnectWallet()
   const router = useRouter()
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
-  useAutoConnectWallet()
 
   const onWithdraw = async (
     poolPubKey: PublicKey,

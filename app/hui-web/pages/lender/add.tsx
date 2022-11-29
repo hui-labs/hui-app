@@ -29,10 +29,10 @@ import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 const { Option } = Select
 
 const AddPool: React.FC = () => {
+  useAutoConnectWallet()
   const mounted = useIsMounted()
   const [form] = Form.useForm()
   const workspace = useWorkspace()
-  useAutoConnectWallet()
   const usdcMint = useGetMint(workspace, USDCPubKey)
   const usdtMint = useGetMint(workspace, USDTPubKey)
   const usdcAccount = useAccount(workspace, usdcMint)
