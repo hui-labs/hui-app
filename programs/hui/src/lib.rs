@@ -14,7 +14,7 @@ use crate::errors::AppError;
 mod curve;
 mod errors;
 
-declare_id!("AE8LAvZBiDFWFX1P6apvXrTzDxsQumwmDS23RUvXp86D");
+declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 
 #[program]
 pub mod hui {

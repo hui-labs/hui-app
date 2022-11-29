@@ -372,8 +372,6 @@ const BorrowerPage: React.FC = () => {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
 
-      console.log("pools", pools)
-
       const rawData: PoolDataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -429,8 +427,7 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [PoolDataType[], PoolDataType[]]
       )
 
-      console.log("data", data)
-      setAvailablePools(data[1]) // mình là nguoi di vay => pool khong phải cua minh => admin = 1
+      setAvailablePools(data[1])
     }
   }, [workspace.value])
 

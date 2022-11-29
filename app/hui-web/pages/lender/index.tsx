@@ -191,8 +191,6 @@ const LenderPage: React.FC = () => {
     if (workspace.value) {
       const { connection, program, wallet } = workspace.value
       const pools = await program.account.pool.all()
-
-      console.log("pools", pools)
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -314,26 +312,12 @@ const LenderPage: React.FC = () => {
             <Table
               columns={columns}
               pagination={false}
-              expandable={
-                {
-                  // expandedRowRender: (data) => {
-                  //   return (
-                  //     <>
-                  //       <p style={{ margin: 0 }}>
-                  //         loan: {loans[data.key]?.receivedAmount}
-                  //       </p>
-                  //     </>
-                  //   )
-                  // },
-                  // rowExpandable: (data) => loans[data.key]?.receivedAmount,
-                }
-              }
               onRow={(record, rowIndex) => {
                 return {
                   onClick: (event) => {
                     console.log("record", record)
                     router.push(`/lender/pool?id=${record.key}`)
-                  }, // click row
+                  },
                 }
               }}
               dataSource={myPools}
