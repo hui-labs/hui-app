@@ -175,6 +175,11 @@ const loanColumns: ColumnsType<LoanDataType> = [
     key: "maxLoanThreshold",
   },
   {
+    title: "loan",
+    dataIndex: "receivedAmount",
+    key: "receivedAmount",
+  },
+  {
     title: "Action",
     dataIndex: "",
     key: "x",
@@ -202,7 +207,6 @@ const BorrowerPage: React.FC = () => {
   const formRef = useRef<FormInstance<Values> | null>(null)
 
   const showModal = () => {
-    console.log("zzz")
     setOpen(true)
   }
 
@@ -232,7 +236,7 @@ const BorrowerPage: React.FC = () => {
         console.log(formatUnits(receiverAccount.amount.toString(), 9))
 
         await onCreateLoan(
-          loanAmount.toString(),
+          loanAmount,
           loanTerm,
           selectedPool,
           depositorAccount.address,
@@ -247,7 +251,7 @@ const BorrowerPage: React.FC = () => {
     setOpen(false)
   }
   const onCreateLoan = async (
-    amount: string,
+    amount: number,
     loanTerm: string,
     poolPubkey: PublicKey,
     tokenDepositorPubkey: PublicKey,
@@ -273,9 +277,10 @@ const BorrowerPage: React.FC = () => {
       const nftMintKeypair = Keypair.generate()
       const nftAccountKeypair = Keypair.generate()
       const ins = await program.account.loan.createInstruction(loan)
+
       await program.methods
-        .initLoan(new BN(100 * 10 ** 9), {
-          oneMonth: {},
+        .initLoan(new BN(amount * 10 ** 9), {
+          [loanTerm]: {},
         })
         .accounts({
           vaultAccount: vaultKeypair.publicKey,
@@ -315,11 +320,12 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
       const loans = await program.account.loan.all()
+      // console.log("all loan", loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
           owner: account.owner,
-          isAdmin: account.owner.toBase58() === wallet.publicKey.toBase58(),
+          isAdmin: account.borrower.toBase58() === wallet.publicKey.toBase58(),
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
@@ -330,6 +336,10 @@ const BorrowerPage: React.FC = () => {
           ),
           maxLoanAmount: formatUnits(
             account.maxLoanAmount.toString(),
+            decimals
+          ),
+          receivedAmount: formatUnits(
+            account.receivedAmount.toString(),
             decimals
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
@@ -365,7 +375,7 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [LoanDataType[], LoanDataType[]]
       )
 
-      setMyLoans(data[1])
+      setMyLoans(data[0])
     }
   }, [workspace.value])
 
