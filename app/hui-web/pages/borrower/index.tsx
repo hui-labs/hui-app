@@ -12,9 +12,7 @@ import {
   Tag,
   Typography,
 } from "antd"
-import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import {
   SystemFeeUSDTPubKey,
@@ -29,7 +27,6 @@ import { BN, web3 } from "@project-serum/anchor"
 import { FormInstance } from "antd/es/form/hooks/useForm"
 import { Values } from "async-validator"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
 const { Option } = Select
@@ -191,8 +188,6 @@ const loanColumns: ColumnsType<LoanDataType> = [
 const decimals = 9
 
 const BorrowerPage: React.FC = () => {
-  useAutoConnectWallet()
-  const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [form] = Form.useForm()
   const [availablePools, setAvailablePools] = useState<PoolDataType[]>([])
@@ -434,8 +429,7 @@ const BorrowerPage: React.FC = () => {
   }, [workspace.value])
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
+    <div className="px-6 mt-5">
       <Title level={2}>Borrower</Title>
 
       <div>

@@ -3,7 +3,6 @@ import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { programId, TOKEN_LISTS } from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
@@ -14,7 +13,6 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
-import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
@@ -295,19 +293,24 @@ const LenderPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
+    <div className="px-6 mt-5">
       <Title level={2}>Lender</Title>
       <Space wrap>
-        <Button type="primary" onClick={() => router.push("/lender/add")}>
+        <button
+          className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800"
+          onClick={() => router.push("/lender/add")}
+        >
           Create Pool
-        </Button>
-        <Button type="primary" onClick={onLoadData}>
+        </button>
+        <button
+          className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800"
+          onClick={onLoadData}
+        >
           Load Data
-        </Button>
+        </button>
       </Space>
 
-      <div>
+      <div className="mt-5">
         <Title level={3}>Your Pools</Title>
         <Row>
           <Col span={24}>

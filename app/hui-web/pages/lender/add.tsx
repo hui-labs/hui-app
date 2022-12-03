@@ -21,16 +21,12 @@ import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { SystemFeeUSDTPubKey, USDCPubKey, USDTPubKey } from "@/common/constants"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import useIsMounted from "@/hooks/useIsMounted"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Option } = Select
 
 const AddPool: React.FC = () => {
-  useAutoConnectWallet()
-  const mounted = useIsMounted()
   const [form] = Form.useForm()
   const workspace = useWorkspace()
   const usdcMint = useGetMint(workspace, USDCPubKey)
@@ -69,7 +65,11 @@ const AddPool: React.FC = () => {
         [
           "topUpAmount",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "you cant type any different number",
+            },
             {
               type: "number",
               max: currentBalace,
@@ -81,7 +81,11 @@ const AddPool: React.FC = () => {
         [
           "interestRate",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "you cant type any different number",
+            },
             {
               type: "number",
               max: 100,
@@ -97,7 +101,11 @@ const AddPool: React.FC = () => {
         [
           "maxLoanAmount",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "you cant type any different number",
+            },
             {
               type: "number",
               max: topUpAmount,
@@ -113,7 +121,11 @@ const AddPool: React.FC = () => {
         [
           "minLoanAmount",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "you cant type any different number",
+            },
             {
               type: "number",
               max: topUpAmount,
@@ -129,7 +141,11 @@ const AddPool: React.FC = () => {
         [
           "maxLoanThreshold",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "you cant type any different number",
+            },
             {
               type: "number",
               max: 90,
@@ -229,10 +245,9 @@ const AddPool: React.FC = () => {
   }
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
+    <div className="mx-auto w-[500px] mt-5">
       <Row>
-        <Col span={6}>
+        <Col span={24}>
           <Form
             layout="vertical"
             form={form}
@@ -248,11 +263,10 @@ const AddPool: React.FC = () => {
                 placeholder="Select a option and change input text above"
                 allowClear
               >
-                <Option value="usdt">USDT</Option>
-                <Option value="usdc">USDC</Option>
+                <Option value="usdt">{`USDT __ (${usdtBalance})`}</Option>
+                <Option value="usdc">{`USDC __ ${usdcBalance}`}</Option>
               </Select>
             </Form.Item>
-            <p>{`${currentBalace}`}</p>
 
             <Form.Item
               name="collateralMint"

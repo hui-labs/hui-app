@@ -11,7 +11,7 @@ use crate::curve::to_u64;
 mod curve;
 mod errors;
 
-declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
+declare_id!("SQZKnHyyYY6TGFDCKXhH6zFtm9PL7htFttgqwyiTrZT");
 
 #[program]
 pub mod hui {
