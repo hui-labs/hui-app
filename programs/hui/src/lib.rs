@@ -179,8 +179,9 @@ pub mod hui {
         loan_metadata.amount = ctx.accounts.master_loan.received_amount;
         let clock = Clock::get().unwrap();
         loan_metadata.created_at = clock.unix_timestamp;
-        loan_metadata.account = ctx.accounts.nft_account.key().clone();
-        loan_metadata.mint = ctx.accounts.nft_account.mint.key().clone();
+        loan_metadata.nft_account = ctx.accounts.nft_account.key().clone();
+        loan_metadata.nft_mint = ctx.accounts.nft_mint.key().clone();
+        loan_metadata.claim_account = ctx.accounts.claim_account.key().clone();
         loan_metadata.is_claimed = true;
 
         let signer_seeds = ctx
@@ -273,9 +274,13 @@ pub mod hui {
 
     pub fn list_nft(ctx: Context<ListNft>, price: u64) -> Result<()> {
         let loan_metadata = &mut ctx.accounts.loan_metadata;
+        let item_for_sale = &mut ctx.accounts.item_for_sale;
+
+        require!(!loan_metadata.is_listed, AppError::NftAlreadyListed);
+        require!(!item_for_sale.is_open, AppError::NftAlreadyListed);
+
         loan_metadata.is_listed = true;
 
-        let item_for_sale = &mut ctx.accounts.item_for_sale;
         item_for_sale.owner = ctx.accounts.seller.key().clone();
         item_for_sale.nft_mint = ctx.accounts.nft_mint.key().clone();
         item_for_sale.nft_account = ctx.accounts.item_account.key().clone();
@@ -351,7 +356,7 @@ pub struct CancelSale<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub item_for_sale_pda: AccountInfo<'info>,
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
-    #[account(mut, constraint = nft_mint.key() == loan_metadata.mint)]
+    #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
@@ -382,7 +387,7 @@ pub struct BuyNft<'info> {
     #[account(mut)]
     pub buyer: Signer<'info>,
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
-    #[account(mut, constraint = nft_mint.key() == loan_metadata.mint)]
+    #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
@@ -463,8 +468,9 @@ pub struct ListNft<'info> {
     pub item_for_sale_pda: AccountInfo<'info>,
     #[account(mut)]
     pub seller: Signer<'info>,
+    #[account(mut)]
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
-    #[account(mut, constraint = nft_mint.key() == loan_metadata.mint)]
+    #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
@@ -522,11 +528,12 @@ pub enum LoanStatus {
 #[account]
 pub struct LoanMetadata {
     pub parent: Pubkey,
-    pub amount: u64,
-    pub account: Pubkey,
-    pub mint: Pubkey,
-    pub is_claimed: bool,
+    pub nft_account: Pubkey,
+    pub nft_mint: Pubkey,
+    pub claim_account: Pubkey,
     pub status: LoanStatus,
+    pub amount: u64,
+    pub is_claimed: bool,
     pub is_listed: bool,
     pub created_at: i64,
 }
@@ -583,7 +590,7 @@ pub struct ClaimLoan<'info> {
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
     #[account(mut)]
     pub token_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut, constraint = nft_mint.key() == loan_metadata.mint)]
+    #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
@@ -962,4 +969,6 @@ pub enum AppError {
     FeeNotEnough,
     #[msg("NFT has already claimed")]
     NftAlreadyClaimed,
+    #[msg("NFT has already listed")]
+    NftAlreadyListed,
 }

@@ -491,7 +491,7 @@ export type Hui = {
         },
         {
           "name": "loanMetadata",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -721,26 +721,30 @@ export type Hui = {
             "type": "publicKey"
           },
           {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "account",
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {
-            "name": "mint",
+            "name": "nftMint",
             "type": "publicKey"
           },
           {
-            "name": "isClaimed",
-            "type": "bool"
+            "name": "claimAccount",
+            "type": "publicKey"
           },
           {
             "name": "status",
             "type": {
               "defined": "LoanStatus"
             }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
           },
           {
             "name": "isListed",
@@ -1052,6 +1056,11 @@ export type Hui = {
       "code": 6006,
       "name": "NftAlreadyClaimed",
       "msg": "NFT has already claimed"
+    },
+    {
+      "code": 6007,
+      "name": "NftAlreadyListed",
+      "msg": "NFT has already listed"
     }
   ]
 };
@@ -1549,7 +1558,7 @@ export const IDL: Hui = {
         },
         {
           "name": "loanMetadata",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1779,26 +1788,30 @@ export const IDL: Hui = {
             "type": "publicKey"
           },
           {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "account",
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {
-            "name": "mint",
+            "name": "nftMint",
             "type": "publicKey"
           },
           {
-            "name": "isClaimed",
-            "type": "bool"
+            "name": "claimAccount",
+            "type": "publicKey"
           },
           {
             "name": "status",
             "type": {
               "defined": "LoanStatus"
             }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
           },
           {
             "name": "isListed",
@@ -2110,6 +2123,11 @@ export const IDL: Hui = {
       "code": 6006,
       "name": "NftAlreadyClaimed",
       "msg": "NFT has already claimed"
+    },
+    {
+      "code": 6007,
+      "name": "NftAlreadyListed",
+      "msg": "NFT has already listed"
     }
   ]
 };

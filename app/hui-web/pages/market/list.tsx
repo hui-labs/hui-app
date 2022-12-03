@@ -3,6 +3,63 @@ import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import { BN, web3 } from "@project-serum/anchor"
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { DEFAULT_DECIMALS, USDTPubKey } from "@/common/constants"
+import { Button, Col, Row, Table, Tag } from "antd"
+import React, { useState } from "react"
+import { ColumnsType } from "antd/es/table"
+import useAsyncEffect from "use-async-effect"
+
+interface LoanMetadataDataType {
+  key: React.Key
+  isListed: boolean
+  isClaimed: boolean
+  parent: PublicKey
+  onListNFT: () => void
+}
+
+const columns: ColumnsType<LoanMetadataDataType> = [
+  {
+    title: "Is Listed",
+    dataIndex: "isListed",
+    key: "isListed",
+    render: (_, { isListed }) => (
+      <div>
+        <Tag color={"blue"}>{isListed ? "True" : "False"}</Tag>
+      </div>
+    ),
+  },
+  {
+    title: "Is Claimed",
+    dataIndex: "isClaimed",
+    key: "isClaimed",
+    render: (_, { isClaimed }) => (
+      <div>
+        <Tag color={"blue"}>{isClaimed ? "True" : "False"}</Tag>
+      </div>
+    ),
+  },
+  {
+    title: "Parent",
+    dataIndex: "parent",
+    key: "parent",
+    render: (_, { parent }) => (
+      <div>
+        <span>{parent?.toBase58()}</span>
+      </div>
+    ),
+  },
+  {
+    title: "Action",
+    dataIndex: "",
+    key: "",
+    render: (_, { onListNFT }) => {
+      return (
+        <div>
+          <Button onClick={onListNFT}>List</Button>
+        </div>
+      )
+    },
+  },
+]
 
 const ListNFT = () => {
   const workspace = useWorkspace()
@@ -51,18 +108,41 @@ const ListNFT = () => {
     // }
   }
 
-  const loadNFTs = async () => {
-    if (workspace.value) {
-      const { program } = workspace.value
-      const listLoanMetadata = await program.account.loanMetadata.all()
-      console.log(listLoanMetadata)
-    }
-  }
+  const [loanMetadatas, setListLoanMetadatas] = useState<
+    LoanMetadataDataType[]
+  >([])
 
-  const listNFT = async (
+  useAsyncEffect(async () => {
+    if (workspace.value) {
+      const { program, connection, client } = workspace.value
+
+      const loanMetadatas = await client
+        .from("LoanMetadata")
+        .offset(0)
+        .limit(10)
+        .select()
+      console.log("loanMetadatas", loanMetadatas)
+
+      const data = loanMetadatas.map<LoanMetadataDataType>(
+        ({ publicKey, account }) => {
+          return {
+            key: publicKey.toBase58(),
+            parent: account.parent,
+            isListed: account.isListed,
+            isClaimed: account.isClaimed,
+            onListNFT: () =>
+              onListNFT(publicKey, account.nftMint, account.nftAccount),
+          }
+        }
+      )
+      setListLoanMetadatas(data)
+    }
+  }, [workspace.value])
+
+  const onListNFT = async (
+    loanMetadataPubKey: PublicKey,
     nftMint: PublicKey,
-    nftAccount: PublicKey,
-    loanMetadataPubKey: PublicKey
+    nftAccount: PublicKey
   ) => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
@@ -111,8 +191,16 @@ const ListNFT = () => {
 
   return (
     <div>
-      <button onClick={loadNFTs}>Load NFTs</button>
       <button onClick={() => {}}>List NFT</button>
+      <Row>
+        <Col span={24}>
+          <Table
+            columns={columns}
+            pagination={false}
+            dataSource={loanMetadatas}
+          />
+        </Col>
+      </Row>
     </div>
   )
 }

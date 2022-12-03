@@ -491,7 +491,7 @@
         },
         {
           "name": "loanMetadata",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -721,26 +721,30 @@
             "type": "publicKey"
           },
           {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "account",
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {
-            "name": "mint",
+            "name": "nftMint",
             "type": "publicKey"
           },
           {
-            "name": "isClaimed",
-            "type": "bool"
+            "name": "claimAccount",
+            "type": "publicKey"
           },
           {
             "name": "status",
             "type": {
               "defined": "LoanStatus"
             }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
           },
           {
             "name": "isListed",
@@ -1052,6 +1056,14 @@
       "code": 6006,
       "name": "NftAlreadyClaimed",
       "msg": "NFT has already claimed"
+    },
+    {
+      "code": 6007,
+      "name": "NftAlreadyListed",
+      "msg": "NFT has already listed"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV"
+  }
 }

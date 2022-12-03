@@ -12,15 +12,13 @@ import {
 import { useRouter } from "next/router"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import type { ColumnsType } from "antd/es/table"
-import { programId, TOKEN_LISTS } from "@/common/constants"
+import { TOKEN_LISTS } from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
 import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
-import bs58 from "bs58"
-import { sha256 } from "js-sha256"
 
 const { Title } = Typography
 
@@ -262,39 +260,6 @@ const LenderPage: React.FC = () => {
 
   const onLoadData = async () => {
     if (workspace.value) {
-      const { connection } = workspace.value
-      const discriminator = Buffer.from(sha256.digest("account:Pool")).slice(
-        0,
-        8
-      )
-      const accounts = await connection.getProgramAccounts(programId, {
-        dataSlice: {
-          offset: 0,
-          length: 0,
-        },
-        filters: [
-          {
-            memcmp: {
-              offset: 0,
-              bytes: bs58.encode(discriminator),
-            },
-          }, // Ensure it's a CandyMachine account.
-        ],
-      })
-      const accountPublicKeys = accounts.map((account) => account.pubkey)
-
-      const getPage = async (page: number, limit: number = 10) => {
-        const paginatedPublicKeys = accountPublicKeys.slice(
-          (page - 1) * limit,
-          page * limit
-        )
-
-        if (paginatedPublicKeys.length === 0) {
-          return []
-        }
-
-        return connection.getMultipleAccountsInfo(paginatedPublicKeys)
-      }
     }
   }
 

@@ -6,6 +6,7 @@ import { Hui } from "@/contracts/types/hui"
 import { useEffect, useState } from "react"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 import { programId } from "@/common/constants"
+import { AnchorClient } from "@/services/anchorClient"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
 
@@ -14,6 +15,7 @@ export interface Workspace {
   connection: Connection
   provider: AnchorProvider
   program: Program<Hui>
+  client: AnchorClient
 }
 
 export const commitmentLevel = "processed"
@@ -32,8 +34,10 @@ export const useWorkspace = (): AsyncState<Workspace | null> => {
         preflightCommitment: commitmentLevel,
       })
       const program = new Program<Hui>(idlInterface, programId, provider)
+      const client = new AnchorClient(program)
 
       setWorkspace({
+        client,
         wallet,
         connection,
         provider,
