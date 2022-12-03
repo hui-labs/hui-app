@@ -2,7 +2,6 @@ import * as anchor from "@project-serum/anchor"
 import { BN, Program, web3 } from "@project-serum/anchor"
 import { Hui } from "../target/types/hui"
 import {
-  closeAccount,
   createAccount,
   createMint,
   getAccount,
@@ -61,7 +60,12 @@ describe("test hui flow", () => {
     )
 
     const [poolPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("pool"), usdtMintPubkey.toBuffer()],
+      [
+        Buffer.from("pool"),
+        alice.publicKey.toBuffer(),
+        usdcMintPubkey.toBuffer(),
+        usdtMintPubkey.toBuffer(),
+      ],
       program.programId
     )
 
@@ -167,7 +171,7 @@ describe("test hui flow", () => {
     const topUpAmount = new BN(100 * DECIMALS)
     const loanFee = topUpAmount.div(new BN(DECIMALS)).mul(new BN(1_000_000))
 
-    const pool = web3.Keypair.generate()
+    const poolKeypair = Keypair.generate()
     const poolVaultKeypair = web3.Keypair.generate()
     const tx = await program.methods
       .initPool(
@@ -181,7 +185,7 @@ describe("test hui flow", () => {
         loanFee
       )
       .accounts({
-        pool: pool.publicKey,
+        pool: poolKeypair.publicKey,
         pda: poolPDA,
         vaultAccount: poolVaultKeypair.publicKey,
         vaultMint: usdtMintPubkey,
@@ -193,19 +197,21 @@ describe("test hui flow", () => {
         tokenDepositor: aliceUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .preInstructions([await program.account.pool.createInstruction(pool)])
-      .signers([alice, pool, poolVaultKeypair])
+      .preInstructions([
+        await program.account.pool.createInstruction(poolKeypair),
+      ])
+      .signers([alice, poolKeypair, poolVaultKeypair])
       .rpc()
 
     console.log("Your transaction signature:", tx)
 
     // Tom
     // Create loan PDA
-    const [loanPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("loan"), pool.publicKey.toBuffer()],
+    const [masterLoanPDA] = await PublicKey.findProgramAddress(
+      [Buffer.from("masterLoan"), poolKeypair.publicKey.toBuffer()],
       program.programId
     )
-    const loan = web3.Keypair.generate()
+    const masterLoanKeypair = Keypair.generate()
 
     // Create loan vault USDC
     const formatUnit = (amount: string, decimals: number = 9) =>
@@ -284,10 +290,10 @@ describe("test hui flow", () => {
       .accounts({
         nftMint: nftMintKeypair.publicKey,
         nftAccount: nftKeypair.publicKey,
-        loan: loan.publicKey,
-        pool: pool.publicKey,
+        masterLoan: masterLoanKeypair.publicKey,
+        pool: poolKeypair.publicKey,
         poolPda: poolPDA,
-        loanPda: loanPDA,
+        loanPda: masterLoanPDA,
         systemFeeAccount: systemUSDTFeeAccount,
 
         tokenDepositor: bobUSDCAccount,
@@ -304,9 +310,11 @@ describe("test hui flow", () => {
         vaultMint: usdtMintPubkey,
         vaultAccount: vaultKeypair.publicKey,
       })
-      .preInstructions([await program.account.loan.createInstruction(loan)])
+      .preInstructions([
+        await program.account.masterLoan.createInstruction(masterLoanKeypair),
+      ])
       .signers([
-        loan,
+        masterLoanKeypair,
         bob,
         collateralKeypair,
         vaultKeypair,
@@ -384,7 +392,7 @@ describe("test hui flow", () => {
       .deposit(depositTopUpAmount, depositLoanFee)
       .accounts({
         depositor: alice.publicKey,
-        pool: pool.publicKey,
+        pool: poolKeypair.publicKey,
         loanVault: poolVaultAccount.address,
         tokenDepositor: aliceUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -399,7 +407,7 @@ describe("test hui flow", () => {
       .withdraw(new anchor.BN(30 * DECIMALS))
       .accounts({
         depositor: alice.publicKey,
-        pool: pool.publicKey,
+        pool: poolKeypair.publicKey,
         poolPda: poolPDA,
         tokenDepositor: aliceUSDTAccount,
         poolVault: poolVaultAccount.address,
@@ -424,8 +432,8 @@ describe("test hui flow", () => {
     await program.methods
       .finalSettlement(new BN((80 + 5.99999976) * DECIMALS))
       .accounts({
-        loan: loan.publicKey,
-        loanPda: loanPDA,
+        loan: masterLoanKeypair.publicKey,
+        loanPda: masterLoanPDA,
         tokenDepositor: bobUSDTAccount,
         tokenReceiver: bobUSDCAccount,
         depositor: bob.publicKey,
@@ -437,6 +445,15 @@ describe("test hui flow", () => {
       .rpc()
     await printTableAll("Final settlement")
 
+    const [loanMetadataPDA] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("loan"),
+        masterLoanKeypair.publicKey.toBuffer(),
+        nftKeypair.publicKey.toBuffer(),
+        nftMintKeypair.publicKey.toBuffer(),
+      ],
+      SystemProgram.programId
+    )
     // Claims
     const aliceNftTokenAccount = await createAccount(
       connection,
@@ -447,17 +464,25 @@ describe("test hui flow", () => {
       undefined,
       TOKEN_PROGRAM_ID
     )
+    const loanMetadataKeypair = Keypair.generate()
     await program.methods
       .claimNft()
       .accounts({
-        loan: loan.publicKey,
+        masterLoan: masterLoanKeypair.publicKey,
+        masterLoanPda: masterLoanPDA,
         nftAccount: nftKeypair.publicKey,
-        loanPda: loanPDA,
         tokenAccount: aliceNftTokenAccount,
-        tokenProgram: TOKEN_PROGRAM_ID,
         owner: alice.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        loanMetadataPda: loanMetadataPDA,
+        tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .signers([alice])
+      .signers([alice, loanMetadataKeypair])
+      .preInstructions([
+        await program.account.loanMetadata.createInstruction(
+          loanMetadataKeypair
+        ),
+      ])
       .rpc()
     const tomNftTokenAccount = await createAccount(
       connection,
@@ -495,41 +520,67 @@ describe("test hui flow", () => {
       1
     )
     await printNft()
-    await program.methods
-      .claimLoan()
-      .accounts({
-        loan: loan.publicKey,
-        loanPda: loanPDA,
-        owner: tom.publicKey,
-        nftAccount: tomNftTokenAccount,
-        nftMint: nftMintKeypair.publicKey,
-        nftDestination: tom.publicKey,
-        vault: vaultAccount.address,
-        tokenAccount: tomUSDTAccount,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([tom])
-      .rpc()
-    await sleep()
-    await printTableAll()
-    await printNft()
+    // await program.methods
+    //   .claimLoan()
+    //   .accounts({
+    //     masterLoan: masterLoanKeypair.publicKey,
+    //     masterLoanPda: masterLoanPDA,
+    //     owner: tom.publicKey,
+    //     nftAccount: tomNftTokenAccount,
+    //     nftMint: nftMintKeypair.publicKey,
+    //     nftDestination: tom.publicKey,
+    //     vaultAccount: vaultAccount.address,
+    //     tokenAccount: tomUSDTAccount,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //   })
+    //   .signers([tom])
+    //   .rpc()
+    // await sleep()
+    // await printTableAll()
+    // await printNft()
 
-    await closeAccount(
-      connection,
-      alice,
-      aliceNftTokenAccount,
-      alice.publicKey,
-      alice
-    )
-
+    // await closeAccount(
+    //   connection,
+    //   alice,
+    //   aliceNftTokenAccount,
+    //   alice.publicKey,
+    //   alice
+    // )
+    //
+    // await program.methods
+    //   .closePool()
+    //   .accounts({
+    //     pool: masterLoan.publicKey,
+    //     owner: alice.publicKey,
+    //   })
+    //   .rpc()
+    // console.log("Closed pool account")
+    const a1 = Keypair.generate()
+    const a2 = Keypair.generate()
     await program.methods
-      .closePool()
+      .splitLoan(new BN(2))
       .accounts({
-        pool: pool.publicKey,
-        owner: alice.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
       })
+      .preInstructions([
+        await program.account.loanMetadata.createInstruction(a1),
+        await program.account.loanMetadata.createInstruction(a2),
+      ])
+      .remainingAccounts([
+        {
+          pubkey: a1.publicKey,
+          isWritable: false,
+          isSigner: false,
+        },
+        {
+          pubkey: a2.publicKey,
+          isWritable: false,
+          isSigner: false,
+        },
+      ])
+      .signers([a1, a2])
       .rpc()
-    console.log("Closed pool account")
   })
 })
 
