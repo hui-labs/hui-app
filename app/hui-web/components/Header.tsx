@@ -9,8 +9,8 @@ function Header() {
 
   return (
     <>
-      <div className="flex justify-between py-2 border-b max-w-screen-lg mx-auto">
-        <div className="w-[350px] flex justify-between">
+      <div className="flex justify-between py-4 border-b max-w-screen-lg mx-auto">
+        <div className="w-[430px] flex justify-between">
           <Link
             className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
             href="/lender"
