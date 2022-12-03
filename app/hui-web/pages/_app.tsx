@@ -14,7 +14,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <ConnectionProvider endpoint={process.env.NEXT_PUBLIC_RPC_URL!}>
-      <WalletProvider wallets={[phantomWallet]}>
+      <WalletProvider wallets={[phantomWallet]} autoConnect>
         <WalletModalProvider>
           <Component {...pageProps} />
         </WalletModalProvider>

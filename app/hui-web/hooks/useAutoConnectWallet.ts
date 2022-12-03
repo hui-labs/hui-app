@@ -1,12 +1,12 @@
 import { useWallet } from "@solana/wallet-adapter-react"
 import useAsyncEffect from "use-async-effect"
+import { PhantomWalletName } from "@solana/wallet-adapter-phantom"
 
 export const useAutoConnectWallet = () => {
-  const { wallet, connect } = useWallet()
+  const { wallet, select } = useWallet()
 
   useAsyncEffect(() => {
-    if (wallet) {
-      connect().catch(() => {})
-    }
+    select(null)
+    select(PhantomWalletName)
   }, [wallet])
 }
