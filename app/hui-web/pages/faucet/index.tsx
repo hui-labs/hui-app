@@ -11,6 +11,7 @@ import { useBalance } from "@/hooks/useBalance"
 import { useAccount } from "@/hooks/useAccount"
 import { useMintTo } from "@/hooks/useMintTo"
 import React, { useEffect } from "react"
+import Title from "antd/es/typography/Title"
 
 const Airdrop = () => {
   const workspace = useWorkspace()
@@ -39,30 +40,32 @@ const Airdrop = () => {
 
   return (
     <div className="mt-5">
-      <div className="my-3">
+      <div className="flex justify-between items-center my-3">
+        <p className="my-1">
+          USDC Balance:{" "}
+          <span>{usdcAccount.loading ? "Loading..." : usdcBalance}</span>
+        </p>
         <button
-          className="p-2 mr-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
+          className="p-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
           onClick={() => mintUSDCTo()}
         >
           {usdcState.loading ? "Loading..." : "Faucet +100 USDC"}
         </button>
+      </div>
+      <div className="flex justify-between items-center my-3">
+        <p className="my-1">
+          USDT Balance:{" "}
+          <span>{usdtAccount.loading ? "Loading..." : usdtBalance}</span>
+        </p>
         <button
-          className="p-2 mr-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
+          className="p-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
           onClick={() => mintUSDTTo()}
         >
           {usdtState.loading ? "Loading..." : "Faucet +100 USDT"}
         </button>
       </div>
       <div>
-        <p>
-          USDC Balance:{" "}
-          <span>{usdcAccount.loading ? "Loading..." : usdcBalance}</span>
-        </p>
-        <p>
-          USDT Balance:{" "}
-          <span>{usdtAccount.loading ? "Loading..." : usdtBalance}</span>
-        </p>
-        <p>
+        <p className="my-1">
           Balance <span>{balance.loading ? "Loading..." : solBalance}</span>
         </p>
       </div>
@@ -81,11 +84,11 @@ const SystemInfo = () => {
 
   return (
     <div>
-      <p>
+      <p className="my-1">
         System Fee USDC:{" "}
         <span>{usdcAccount.loading ? "Loading" : usdcBalance}</span>
       </p>
-      <p>
+      <p className="my-1">
         System Fee USDT:{" "}
         <span>{usdtAccount.loading ? "Loading" : usdtBalance}</span>
       </p>
@@ -95,10 +98,13 @@ const SystemInfo = () => {
 
 const FaucetPage: React.FC = () => {
   return (
-    <div className="px-6">
-      <Airdrop />
-      <hr className="my-2" />
-      <SystemInfo />
+    <div className="max-w-screen-lg mx-auto mt-5 px-6">
+      <Title level={2}>Faucet</Title>
+      <div className="p-20 shadow-lg max-w-screen-md mx-auto mt-10">
+        <Airdrop />
+        <hr className="my-3" />
+        <SystemInfo />
+      </div>
     </div>
   )
 }

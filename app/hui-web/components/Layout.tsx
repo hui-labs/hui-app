@@ -1,7 +1,7 @@
-import React, { Component, ReactElement, ReactNode } from "react"
+import React from "react"
 import Header from "@/components/Header"
 
-const Layout = ({ children }: React.Component) => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <Header />

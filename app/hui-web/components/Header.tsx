@@ -8,29 +8,32 @@ function Header() {
   const mounted = useIsMounted()
 
   return (
-    <div className="flex justify-between px-6 py-2 border-b drop-shadow">
-      <div className="w-1/4 flex justify-between">
-        <Link
-          className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
-          href="/lender"
-        >
-          Lender
-        </Link>
-        <Link
-          className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
-          href="/borrower"
-        >
-          Borrower
-        </Link>
-        <Link
-          className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
-          href="/faucet"
-        >
-          Faucet
-        </Link>
+    <>
+      <div className="flex justify-between py-2 border-b max-w-screen-lg mx-auto">
+        <div className="w-[350px] flex justify-between">
+          <Link
+            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            href="/lender"
+          >
+            Lender
+          </Link>
+          <Link
+            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            href="/borrower"
+          >
+            Borrower
+          </Link>
+          <Link
+            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            href="/faucet"
+          >
+            Faucet
+          </Link>
+        </div>
+        <div>{mounted && <WalletMultiButton className="bg-indigo-500" />}</div>
       </div>
-      <div>{mounted && <WalletMultiButton className="bg-indigo-500" />}</div>
-    </div>
+      <hr className="drop-shadow" />
+    </>
   )
 }
 
