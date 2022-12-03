@@ -25,6 +25,7 @@
     "antd": "^5.0.0",
     "axios": "^1.2.0",
     "bs58": "^5.0.0",
+    "constants": "^0.0.2",
     "eslint": "8.28.0",
     "eslint-config-next": "13.0.4",
     "immer": "^9.0.16",

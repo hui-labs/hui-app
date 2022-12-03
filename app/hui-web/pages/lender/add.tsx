@@ -21,10 +21,7 @@ import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { SystemFeeUSDTPubKey, USDCPubKey, USDTPubKey } from "@/common/constants"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
-import useIsMounted from "@/hooks/useIsMounted"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Option } = Select
 
@@ -33,8 +30,6 @@ const DEFAULT_DECIMALS = 10 ** 9
 const DEFAULT_PERCENTAGE_DECIMALS = 10 ** 4
 
 const AddPool: React.FC = () => {
-  useAutoConnectWallet()
-  const mounted = useIsMounted()
   const [form] = Form.useForm()
   const workspace = useWorkspace()
   const usdcMint = useGetMint(workspace, USDCPubKey)
@@ -72,7 +67,11 @@ const AddPool: React.FC = () => {
         [
           "topUpAmount",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "Please type numeric values",
+            },
             {
               type: "number",
               max: currentBalance,
@@ -84,7 +83,11 @@ const AddPool: React.FC = () => {
         [
           "interestRate",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "Please type numeric values",
+            },
             {
               type: "number",
               max: 100,
@@ -100,7 +103,11 @@ const AddPool: React.FC = () => {
         [
           "maxLoanAmount",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "Please type numeric values",
+            },
             {
               type: "number",
               max: topUpAmount,
@@ -116,7 +123,11 @@ const AddPool: React.FC = () => {
         [
           "minLoanAmount",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "Please type numeric values",
+            },
             {
               type: "number",
               max: topUpAmount,
@@ -132,7 +143,11 @@ const AddPool: React.FC = () => {
         [
           "maxLoanThreshold",
           [
-            { required: true },
+            {
+              required: true,
+              type: "number",
+              message: "Please type numeric values",
+            },
             {
               type: "number",
               max: 90,
@@ -240,10 +255,10 @@ const AddPool: React.FC = () => {
   }
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
+    <div className="mx-auto w-[600px] mt-16 px-20 py-10 shadow-lg">
+      <h1 className="font-bold my-5 text-center text-3xl">Create Pool</h1>
       <Row>
-        <Col span={6}>
+        <Col span={24}>
           <Form
             layout="vertical"
             form={form}
@@ -259,11 +274,10 @@ const AddPool: React.FC = () => {
                 placeholder="Select a option and change input text above"
                 allowClear
               >
-                <Option value="usdt">USDT</Option>
-                <Option value="usdc">USDC</Option>
+                <Option value="usdt">{`USDT __ (${usdtBalance})`}</Option>
+                <Option value="usdc">{`USDC __ (${usdcBalance})`}</Option>
               </Select>
             </Form.Item>
-            <p>{`${currentBalance}`}</p>
 
             <Form.Item
               name="collateralMint"
@@ -287,18 +301,20 @@ const AddPool: React.FC = () => {
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
 
-            <Form.Item label="Estimated Loan Fee">
-              <span className="ant-form-text">
-                {estimatedLoanCommissionFee.toFixed(2)}{" "}
-                {vaultMint?.toUpperCase()}
-              </span>
-            </Form.Item>
+            <div className="flex justify-between">
+              <Form.Item label="Estimated Loan Fee">
+                <span className="ant-form-text">
+                  {estimatedLoanCommissionFee.toFixed(2)}{" "}
+                  {vaultMint?.toUpperCase()}
+                </span>
+              </Form.Item>
 
-            <Form.Item label="Total Top Up Amount">
-              <span className="ant-form-text">
-                {totalTopUpAmount.toFixed(2)} {vaultMint?.toUpperCase()}
-              </span>
-            </Form.Item>
+              <Form.Item label="Total Top Up Amount">
+                <span className="ant-form-text">
+                  {totalTopUpAmount.toFixed(2)} {vaultMint?.toUpperCase()}
+                </span>
+              </Form.Item>
+            </div>
 
             <Form.Item
               name="interestRate"
@@ -308,21 +324,23 @@ const AddPool: React.FC = () => {
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
 
-            <Form.Item
-              name="maxLoanAmount"
-              label="Max Loan Amount"
-              rules={validateRules("maxLoanAmount")}
-            >
-              <InputNumber style={{ width: "100%" }} />
-            </Form.Item>
+            <div className="flex justify-between">
+              <Form.Item
+                name="maxLoanAmount"
+                label="Max Loan Amount"
+                rules={validateRules("maxLoanAmount")}
+              >
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
 
-            <Form.Item
-              name="minLoanAmount"
-              label="Min Loan Amount"
-              rules={validateRules("minLoanAmount")}
-            >
-              <InputNumber style={{ width: "100%" }} />
-            </Form.Item>
+              <Form.Item
+                name="minLoanAmount"
+                label="Min Loan Amount"
+                rules={validateRules("minLoanAmount")}
+              >
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
+            </div>
 
             <Form.Item
               name="maxLoanThreshold"
@@ -330,14 +348,18 @@ const AddPool: React.FC = () => {
               rules={validateRules("maxLoanThreshold")}
             >
               <InputNumber
-                // formatter={(value) => `${value}%`}
+                formatter={(value) => `${value}%`}
                 style={{ width: "100%" }}
               />
             </Form.Item>
 
             <Form.Item>
               <Space>
-                <Button type="primary" htmlType="submit">
+                <Button
+                  className="bg-indigo-500"
+                  type="primary"
+                  htmlType="submit"
+                >
                   Submit
                 </Button>
 

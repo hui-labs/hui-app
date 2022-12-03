@@ -1,5 +1,5 @@
 import idl from "@/contracts/idl/hui.json"
-import { Connection, PublicKey } from "@solana/web3.js"
+import { Connection } from "@solana/web3.js"
 import { AnchorWallet, useAnchorWallet } from "@solana/wallet-adapter-react"
 import { AnchorProvider, Program } from "@project-serum/anchor"
 import { Hui } from "@/contracts/types/hui"

@@ -9,7 +9,6 @@ import useAsyncEffect from "use-async-effect"
 import { formatUnits } from "@ethersproject/units"
 import { DataType } from "@/pages/lender/index"
 import { ColumnsType } from "antd/es/table"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 import { PublicKey } from "@solana/web3.js"
 
 const columns: ColumnsType<DataType & { borrower: PublicKey }> = [
@@ -88,7 +87,6 @@ const columns: ColumnsType<DataType & { borrower: PublicKey }> = [
 ]
 
 const LoansOfPool: React.FC = () => {
-  useAutoConnectWallet()
   const router = useRouter()
   const { id } = router.query
   const mounted = useIsMounted()
