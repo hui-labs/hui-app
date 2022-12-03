@@ -18,16 +18,19 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import { SystemFeeUSDTPubKey, USDCPubKey, USDTPubKey } from "@/common/constants"
+import {
+  DEFAULT_DECIMALS,
+  DEFAULT_PERCENTAGE_DECIMALS,
+  SYSTEM_LOAN_COMMISSION_FEE,
+  SystemFeeUSDTPubKey,
+  USDCPubKey,
+  USDTPubKey,
+} from "@/common/constants"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Option } = Select
-
-const SYSTEM_LOAN_COMMISSION_FEE = 1_000_000
-const DEFAULT_DECIMALS = 10 ** 9
-const DEFAULT_PERCENTAGE_DECIMALS = 10 ** 4
 
 const AddPool: React.FC = () => {
   const [form] = Form.useForm()
@@ -216,7 +219,10 @@ const AddPool: React.FC = () => {
               ),
             },
             new BN(topUpAmount * DEFAULT_DECIMALS),
-            new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS)
+            new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS),
+            {
+              ["oneMonth"]: {},
+            }
           )
           .accounts({
             pool: pool.publicKey,
@@ -246,7 +252,7 @@ const AddPool: React.FC = () => {
     form.setFieldsValue({
       vaultMint: "usdt",
       collateralMint: "usdc",
-      topUpAmount: 20,
+      topUpAmount: 100,
       interestRate: 10,
       maxLoanAmount: 100,
       minLoanAmount: 50,
@@ -347,10 +353,7 @@ const AddPool: React.FC = () => {
               label="Max Loan Threshold"
               rules={validateRules("maxLoanThreshold")}
             >
-              <InputNumber
-                formatter={(value) => `${value}%`}
-                style={{ width: "100%" }}
-              />
+              <InputNumber style={{ width: "100%" }} />
             </Form.Item>
 
             <Form.Item>

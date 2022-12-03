@@ -304,12 +304,6 @@ const LenderPage: React.FC = () => {
         <Title level={2}>Lender</Title>
         <div className="h-full">
           <button
-            className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800"
-            onClick={onLoadData}
-          >
-            Load Data
-          </button>
-          <button
             className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800 ml-5"
             onClick={() => router.push("/lender/add")}
           >

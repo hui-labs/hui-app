@@ -11,8 +11,7 @@
     "@metaplex-foundation/js": "^0.17.6",
     "@project-serum/anchor": "^0.25.0",
     "@solana/spl-token": "^0.3.6",
-    "bs58": "^5.0.0",
-    "constants": "^0.0.2"
+    "bs58": "^5.0.0"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",

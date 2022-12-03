@@ -11,7 +11,9 @@ import { useBalance } from "@/hooks/useBalance"
 import { useAccount } from "@/hooks/useAccount"
 import { useMintTo } from "@/hooks/useMintTo"
 import React, { useEffect } from "react"
-import Title from "antd/es/typography/Title"
+import { Typography } from "antd"
+
+const { Title } = Typography
 
 const Airdrop = () => {
   const workspace = useWorkspace()

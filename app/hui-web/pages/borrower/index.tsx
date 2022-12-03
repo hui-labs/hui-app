@@ -15,7 +15,11 @@ import {
 } from "antd"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import type { ColumnsType } from "antd/es/table"
-import { SystemFeeUSDTPubKey, TOKEN_LISTS } from "@/common/constants"
+import {
+  DEFAULT_DECIMALS,
+  SystemFeeUSDTPubKey,
+  TOKEN_LISTS,
+} from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
@@ -206,14 +210,11 @@ const BorrowerPage: React.FC = () => {
   }
 
   const handleSubmit = async (data: LoanForm) => {
-    console.log(data)
     if (data && selectedPool && workspace.value) {
-      const loanTerm = data.loanTerm
       const loanAmount = data?.loanAmount
 
       setConfirmLoading(true)
       const pool = availablePools.find((v) => v.key === selectedPool.toBase58())
-      console.log(pool)
       if (pool) {
         const { wallet, connection } = workspace.value
         const depositorMint = await getMint(connection, pool.collateralMint)
@@ -233,7 +234,6 @@ const BorrowerPage: React.FC = () => {
 
         await onCreateLoan(
           loanAmount,
-          loanTerm,
           selectedPool,
           depositorAccount.address,
           receiverAccount.address
@@ -248,7 +248,6 @@ const BorrowerPage: React.FC = () => {
   }
   const onCreateLoan = async (
     amount: number,
-    loanTerm: string,
     poolPubkey: PublicKey,
     tokenDepositorPubkey: PublicKey,
     tokenReceiverPubkey: PublicKey
@@ -279,9 +278,7 @@ const BorrowerPage: React.FC = () => {
       const nftAccountKeypair = Keypair.generate()
 
       await program.methods
-        .initLoan(new BN(amount * 10 ** 9), {
-          [loanTerm]: {},
-        })
+        .initLoan(new BN(amount * DEFAULT_DECIMALS))
         .accounts({
           vaultAccount: vaultKeypair.publicKey,
           vaultMint: poolAccount.vaultMint,

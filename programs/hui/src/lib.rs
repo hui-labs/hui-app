@@ -8,7 +8,7 @@ use crate::curve::{ConstantProduct, LoanTerm};
 mod curve;
 mod errors;
 
-declare_id!("SQZKnHyyYY6TGFDCKXhH6zFtm9PL7htFttgqwyiTrZT");
+declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 
 #[program]
 pub mod hui {
