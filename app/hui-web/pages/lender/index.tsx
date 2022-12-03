@@ -96,13 +96,21 @@ const columns: ColumnsType<DataType> = [
         return (
           <Space>
             <Button
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation()
                 onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-              }
+              }}
             >
               Withdraw
             </Button>
-            <Button danger type="primary" onClick={() => onClose()}>
+            <Button
+              danger
+              type="primary"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+            >
               Close
             </Button>
           </Space>
