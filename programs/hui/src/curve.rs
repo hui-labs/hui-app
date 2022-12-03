@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::AppError;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Copy, Clone, PartialEq, Eq)]
 pub enum LoanTerm {
     TwoMinutes,
     OneMonth,
