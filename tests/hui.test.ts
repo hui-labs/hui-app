@@ -176,9 +176,9 @@ describe("test hui flow", () => {
     const tx = await program.methods
       .initPool(
         {
-          interestRate: new BN(10), // 0.001
+          interestRate: new BN(10 * 10 ** 4), // 0.001
           maxLoanAmount: new BN(100 * DECIMALS),
-          maxLoanThreshold: new BN(80),
+          maxLoanThreshold: new BN(80 * 10 ** 4),
           minLoanAmount: new BN(10 * DECIMALS),
         },
         topUpAmount,
@@ -186,7 +186,7 @@ describe("test hui flow", () => {
       )
       .accounts({
         pool: poolKeypair.publicKey,
-        pda: poolPDA,
+        poolPda: poolPDA,
         vaultAccount: poolVaultKeypair.publicKey,
         vaultMint: usdtMintPubkey,
         collateralMint: usdcMintPubkey,
@@ -556,31 +556,31 @@ describe("test hui flow", () => {
     //   })
     //   .rpc()
     // console.log("Closed pool account")
-    const a1 = Keypair.generate()
-    const a2 = Keypair.generate()
-    await program.methods
-      .splitLoan(new BN(2))
-      .accounts({
-        loanMetadata: loanMetadataKeypair.publicKey,
-      })
-      .preInstructions([
-        await program.account.loanMetadata.createInstruction(a1),
-        await program.account.loanMetadata.createInstruction(a2),
-      ])
-      .remainingAccounts([
-        {
-          pubkey: a1.publicKey,
-          isWritable: false,
-          isSigner: false,
-        },
-        {
-          pubkey: a2.publicKey,
-          isWritable: false,
-          isSigner: false,
-        },
-      ])
-      .signers([a1, a2])
-      .rpc()
+    // const a1 = Keypair.generate()
+    // const a2 = Keypair.generate()
+    // await program.methods
+    //   .splitLoan(new BN(2))
+    //   .accounts({
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //   })
+    //   .preInstructions([
+    //     await program.account.loanMetadata.createInstruction(a1),
+    //     await program.account.loanMetadata.createInstruction(a2),
+    //   ])
+    //   .remainingAccounts([
+    //     {
+    //       pubkey: a1.publicKey,
+    //       isWritable: true,
+    //       isSigner: false,
+    //     },
+    //     {
+    //       pubkey: a2.publicKey,
+    //       isWritable: true,
+    //       isSigner: false,
+    //     },
+    //   ])
+    //   .signers([a1, a2])
+    //   .rpc()
   })
 })
 

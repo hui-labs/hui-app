@@ -4,7 +4,6 @@ use anchor_spl::token;
 use anchor_spl::token::{Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use crate::curve::{ConstantProduct, LoanTerm};
-use crate::curve::to_u64;
 
 mod curve;
 mod errors;
@@ -15,18 +14,10 @@ declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 pub mod hui {
     use super::*;
 
-    // 0.1%
-    const SYSTEM_LOAN_FEE: u64 = 1_000_000;
-    // 0.1%
-    const SYSTEM_TRANSFER_FEE: u64 = 1_000_000;
-
-    // pub fn init_hui(ctx: Context<InitHui>) -> Result<()> {
-    //     let hui = &mut ctx.accounts.hui;
-    //     hui.loan_fee = 1_000_000;
-    //     hui.transfer_fee = 1_000_000;
-    //
-    //     Ok(())
-    // }
+    // 0.01%
+    const SYSTEM_LOAN_COMMISSION_FEE: u64 = 100;
+    // 0.01%
+    const SYSTEM_TRANSFER_COMMISSION_FEE: u64 = 100;
 
     pub fn init_pool(
         ctx: Context<InitPool>,
@@ -35,18 +26,20 @@ pub mod hui {
         fee: u64,
     ) -> Result<()> {
         let curve = ConstantProduct;
-        let required_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
+        let required_fee = curve.calc_percentage(amount, SYSTEM_LOAN_COMMISSION_FEE)?;
         require!(amount != 0, AppError::AmountIsZero);
-        require!(fee == required_fee, AppError::FeeNotEnough);
+        require!(fee >= required_fee, AppError::FeeNotEnough);
 
         let pool = &mut ctx.accounts.pool;
+        let clock = Clock::get().unwrap();
+        pool.created_at = clock.unix_timestamp;
         pool.vault_account = ctx.accounts.vault_account.key();
         pool.vault_mint = ctx.accounts.vault_account.mint.key();
         pool.collateral_mint = ctx.accounts.collateral_mint.key();
         pool.pool_fee_account = ctx.accounts.system_fee_account.key();
         pool.fees = Fees {
-            loan_fee: SYSTEM_LOAN_FEE,
-            transfer_fee: SYSTEM_TRANSFER_FEE,
+            loan_fee: SYSTEM_LOAN_COMMISSION_FEE,
+            transfer_fee: SYSTEM_TRANSFER_COMMISSION_FEE,
         };
         pool.interest_rate = config.interest_rate;
         pool.max_loan_amount = config.max_loan_amount;
@@ -63,7 +56,7 @@ pub mod hui {
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64, fee: u64) -> Result<()> {
         let curve = ConstantProduct;
-        let required_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
+        let required_fee = curve.calc_percentage(amount, SYSTEM_LOAN_COMMISSION_FEE)?;
         require!(amount != 0, AppError::AmountIsZero);
         require!(fee >= required_fee, AppError::FeeNotEnough);
 
@@ -78,6 +71,8 @@ pub mod hui {
         let pool = &ctx.accounts.pool;
         let master_loan = &mut ctx.accounts.master_loan;
 
+        let clock = Clock::get().unwrap();
+        master_loan.created_at = clock.unix_timestamp;
         master_loan.interest_rate = pool.interest_rate.clone();
         master_loan.pool = pool.to_account_info().key().clone();
         master_loan.owner = ctx.accounts.loan_pda.key().clone();
@@ -90,8 +85,8 @@ pub mod hui {
         master_loan.collateral_mint = ctx.accounts.collateral_mint.key().clone();
         master_loan.loan_term = loan_term;
         master_loan.fees = Fees {
-            loan_fee: SYSTEM_LOAN_FEE,
-            transfer_fee: SYSTEM_TRANSFER_FEE,
+            loan_fee: SYSTEM_LOAN_COMMISSION_FEE,
+            transfer_fee: SYSTEM_TRANSFER_COMMISSION_FEE,
         };
         master_loan.min_loan_amount = pool.min_loan_amount.clone();
         master_loan.max_loan_amount = pool.max_loan_amount.clone();
@@ -102,8 +97,8 @@ pub mod hui {
         // amount >= min_loan
         // && amount <= current_pool_amount - loan_fee
         // && amount <= max_loan
-        let required_fee = curve.calc_loan_fee(SYSTEM_LOAN_FEE, amount);
-        let received_amount = curve.calc_max_loan_amount(pool.max_loan_threshold, amount)?;
+        let required_fee = curve.calc_percentage(amount, SYSTEM_LOAN_COMMISSION_FEE)?;
+        let received_amount = curve.calc_percentage(amount, pool.max_loan_threshold)?;
         let pool_vault_amount = ctx.accounts.pool_vault.amount;
         require!(amount >= pool.min_loan_amount, AppError::AmountTooSmall);
         require!(amount <= pool.max_loan_amount, AppError::AmountTooLarge);
@@ -149,6 +144,7 @@ pub mod hui {
         Ok(())
     }
 
+    // WARNING: only for testing, will be disable on production
     pub fn close_pool(ctx: Context<ClosePool>) -> Result<()> {
         let data_account = &ctx.accounts.pool;
         let owner_info = ctx.accounts.owner.to_account_info();
@@ -159,7 +155,7 @@ pub mod hui {
         Ok(())
     }
 
-    // Only for testing
+    // WARNING: only for testing, will be disable on production
     pub fn close_loan(ctx: Context<CloseLoan>) -> Result<()> {
         let data_account = &ctx.accounts.loan;
         let owner_info = ctx.accounts.owner.to_account_info();
@@ -223,11 +219,11 @@ pub mod hui {
     pub fn final_settlement(ctx: Context<FinalSettlement>, amount: u64) -> Result<()> {
         let required_amount = ctx.accounts.loan.received_amount;
         let curve = ConstantProduct;
-        let interest_amount = to_u64(curve.calc_interest_amount(
+        let interest_amount = curve.calc_interest_amount(
             ctx.accounts.loan.received_amount,
             ctx.accounts.loan.interest_rate,
             ctx.accounts.loan.loan_term.clone(),
-        )?)?;
+        )?;
         require_gte!(amount, required_amount + interest_amount);
         let signer_seeds = ctx
             .accounts
@@ -269,16 +265,6 @@ pub mod hui {
 
         Ok(())
     }
-
-    pub fn split_loan(ctx: Context<SplitLoan>, number: u64) -> Result<()> {
-        let splitted_amount = ctx.accounts.loan_metadata.amount / number;
-        for account in ctx.remaining_accounts.iter() {
-            let mut a: Account<LoanMetadata> = Account::try_from(account)?;
-            a.amount = splitted_amount;
-        }
-
-        Ok(())
-    }
 }
 
 #[error_code]
@@ -298,25 +284,6 @@ pub enum AppError {
     #[msg("NFT has already claimed")]
     NftAlreadyClaimed,
 }
-
-// const DISCRIMINATOR_SIZE: usize = 8;
-//
-// #[account]
-// pub struct Hui {
-//     loan_fee: u64,
-//     transfer_fee: u64,
-// }
-//
-// impl Hui {
-//     pub const MAX_SIZE: usize = DISCRIMINATOR_SIZE + 8 + 8;
-// }
-//
-// #[derive(Accounts)]
-// pub struct InitHui<'info> {
-//     #[account(init, payer = owner, space = Hui::MAX_SIZE)]
-//     hui: Account<'info, Hui>,
-//     owner: Signer<'info>,
-// }
 
 #[derive(Accounts)]
 pub struct CloseLoan<'info> {
@@ -539,6 +506,7 @@ pub struct MasterLoan {
     fee: u64,
     received_amount: u64,
     status: LoanStatus,
+    created_at: i64,
 }
 
 impl MasterLoan {
@@ -699,6 +667,7 @@ pub struct Pool {
     pub max_loan_amount: u64,
     pub max_loan_threshold: u64,
     pub status: PoolStatus,
+    pub created_at: i64,
 }
 
 impl Pool {
@@ -729,8 +698,8 @@ pub struct InitPool<'info> {
     #[account(zero)]
     pub pool: Box<Account<'info, Pool>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
-    pub pda: AccountInfo<'info>,
-    #[account(init, payer = depositor, token::mint = vault_mint, token::authority = pda)]
+    pub pool_pda: AccountInfo<'info>,
+    #[account(init, payer = depositor, token::mint = vault_mint, token::authority = pool_pda)]
     pub vault_account: Box<Account<'info, TokenAccount>>,
     pub vault_mint: Box<Account<'info, Mint>>,
     pub collateral_mint: Box<Account<'info, Mint>>,
