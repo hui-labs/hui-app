@@ -6,7 +6,6 @@ export const useAutoConnectWallet = () => {
   const { wallet, select } = useWallet()
 
   useAsyncEffect(() => {
-    select(null)
     select(PhantomWalletName)
   }, [wallet])
 }
