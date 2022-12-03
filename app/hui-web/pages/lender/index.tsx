@@ -3,6 +3,7 @@ import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { programId, TOKEN_LISTS } from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
@@ -94,13 +95,21 @@ const columns: ColumnsType<DataType> = [
         return (
           <Space>
             <Button
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation()
                 onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-              }
+              }}
             >
               Withdraw
             </Button>
-            <Button danger type="primary" onClick={() => onClose()}>
+            <Button
+              danger
+              type="primary"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+            >
               Close
             </Button>
           </Space>
@@ -293,24 +302,19 @@ const LenderPage: React.FC = () => {
   }
 
   return (
-    <div className="px-6 mt-5">
+    <div>
+      <div>{mounted && <WalletMultiButton />}</div>
       <Title level={2}>Lender</Title>
       <Space wrap>
-        <button
-          className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800"
-          onClick={() => router.push("/lender/add")}
-        >
+        <Button type="primary" onClick={() => router.push("/lender/add")}>
           Create Pool
-        </button>
-        <button
-          className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800"
-          onClick={onLoadData}
-        >
+        </Button>
+        <Button type="primary" onClick={onLoadData}>
           Load Data
-        </button>
+        </Button>
       </Space>
 
-      <div className="mt-5">
+      <div>
         <Title level={3}>Your Pools</Title>
         <Row>
           <Col span={24}>

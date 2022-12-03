@@ -1,6 +1,6 @@
 {
   "name": "hui-app",
-  "license": "Apache License",
+  "license": "Apache-2.0",
   "private": false,
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",

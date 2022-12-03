@@ -14,11 +14,7 @@ import {
 } from "antd"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import type { ColumnsType } from "antd/es/table"
-import {
-  SystemFeeUSDTPubKey,
-  TOKEN_LISTS,
-  USDTPubKey,
-} from "@/common/constants"
+import { SystemFeeUSDTPubKey, TOKEN_LISTS } from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
@@ -172,6 +168,11 @@ const loanColumns: ColumnsType<LoanDataType> = [
     key: "maxLoanThreshold",
   },
   {
+    title: "loan",
+    dataIndex: "receivedAmount",
+    key: "receivedAmount",
+  },
+  {
     title: "Action",
     dataIndex: "",
     key: "x",
@@ -197,7 +198,6 @@ const BorrowerPage: React.FC = () => {
   const formRef = useRef<FormInstance<Values> | null>(null)
 
   const showModal = () => {
-    console.log("zzz")
     setOpen(true)
   }
 
@@ -218,7 +218,7 @@ const BorrowerPage: React.FC = () => {
           depositorMint
         )
 
-        const receiverMint = await getMint(connection, USDTPubKey)
+        const receiverMint = await getMint(connection, pool.vaultMint)
         const receiverAccount = await getOrCreateAssociatedTokenAccount(
           workspace.value,
           wallet.publicKey,
@@ -227,7 +227,7 @@ const BorrowerPage: React.FC = () => {
         console.log(formatUnits(receiverAccount.amount.toString(), 9))
 
         await onCreateLoan(
-          loanAmount.toString(),
+          loanAmount,
           loanTerm,
           selectedPool,
           depositorAccount.address,
@@ -242,7 +242,7 @@ const BorrowerPage: React.FC = () => {
     setOpen(false)
   }
   const onCreateLoan = async (
-    amount: string,
+    amount: number,
     loanTerm: string,
     poolPubkey: PublicKey,
     tokenDepositorPubkey: PublicKey,
@@ -253,13 +253,18 @@ const BorrowerPage: React.FC = () => {
       const poolAccount = await program.account.pool.fetch(poolPubkey)
 
       const [poolPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("pool"), poolAccount.vaultMint.toBuffer()],
+        [
+          Buffer.from("pool"),
+          poolAccount.owner.toBuffer(),
+          poolAccount.collateralMint.toBuffer(),
+          poolAccount.vaultMint.toBuffer(),
+        ],
         program.programId
       )
 
-      const loan = web3.Keypair.generate()
+      const masterLoan = web3.Keypair.generate()
       const [loanPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("loan"), poolPubkey.toBuffer()],
+        [Buffer.from("masterLoan"), poolPubkey.toBuffer()],
         program.programId
       )
 
@@ -267,34 +272,38 @@ const BorrowerPage: React.FC = () => {
       const collateralAccountKeypair = Keypair.generate()
       const nftMintKeypair = Keypair.generate()
       const nftAccountKeypair = Keypair.generate()
-      const ins = await program.account.loan.createInstruction(loan)
+
       await program.methods
-        .initLoan(new BN(100 * 10 ** 9), {
-          oneMonth: {},
+        .initLoan(new BN(amount * 10 ** 9), {
+          [loanTerm]: {},
         })
         .accounts({
           vaultAccount: vaultKeypair.publicKey,
           vaultMint: poolAccount.vaultMint,
           collateralMint: poolAccount.collateralMint,
           collateralAccount: collateralAccountKeypair.publicKey,
-          rent: web3.SYSVAR_RENT_PUBKEY,
           nftMint: nftMintKeypair.publicKey,
           nftAccount: nftAccountKeypair.publicKey,
-          loan: loan.publicKey,
+          masterLoan: masterLoan.publicKey,
           pool: poolPubkey,
           poolPda: poolPDA,
           loanPda: loanPDA,
-          tokenProgram: TOKEN_PROGRAM_ID,
           poolVault: poolAccount.vaultAccount,
           borrower: wallet.publicKey,
-          systemProgram: SystemProgram.programId,
           systemFeeAccount: SystemFeeUSDTPubKey,
+
           tokenDepositor: tokenDepositorPubkey,
           tokenReceiver: tokenReceiverPubkey,
+
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: web3.SYSVAR_RENT_PUBKEY,
         })
-        .preInstructions([ins])
+        .preInstructions([
+          await program.account.masterLoan.createInstruction(masterLoan),
+        ])
         .signers([
-          loan,
+          masterLoan,
           nftMintKeypair,
           nftAccountKeypair,
           collateralAccountKeypair,
@@ -309,12 +318,13 @@ const BorrowerPage: React.FC = () => {
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
-      const loans = await program.account.loan.all()
+      const loans = await program.account.masterLoan.all()
+      // console.log("all loan", loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
           owner: account.owner,
-          isAdmin: account.owner.toBase58() === wallet.publicKey.toBase58(),
+          isAdmin: account.borrower.toBase58() === wallet.publicKey.toBase58(),
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
@@ -325,6 +335,10 @@ const BorrowerPage: React.FC = () => {
           ),
           maxLoanAmount: formatUnits(
             account.maxLoanAmount.toString(),
+            decimals
+          ),
+          receivedAmount: formatUnits(
+            account.receivedAmount.toString(),
             decimals
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
@@ -360,7 +374,7 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [LoanDataType[], LoanDataType[]]
       )
 
-      setMyLoans(data[1])
+      setMyLoans(data[0])
     }
   }, [workspace.value])
 
