@@ -25,6 +25,12 @@ function Header() {
           </Link>
           <Link
             className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            href="/market"
+          >
+            Market
+          </Link>
+          <Link
+            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
             href="/faucet"
           >
             Faucet

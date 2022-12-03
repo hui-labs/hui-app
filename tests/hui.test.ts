@@ -439,35 +439,44 @@ describe("test hui flow", () => {
       SystemProgram.programId
     )
     // Claims
-    const aliceNftTokenAccount = await createAccount(
-      connection,
-      alice,
-      nftMintKeypair.publicKey,
-      alice.publicKey,
-      undefined,
-      undefined,
-      TOKEN_PROGRAM_ID
-    )
+    // const aliceNftTokenAccount = await createAccount(
+    //   connection,
+    //   alice,
+    //   nftMintKeypair.publicKey,
+    //   alice.publicKey,
+    //   undefined,
+    //   undefined,
+    //   TOKEN_PROGRAM_ID
+    // )
+    const aliceNftTokenAccountKeypair = Keypair.generate()
     const loanMetadataKeypair = Keypair.generate()
     await program.methods
       .claimNft()
       .accounts({
         masterLoan: masterLoanKeypair.publicKey,
         masterLoanPda: masterLoanPDA,
+        nftMint: nftMintKeypair.publicKey,
         nftAccount: nftKeypair.publicKey,
-        tokenAccount: aliceNftTokenAccount,
+        claimAccount: aliceNftTokenAccountKeypair.publicKey,
         owner: alice.publicKey,
         loanMetadata: loanMetadataKeypair.publicKey,
         loanMetadataPda: loanMetadataPDA,
         tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
       })
-      .signers([alice, loanMetadataKeypair])
+      .signers([alice, loanMetadataKeypair, aliceNftTokenAccountKeypair])
       .preInstructions([
         await program.account.loanMetadata.createInstruction(
           loanMetadataKeypair
         ),
       ])
       .rpc()
+    await sleep()
+    const masterLoan = await program.account.masterLoan.fetch(
+      masterLoanKeypair.publicKey
+    )
+    console.log("isClaimed", masterLoan.isClaimed)
 
     await program.methods
       .finalSettlement(new BN((80 + 5.99999976) * DECIMALS))
@@ -500,7 +509,7 @@ describe("test hui flow", () => {
     console.table([
       {
         name: "Alice",
-        nft: await tryGetAccountBalance(aliceNftTokenAccount),
+        nft: await tryGetAccountBalance(aliceNftTokenAccountKeypair.publicKey),
       },
     ])
     // Transfer NFT
@@ -536,7 +545,7 @@ describe("test hui flow", () => {
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
-        nftAccount: aliceNftTokenAccount,
+        nftAccount: aliceNftTokenAccountKeypair.publicKey,
         nftMint: nftMintKeypair.publicKey,
         itemAccount: itemAccountKeypair.publicKey,
         itemForSale: itemForSaleKeypair.publicKey,
@@ -562,7 +571,7 @@ describe("test hui flow", () => {
       .accounts({
         nftMint: nftMintKeypair.publicKey,
         loanMetadata: loanMetadataKeypair.publicKey,
-        nftAccount: aliceNftTokenAccount,
+        nftAccount: aliceNftTokenAccountKeypair.publicKey,
         rent: web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,

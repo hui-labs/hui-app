@@ -262,7 +262,7 @@ export type Hui = {
       "accounts": [
         {
           "name": "masterLoan",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -277,7 +277,7 @@ export type Hui = {
         },
         {
           "name": "owner",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -286,8 +286,18 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "tokenAccount",
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "claimAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "masterLoanPda",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -296,7 +306,12 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "masterLoanPda",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -777,6 +792,14 @@ export type Hui = {
           },
           {
             "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {
@@ -1297,7 +1320,7 @@ export const IDL: Hui = {
       "accounts": [
         {
           "name": "masterLoan",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1312,7 +1335,7 @@ export const IDL: Hui = {
         },
         {
           "name": "owner",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
@@ -1321,8 +1344,18 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "tokenAccount",
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "claimAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "masterLoanPda",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1331,7 +1364,12 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "masterLoanPda",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -1812,6 +1850,14 @@ export const IDL: Hui = {
           },
           {
             "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {

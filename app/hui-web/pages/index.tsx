@@ -205,7 +205,7 @@ const LenderPage: React.FC = () => {
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
-          status: Object.keys(account.status)[0],
+          status: "",
           availableAmount: "0",
           minLoanAmount: formatUnits(
             account.minLoanAmount.toString(),

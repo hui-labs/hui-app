@@ -93,6 +93,8 @@ pub mod hui {
         master_loan.min_loan_amount = pool.min_loan_amount.clone();
         master_loan.max_loan_amount = pool.max_loan_amount.clone();
         master_loan.max_loan_threshold = pool.max_loan_threshold.clone();
+        master_loan.nft_mint = ctx.accounts.nft_mint.key().clone();
+        master_loan.nft_account = ctx.accounts.nft_account.key().clone();
 
         // Transfer to the borrower
         // amount >= min_loan
@@ -179,7 +181,7 @@ pub mod hui {
         loan_metadata.created_at = clock.unix_timestamp;
         loan_metadata.account = ctx.accounts.nft_account.key().clone();
         loan_metadata.mint = ctx.accounts.nft_account.mint.key().clone();
-        loan_metadata.is_claimed = false;
+        loan_metadata.is_claimed = true;
 
         let signer_seeds = ctx
             .accounts
@@ -531,26 +533,31 @@ pub struct LoanMetadata {
 
 #[derive(Accounts)]
 pub struct ClaimNft<'info> {
+    #[account(mut)]
     pub master_loan: Box<Account<'info, MasterLoan>>,
     #[account(zero)]
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub loan_metadata_pda: AccountInfo<'info>,
+    #[account(mut)]
     pub owner: Signer<'info>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
-    #[account(mut, constraint = token_account.owner == master_loan.creator)]
-    pub token_account: Box<Account<'info, TokenAccount>>,
-    pub token_program: Program<'info, Token>,
+    pub nft_mint: Box<Account<'info, Mint>>,
+    #[account(init, payer = owner, token::mint = nft_mint, token::authority = owner)]
+    pub claim_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub master_loan_pda: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 impl<'info> ClaimNft<'info> {
     fn to_transfer_nft_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.nft_account.to_account_info().clone(),
-            to: self.token_account.to_account_info().clone(),
+            to: self.claim_account.to_account_info().clone(),
             authority: self.master_loan_pda.clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
@@ -715,6 +722,8 @@ pub struct MasterLoan {
     collateral_account: Pubkey,
     vault_account: Pubkey,
     vault_mint: Pubkey,
+    nft_mint: Pubkey,
+    nft_account: Pubkey,
     interest_rate: u64,
     loan_term: LoanTerm,
     fees: Fees,
