@@ -3,11 +3,11 @@ import {
   Button,
   Col,
   Form,
+  FormRule,
   InputNumber,
   Row,
   Select,
   Space,
-  FormRule,
 } from "antd"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import { BN, web3 } from "@project-serum/anchor"
@@ -28,6 +28,10 @@ import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Option } = Select
 
+const SYSTEM_LOAN_COMMISSION_FEE = 1_000_000
+const DEFAULT_DECIMALS = 10 ** 9
+const DEFAULT_PERCENTAGE_DECIMALS = 10 ** 4
+
 const AddPool: React.FC = () => {
   useAutoConnectWallet()
   const mounted = useIsMounted()
@@ -42,17 +46,16 @@ const AddPool: React.FC = () => {
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
 
-  const estimatedLoanFee = useMemo(() => {
-    const SYSTEM_LOAN_FEE = 1_000_000
-    return ((topUpAmount || 0) / 10 ** 9) * SYSTEM_LOAN_FEE
+  const estimatedLoanCommissionFee = useMemo(() => {
+    return ((topUpAmount || 0) / DEFAULT_DECIMALS) * SYSTEM_LOAN_COMMISSION_FEE
   }, [topUpAmount])
 
   const totalTopUpAmount = useMemo(
-    () => estimatedLoanFee + (topUpAmount || 0),
-    [estimatedLoanFee, topUpAmount]
+    () => estimatedLoanCommissionFee + (topUpAmount || 0),
+    [estimatedLoanCommissionFee, topUpAmount]
   )
 
-  const currentBalace: number = useMemo(() => {
+  const currentBalance: number = useMemo(() => {
     switch (vaultMint) {
       case "usdt":
         return parseFloat(usdtBalance)
@@ -72,7 +75,7 @@ const AddPool: React.FC = () => {
             { required: true },
             {
               type: "number",
-              max: currentBalace,
+              max: currentBalance,
               message: "You don't enough token",
             },
             { type: "number", min: 0, message: "min value is 0" },
@@ -145,7 +148,7 @@ const AddPool: React.FC = () => {
       ])
       return rulesMap.get(key)
     },
-    [currentBalace, topUpAmount]
+    [currentBalance, topUpAmount]
   )
 
   const onSubmit = async () => {
@@ -153,13 +156,16 @@ const AddPool: React.FC = () => {
       const { wallet, program, connection } = workspace.value
 
       const [poolPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("pool"), usdtMint.value.address.toBuffer()],
+        [
+          Buffer.from("pool"),
+          wallet.publicKey.toBuffer(),
+          usdcMint.value.address.toBuffer(),
+          usdtMint.value.address.toBuffer(),
+        ],
         program.programId
       )
 
       try {
-        const DECIMALS = 10 ** 9
-
         const usdtAssociatedAccount = await getAssociatedTokenAddress(
           usdtMint.value.address,
           wallet.publicKey,
@@ -180,30 +186,35 @@ const AddPool: React.FC = () => {
         await program.methods
           .initPool(
             {
-              interestRate: new BN(form.getFieldValue("interestRate")),
-              maxLoanAmount: new BN(
-                form.getFieldValue("maxLoanAmount") * DECIMALS
+              interestRate: new BN(
+                form.getFieldValue("interestRate") * DEFAULT_PERCENTAGE_DECIMALS
               ),
-              maxLoanThreshold: new BN(form.getFieldValue("maxLoanThreshold")),
+              maxLoanAmount: new BN(
+                form.getFieldValue("maxLoanAmount") * DEFAULT_DECIMALS
+              ),
+              maxLoanThreshold: new BN(
+                form.getFieldValue("maxLoanThreshold") *
+                  DEFAULT_PERCENTAGE_DECIMALS
+              ),
               minLoanAmount: new BN(
-                form.getFieldValue("minLoanAmount") * DECIMALS
+                form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
               ),
             },
-            new BN(topUpAmount * DECIMALS),
-            new BN(Math.ceil(estimatedLoanFee) * DECIMALS)
+            new BN(topUpAmount * DEFAULT_DECIMALS),
+            new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS)
           )
           .accounts({
             pool: pool.publicKey,
-            pda: poolPDA,
+            poolPda: poolPDA,
             systemProgram: SystemProgram.programId,
-            rent: web3.SYSVAR_RENT_PUBKEY,
             vaultMint: usdtMint.value.address,
-            collateralMint: usdcMint.value.address,
             vaultAccount: vaultKeypair.publicKey,
+            collateralMint: usdcMint.value.address,
             depositor: wallet.publicKey,
             systemFeeAccount: SystemFeeUSDTPubKey,
             tokenDepositor: walletUsdtAccount.address,
             tokenProgram: TOKEN_PROGRAM_ID,
+            rent: web3.SYSVAR_RENT_PUBKEY,
           })
           .preInstructions([ins])
           .signers([pool, vaultKeypair])
@@ -252,7 +263,7 @@ const AddPool: React.FC = () => {
                 <Option value="usdc">USDC</Option>
               </Select>
             </Form.Item>
-            <p>{`${currentBalace}`}</p>
+            <p>{`${currentBalance}`}</p>
 
             <Form.Item
               name="collateralMint"
@@ -278,7 +289,8 @@ const AddPool: React.FC = () => {
 
             <Form.Item label="Estimated Loan Fee">
               <span className="ant-form-text">
-                {estimatedLoanFee.toFixed(2)} {vaultMint?.toUpperCase()}
+                {estimatedLoanCommissionFee.toFixed(2)}{" "}
+                {vaultMint?.toUpperCase()}
               </span>
             </Form.Item>
 
@@ -318,7 +330,7 @@ const AddPool: React.FC = () => {
               rules={validateRules("maxLoanThreshold")}
             >
               <InputNumber
-                formatter={(value) => `${value}%`}
+                // formatter={(value) => `${value}%`}
                 style={{ width: "100%" }}
               />
             </Form.Item>

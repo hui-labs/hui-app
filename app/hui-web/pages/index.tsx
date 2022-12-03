@@ -34,6 +34,9 @@ export const Airdrop = () => {
   useEffect(() => {
     console.log("usdcAccount", usdcAccount.value?.amount)
   }, [usdcAccount])
+  useEffect(() => {
+    console.log("usdtAccount", usdtAccount.value?.amount)
+  }, [usdtAccount])
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const balance = useBalance(workspace)

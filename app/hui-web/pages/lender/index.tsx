@@ -14,7 +14,6 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
-import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
@@ -142,23 +141,24 @@ const LenderPage: React.FC = () => {
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
 
-  const onWithdraw = async (
-    poolPubKey: PublicKey,
-    poolVaultPubkey: PublicKey,
-    mintPubKey: PublicKey,
-    amount: BN
-  ) => {
+  const onWithdraw = async (poolPubKey: PublicKey, amount: BN) => {
     if (workspace.value) {
       const { program, wallet, connection } = workspace.value
+      const poolAccount = await program.account.pool.fetch(poolPubKey)
 
       const [poolPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("pool"), mintPubKey.toBuffer()],
+        [
+          Buffer.from("pool"),
+          poolAccount.owner.toBuffer(),
+          poolAccount.collateralMint.toBuffer(),
+          poolAccount.vaultMint.toBuffer(),
+        ],
         program.programId
       )
 
       const mint = await getMint(
         connection,
-        mintPubKey,
+        poolAccount.vaultMint,
         commitmentLevel,
         TOKEN_PROGRAM_ID
       )
@@ -174,7 +174,7 @@ const LenderPage: React.FC = () => {
           pool: poolPubKey,
           poolPda: poolPDA,
           tokenDepositor: tokenDepositor.address,
-          poolVault: poolVaultPubkey,
+          poolVault: poolAccount.vaultAccount,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc()
@@ -222,13 +222,7 @@ const LenderPage: React.FC = () => {
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
           onClose: () => onClose(publicKey),
-          onWithdraw: (amount: BN) =>
-            onWithdraw(
-              publicKey,
-              account.vaultAccount,
-              account.vaultMint,
-              amount
-            ),
+          onWithdraw: (amount: BN) => onWithdraw(publicKey, amount),
         }
       })
 
@@ -310,9 +304,6 @@ const LenderPage: React.FC = () => {
         <Button type="primary" onClick={() => router.push("/lender/add")}>
           Create Pool
         </Button>
-        <Button type="primary" onClick={onLoadData}>
-          Load Data
-        </Button>
       </Space>
 
       <div>
@@ -322,13 +313,13 @@ const LenderPage: React.FC = () => {
             <Table
               columns={columns}
               pagination={false}
-              onRow={(record, rowIndex) => {
-                return {
-                  onClick: (event) => {
-                    router.push(`/lender/pool?id=${record.key}`)
-                  },
-                }
-              }}
+              // onRow={(record, rowIndex) => {
+              //   return {
+              //     onClick: (event) => {
+              //       router.push(`/lender/pool?id=${record.key}`)
+              //     },
+              //   }
+              // }}
               dataSource={myPools}
             />
           </Col>
