@@ -37,6 +37,7 @@ import useAsyncEffect from "use-async-effect"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 import { DataType } from "@/pages/lender/index"
 import { ColumnsType } from "antd/es/table"
+import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const columns: ColumnsType<DataType> = [
   {
@@ -114,6 +115,7 @@ const columns: ColumnsType<DataType> = [
 ]
 
 const LoansOfPool: React.FC = () => {
+  useAutoConnectWallet()
   const router = useRouter()
   const { id } = router.query
   const mounted = useIsMounted()
