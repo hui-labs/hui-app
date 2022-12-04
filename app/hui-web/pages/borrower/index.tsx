@@ -319,8 +319,8 @@ const BorrowerPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { program, wallet } = workspace.value
-      const loans = await program.account.masterLoan.all()
+      const { program, wallet, client } = workspace.value
+      const loans = await client.from("MasterLoan").offset(0).limit(10).select()
       // console.log("all loan", loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {

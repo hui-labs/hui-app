@@ -1,6 +1,10 @@
 import { AccountClient, Program } from "@project-serum/anchor"
 import { Hui } from "@/contracts/types/hui"
-import { Connection, PublicKey } from "@solana/web3.js"
+import {
+  Connection,
+  GetProgramAccountsFilter,
+  PublicKey,
+} from "@solana/web3.js"
 import { sha256 } from "js-sha256"
 import { programId } from "@/common/constants"
 import bs58 from "bs58"
@@ -14,6 +18,8 @@ export interface IBuilder {
 
   limit(value: number): this
 
+  filters(filters: GetProgramAccountsFilter[]): this
+
   select<T = any>(): Promise<SelectResult<T>[]>
 }
 
@@ -26,7 +32,8 @@ export const DISCRIMINATOR_LENGTH = 8
 
 export const getAccountPublicKeys = async (
   connection: Connection,
-  name: string
+  name: string,
+  filters: GetProgramAccountsFilter[]
 ) => {
   const discriminator = Buffer.from(sha256.digest(`account:${name}`)).slice(
     0,
@@ -44,7 +51,8 @@ export const getAccountPublicKeys = async (
           offset: 0,
           bytes: bs58.encode(discriminator),
         },
-      }, // Ensure it's a CandyMachine account.
+      },
+      ...filters,
     ],
   })
 
@@ -80,6 +88,7 @@ export class AnchorClient implements IBuilder {
   private _account: Account | null = null
   private _limit = 10
   private _offset = 0
+  private _filters: GetProgramAccountsFilter[] = []
 
   constructor(private program: Program<Hui>) {}
 
@@ -90,7 +99,8 @@ export class AnchorClient implements IBuilder {
 
     const accountPublicKeys = await getAccountPublicKeys(
       this.program.provider.connection,
-      this._account
+      this._account,
+      this._filters
     )
 
     return await getPage(
@@ -99,6 +109,17 @@ export class AnchorClient implements IBuilder {
       this._offset,
       this._limit
     )
+  }
+
+  filters(filters: GetProgramAccountsFilter[]): this {
+    // {
+    //   memcmp: {
+    //     offset: 8,
+    //       bytes: bs58.encode(pk.toBuffer()),
+    //   },
+    // },
+    this._filters = filters
+    return this
   }
 
   from(account: Account): this {

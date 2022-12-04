@@ -34,6 +34,16 @@ import { useRouter } from "next/router"
 
 const { Option } = Select
 
+const LOAN_TERMS = {
+  twoMinutes: 12,
+  oneMonth: 1,
+  threeMonths: 3,
+  sixMonths: 6,
+  nineMonths: 9,
+  twelveMonths: 12,
+}
+type LoanTerm = keyof typeof LOAN_TERMS
+
 const AddPool: React.FC = () => {
   const [form] = Form.useForm()
   const workspace = useWorkspace()
@@ -43,7 +53,7 @@ const AddPool: React.FC = () => {
   const usdtAccount = useAccount(workspace, usdtMint)
   const topUpAmount = Form.useWatch("topUpAmount", form)
   const vaultMint = Form.useWatch("vaultMint", form)
-  const loanTerm = Form.useWatch("loanTerm", form)
+  const loanTerm = Form.useWatch<LoanTerm>("loanTerm", form)
   const interestRate = Form.useWatch("interestRate", form)
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
@@ -59,24 +69,7 @@ const AddPool: React.FC = () => {
     [estimatedLoanCommissionFee, topUpAmount]
   )
 
-  const loanOfTerm = useMemo(() => {
-    switch (loanTerm) {
-      case "twoMinutes":
-        return 12
-      case "oneMonth":
-        return 1
-      case "threeMonths":
-        return 3
-      case "sixMonths":
-        return 6
-      case "nineMonths":
-        return 9
-      case "twelveMonths":
-        return 12
-      default:
-        return 0
-    }
-  }, [loanTerm])
+  const loanOfTerm = useMemo(() => LOAN_TERMS[loanTerm], [loanTerm])
 
   const interestIncome = useMemo(() => {
     if (loanOfTerm === 0 || !interestRate) return 0
@@ -286,7 +279,7 @@ const AddPool: React.FC = () => {
       loanTerm: "twelveMonths",
       interestRate: 10,
       maxLoanAmount: 100,
-      minLoanAmount: 50,
+      minLoanAmount: 10,
       maxLoanThreshold: 80,
     })
   }

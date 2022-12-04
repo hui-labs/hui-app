@@ -11,6 +11,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  compiler: {
+    styledComponents: true,
+  },
 }
 
 module.exports = nextConfig

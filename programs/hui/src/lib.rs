@@ -1,5 +1,6 @@
-use anchor_lang::AccountsClose;
 use anchor_lang::prelude::*;
+use anchor_lang::AccountsClose;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{Burn, CloseAccount, Mint, MintTo, Token, TokenAccount, Transfer};
 
@@ -273,38 +274,31 @@ pub mod hui {
     }
 
     pub fn list_nft(ctx: Context<ListNft>, price: u64) -> Result<()> {
-        let loan_metadata = &mut ctx.accounts.loan_metadata;
         let item_for_sale = &mut ctx.accounts.item_for_sale;
 
-        require!(!loan_metadata.is_listed, AppError::NftAlreadyListed);
         require!(!item_for_sale.is_open, AppError::NftAlreadyListed);
-
-        loan_metadata.is_listed = true;
 
         item_for_sale.owner = ctx.accounts.seller.key().clone();
         item_for_sale.nft_mint = ctx.accounts.nft_mint.key().clone();
-        item_for_sale.nft_account = ctx.accounts.item_account.key().clone();
+        item_for_sale.owner_account = ctx.accounts.nft_account.key().clone();
+        item_for_sale.item_account = ctx.accounts.item_account.key().clone();
         item_for_sale.price = price;
+        item_for_sale.metadata_account = ctx.accounts.loan_metadata.to_account_info().key().clone();
         item_for_sale.vault_mint = ctx.accounts.vault_mint.key().clone();
         item_for_sale.vault_account = ctx.accounts.vault_account.key().clone();
         let clock = Clock::get().unwrap();
         item_for_sale.created_at = clock.unix_timestamp;
         item_for_sale.is_open = true;
+        item_for_sale.is_sold = false;
 
-        token::transfer(
-            ctx.accounts
-                .to_transfer_nft_context(),
-            1,
-        )?;
+        token::transfer(ctx.accounts.to_transfer_nft_context(), 1)?;
         Ok(())
     }
 
     pub fn buy_nft(ctx: Context<BuyNft>) -> Result<()> {
-        let loan_metadata = &mut ctx.accounts.loan_metadata;
-        loan_metadata.is_listed = false;
-
         let item_for_sale = &mut ctx.accounts.item_for_sale;
         item_for_sale.is_open = false;
+        item_for_sale.is_sold = true;
 
         let signer_seeds = ctx
             .accounts
@@ -324,10 +318,7 @@ pub mod hui {
         Ok(())
     }
 
-    pub fn cancel_sale(ctx: Context<CancelSale>) -> Result<()> {
-        let loan_metadata = &mut ctx.accounts.loan_metadata;
-        loan_metadata.is_listed = false;
-
+    pub fn delist_nft(ctx: Context<DelistNft>) -> Result<()> {
         let item_for_sale = &mut ctx.accounts.item_for_sale;
         item_for_sale.is_open = false;
 
@@ -348,12 +339,13 @@ pub mod hui {
 }
 
 #[derive(Accounts)]
-pub struct CancelSale<'info> {
+pub struct DelistNft<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
-    #[account(mut)]
+    #[account(mut, close = owner)]
     pub item_for_sale: Box<Account<'info, ItemForSale>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
     pub item_for_sale_pda: AccountInfo<'info>,
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
     #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
@@ -367,7 +359,7 @@ pub struct CancelSale<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-impl<'info> CancelSale<'info> {
+impl<'info> DelistNft<'info> {
     fn to_transfer_back_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
             from: self.item_account.to_account_info().clone(),
@@ -390,7 +382,7 @@ pub struct BuyNft<'info> {
     #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
-    pub nft_account: Box<Account<'info, TokenAccount>>,
+    pub item_account: Box<Account<'info, TokenAccount>>,
 
     #[account(mut)]
     pub vault_mint: Box<Account<'info, Mint>>,
@@ -419,7 +411,7 @@ impl<'info> BuyNft<'info> {
 
     fn to_transfer_buyer_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
         let cpi_accounts = Transfer {
-            from: self.nft_account.to_account_info().clone(),
+            from: self.item_account.to_account_info().clone(),
             to: self.buyer_account.to_account_info().clone(),
             authority: self.item_for_sale_pda.clone(),
         };
@@ -429,12 +421,15 @@ impl<'info> BuyNft<'info> {
 
 #[account]
 pub struct ItemForSale {
-    owner: Pubkey,
     nft_mint: Pubkey,
-    nft_account: Pubkey,
+    owner_account: Pubkey,
+    metadata_account: Pubkey,
+    owner: Pubkey,
+    item_account: Pubkey,
     vault_mint: Pubkey,
     vault_account: Pubkey,
     is_open: bool,
+    is_sold: bool,
     price: u64,
     created_at: i64,
 }
@@ -449,7 +444,7 @@ impl ItemForSale {
             b"itemForSale".as_ref(),
             self.owner.as_ref(),
             self.nft_mint.as_ref(),
-            self.nft_account.as_ref(),
+            self.item_account.as_ref(),
         ];
         let (pubkey, bump) = Pubkey::find_program_address(&seeds, program_id);
         if pubkey != pda.key() {
@@ -468,7 +463,6 @@ pub struct ListNft<'info> {
     pub item_for_sale_pda: AccountInfo<'info>,
     #[account(mut)]
     pub seller: Signer<'info>,
-    #[account(mut)]
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
     #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
@@ -527,14 +521,13 @@ pub enum LoanStatus {
 
 #[account]
 pub struct LoanMetadata {
+    pub nft_mint: Pubkey,
     pub parent: Pubkey,
     pub nft_account: Pubkey,
-    pub nft_mint: Pubkey,
     pub claim_account: Pubkey,
     pub status: LoanStatus,
     pub amount: u64,
     pub is_claimed: bool,
-    pub is_listed: bool,
     pub created_at: i64,
 }
 
@@ -551,11 +544,12 @@ pub struct ClaimNft<'info> {
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
     pub nft_mint: Box<Account<'info, Mint>>,
-    #[account(init, payer = owner, token::mint = nft_mint, token::authority = owner)]
+    #[account(mut)]
     pub claim_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub master_loan_pda: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
+    // pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
