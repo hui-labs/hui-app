@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 import {
   Button,
   Col,
   Form,
   FormRule,
   InputNumber,
+  Modal,
   Row,
   Select,
   Space,
@@ -29,6 +30,7 @@ import {
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
+import { useRouter } from "next/router"
 
 const { Option } = Select
 
@@ -41,8 +43,12 @@ const AddPool: React.FC = () => {
   const usdtAccount = useAccount(workspace, usdtMint)
   const topUpAmount = Form.useWatch("topUpAmount", form)
   const vaultMint = Form.useWatch("vaultMint", form)
+  const loanTerm = Form.useWatch("loanTerm", form)
+  const interestRate = Form.useWatch("interestRate", form)
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
+  const [isOpen, setIsOpen] = useState<boolean>(false)
+  const router = useRouter()
 
   const estimatedLoanCommissionFee = useMemo(() => {
     return ((topUpAmount || 0) / DEFAULT_DECIMALS) * SYSTEM_LOAN_COMMISSION_FEE
@@ -52,6 +58,30 @@ const AddPool: React.FC = () => {
     () => estimatedLoanCommissionFee + (topUpAmount || 0),
     [estimatedLoanCommissionFee, topUpAmount]
   )
+
+  const loanOfTerm = useMemo(() => {
+    switch (loanTerm) {
+      case "twoMinutes":
+        return 12
+      case "oneMonth":
+        return 1
+      case "threeMonths":
+        return 3
+      case "sixMonths":
+        return 6
+      case "nineMonths":
+        return 9
+      case "twelveMonths":
+        return 12
+      default:
+        return 0
+    }
+  }, [loanTerm])
+
+  const interestIncome = useMemo(() => {
+    if (loanOfTerm === 0 || !interestRate) return 0
+    return loanOfTerm * interestRate
+  }, [loanOfTerm, interestRate])
 
   const currentBalance: number = useMemo(() => {
     switch (vaultMint) {
@@ -80,7 +110,7 @@ const AddPool: React.FC = () => {
               max: currentBalance,
               message: "You don't enough token",
             },
-            { type: "number", min: 0, message: "min value is 0" },
+            { type: "number", min: 100, message: "min value is 100" },
           ],
         ],
         [
@@ -98,8 +128,8 @@ const AddPool: React.FC = () => {
             },
             {
               type: "number",
-              min: 0,
-              message: "You can't set Interest Rate smaller than 0",
+              min: 0.001,
+              message: "You can't set Interest Rate smaller than 0.001",
             },
           ],
         ],
@@ -118,8 +148,8 @@ const AddPool: React.FC = () => {
             },
             {
               type: "number",
-              min: 0,
-              message: "You can't set Max Loan Amount smaller than 0",
+              min: 2,
+              message: "You can't set Max Loan Amount smaller than 2",
             },
           ],
         ],
@@ -138,8 +168,8 @@ const AddPool: React.FC = () => {
             },
             {
               type: "number",
-              min: 0,
-              message: "You can't set Min Loan Amount smaller than 0",
+              min: 1,
+              message: "You can't set Min Loan Amount smaller than 1",
             },
           ],
         ],
@@ -158,8 +188,8 @@ const AddPool: React.FC = () => {
             },
             {
               type: "number",
-              min: 0,
-              message: "You can't set Max LoanThreshold smaller than 0",
+              min: 10,
+              message: "You can't set Max LoanThreshold smaller than 10",
             },
           ],
         ],
@@ -170,6 +200,7 @@ const AddPool: React.FC = () => {
   )
 
   const onSubmit = async () => {
+    setIsOpen(false)
     if (workspace.value && usdtMint.value && usdcMint.value) {
       const { wallet, program, connection } = workspace.value
 
@@ -210,18 +241,18 @@ const AddPool: React.FC = () => {
               maxLoanAmount: new BN(
                 form.getFieldValue("maxLoanAmount") * DEFAULT_DECIMALS
               ),
+              minLoanAmount: new BN(
+                form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
+              ),
               maxLoanThreshold: new BN(
                 form.getFieldValue("maxLoanThreshold") *
                   DEFAULT_PERCENTAGE_DECIMALS
-              ),
-              minLoanAmount: new BN(
-                form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
               ),
             },
             new BN(topUpAmount * DEFAULT_DECIMALS),
             new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS),
             {
-              ["oneMonth"]: {},
+              [form.getFieldValue("loanTerm")]: {},
             }
           )
           .accounts({
@@ -240,8 +271,7 @@ const AddPool: React.FC = () => {
           .preInstructions([ins])
           .signers([pool, vaultKeypair])
           .rpc()
-        console.log(pool.publicKey.toBase58())
-        form.resetFields()
+        await router.push("/lender")
       } catch (e) {
         console.log(e)
       }
@@ -253,6 +283,7 @@ const AddPool: React.FC = () => {
       vaultMint: "usdt",
       collateralMint: "usdc",
       topUpAmount: 100,
+      loanTerm: "twelveMonths",
       interestRate: 10,
       maxLoanAmount: 100,
       minLoanAmount: 50,
@@ -261,7 +292,7 @@ const AddPool: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto w-[600px] mt-16 px-20 py-10 shadow-lg">
+    <div className="mx-auto w-[600px] mt-5 px-20 py-10 shadow-lg">
       <h1 className="font-bold my-5 text-center text-3xl">Create Pool</h1>
       <Row>
         <Col span={24}>
@@ -269,7 +300,7 @@ const AddPool: React.FC = () => {
             layout="vertical"
             form={form}
             name="control-hooks"
-            onFinish={onSubmit}
+            onFinish={() => setIsOpen(true)}
           >
             <Form.Item
               name="vaultMint"
@@ -323,15 +354,40 @@ const AddPool: React.FC = () => {
             </div>
 
             <Form.Item
-              name="interestRate"
-              label="Interest Rate"
-              rules={validateRules("interestRate")}
+              name="loanTerm"
+              label="Loan Term"
+              rules={[{ required: true }]}
             >
-              <InputNumber style={{ width: "100%" }} />
+              <Select
+                placeholder="Select a option and change input text above"
+                allowClear
+              >
+                <Option value="twoMinutes">2 Minutes (12 months) - Test</Option>
+                <Option value="oneMonth">1 Month</Option>
+                <Option value="threeMonths">3 Months</Option>
+                <Option value="sixMonths">6 Months</Option>
+                <Option value="nineMonths">9 Months</Option>
+                <Option value="twelveMonths">12 Months</Option>
+              </Select>
             </Form.Item>
+            <div className="flex justify-between items-center">
+              <Form.Item
+                className="w-[200px]"
+                name="interestRate"
+                label="Interest Rate"
+                rules={validateRules("interestRate")}
+              >
+                <InputNumber style={{ width: "100%" }} />
+              </Form.Item>
+              <div className="w-[110px]">
+                <h3>Interest Income</h3>
+                <p>{interestIncome.toFixed(2)}</p>
+              </div>
+            </div>
 
             <div className="flex justify-between">
               <Form.Item
+                className="w-[200px]"
                 name="maxLoanAmount"
                 label="Max Loan Amount"
                 rules={validateRules("maxLoanAmount")}
@@ -340,6 +396,7 @@ const AddPool: React.FC = () => {
               </Form.Item>
 
               <Form.Item
+                className="w-[200px]"
                 name="minLoanAmount"
                 label="Min Loan Amount"
                 rules={validateRules("minLoanAmount")}
@@ -374,6 +431,76 @@ const AddPool: React.FC = () => {
           </Form>
         </Col>
       </Row>
+      <Modal
+        title="Pool details"
+        open={isOpen}
+        width={500}
+        okButtonProps={{ className: "bg-indigo-500" }}
+        onOk={onSubmit}
+        onCancel={() => setIsOpen(false)}
+      >
+        <div className="flex justify-between mb-4 px-5 mt-7">
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Vault Token</h4>
+            <p>{vaultMint?.toUpperCase()}</p>
+          </div>
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Collateral Token</h4>
+            <p>{form.getFieldValue("collateralMint")?.toUpperCase()}</p>
+          </div>
+        </div>
+        <div className="flex justify-between mb-4 px-5">
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Top Up Amount</h4>
+            <p>{form.getFieldValue("topUpAmount")}</p>
+          </div>
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Total & Fee</h4>
+            <p>{totalTopUpAmount.toFixed(2)}</p>
+          </div>
+        </div>
+        <div className="flex justify-between mb-4 px-5">
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Loan Term</h4>
+            <p>{loanOfTerm}</p>
+          </div>
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Interest Rate</h4>
+            <p>{`${interestRate} %`}</p>
+          </div>
+        </div>
+        <div className="flex justify-between mb-4 px-5">
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Interest Income</h4>
+            <p>{interestIncome}</p>
+          </div>
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Max Total Income</h4>
+            <p>
+              {(form.getFieldValue("maxLoanThreshold") *
+                form.getFieldValue("topUpAmount")) /
+                100 +
+                interestIncome}
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-between mb-4 px-5">
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Max Loan Amount</h4>
+            <p>{form.getFieldValue("maxLoanAmount")}</p>
+          </div>
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Min Loan Amount</h4>
+            <p>{form.getFieldValue("minLoanAmount")}</p>
+          </div>
+        </div>
+        <div className="flex justify-between mb-4 px-5">
+          <div className="flex justify-between border-b w-48">
+            <h4 className="font-medium">Max Loan Threshold</h4>
+            <p>{`${form.getFieldValue("maxLoanThreshold")} %`}</p>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
