@@ -8,12 +8,14 @@ import { ColumnsType } from "antd/es/table"
 import useAsyncEffect from "use-async-effect"
 import { DEFAULT_DECIMALS, USDTPubKey } from "@/common/constants"
 import bs58 from "bs58"
+import { formatUnits } from "@ethersproject/units"
 
 interface LoanMetadataDataType {
   key: React.Key
   isListed: boolean
   isClaimed: boolean
   isSold: boolean
+  price: string
   parent: PublicKey
   onListNFT: () => void
   onDelistNFT: () => void
@@ -49,6 +51,11 @@ const columns: ColumnsType<LoanMetadataDataType> = [
         <Tag color={"blue"}>{isClaimed ? "True" : "False"}</Tag>
       </div>
     ),
+  },
+  {
+    title: "Price (USDT)",
+    dataIndex: "price",
+    key: "price",
   },
   {
     title: "Parent",
@@ -140,6 +147,7 @@ const ListNFT = () => {
         return loanMetadata
       })
 
+      console.log("results", results)
       const data = results.map<LoanMetadataDataType>(
         ({ publicKey, account, itemForSale }) => {
           return {
@@ -148,6 +156,9 @@ const ListNFT = () => {
             isListed: itemForSale?.account.isOpen,
             isClaimed: account.isClaimed,
             isSold: itemForSale?.account.isSold,
+            price: itemForSale
+              ? formatUnits(itemForSale?.account.price.toString(), 9)
+              : "0",
             onListNFT: () =>
               onListNFT(publicKey, account.nftMint, account.claimAccount),
             onDelistNFT: () =>

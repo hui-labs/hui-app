@@ -588,7 +588,7 @@
         {
           "name": "buyerAccount",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "buyerTokenAccount",

@@ -588,7 +588,7 @@ export type Hui = {
         {
           "name": "buyerAccount",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "buyerTokenAccount",
@@ -1663,7 +1663,7 @@ export const IDL: Hui = {
         {
           "name": "buyerAccount",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "buyerTokenAccount",

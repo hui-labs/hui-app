@@ -173,10 +173,6 @@ const LoansOfPool: React.FC = () => {
         nftMint,
         wallet.publicKey
       )
-      console.log(
-        "associatedNftTokenAccount",
-        associatedNftTokenAccount.toBase58()
-      )
       const tx = await program.methods
         .claimNft()
         .accounts({

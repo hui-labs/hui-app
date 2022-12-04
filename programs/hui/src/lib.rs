@@ -315,6 +315,11 @@ pub mod hui {
                 .with_signer(signer_seeds),
             1,
         )?;
+
+        // let data_account = &ctx.accounts.item_for_sale;
+        // let owner_info = ctx.accounts.item_for_sale_pda.to_account_info();
+        // data_account.close(owner_info)?;
+
         Ok(())
     }
 
@@ -371,6 +376,15 @@ impl<'info> DelistNft<'info> {
 }
 
 #[derive(Accounts)]
+pub struct ClaimBuyNft<'info> {
+    #[account(mut, close = item_for_sale_pda)]
+    pub item_for_sale: Box<Account<'info, ItemForSale>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub item_for_sale_pda: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
 pub struct BuyNft<'info> {
     #[account(mut)]
     pub item_for_sale: Box<Account<'info, ItemForSale>>,
@@ -389,7 +403,7 @@ pub struct BuyNft<'info> {
     #[account(mut)]
     pub vault_account: Box<Account<'info, TokenAccount>>,
 
-    #[account(init, payer = buyer, token::mint = nft_mint, token::authority = buyer)]
+    #[account(mut)]
     pub buyer_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub buyer_token_account: Box<Account<'info, TokenAccount>>,

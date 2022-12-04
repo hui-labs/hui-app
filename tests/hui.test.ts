@@ -581,55 +581,68 @@ describe("test hui flow", () => {
     console.log("Listed NFT")
 
     // Cancel sale
-    await program.methods
-      .delistNft()
-      .accounts({
-        nftMint: nftMintKeypair.publicKey,
-        loanMetadata: loanMetadataKeypair.publicKey,
-        nftAccount: account,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        itemForSalePda: itemForSalePDA,
-        itemForSale: itemForSaleKeypair.publicKey,
-        itemAccount: itemAccountKeypair.publicKey,
-        owner: alice.publicKey,
-      })
-      .signers([alice])
-      .rpc()
-    console.log("Delisted NFT")
+    // await program.methods
+    //   .delistNft()
+    //   .accounts({
+    //     nftMint: nftMintKeypair.publicKey,
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //     nftAccount: account,
+    //     rent: web3.SYSVAR_RENT_PUBKEY,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     systemProgram: SystemProgram.programId,
+    //     itemForSalePda: itemForSalePDA,
+    //     itemForSale: itemForSaleKeypair.publicKey,
+    //     itemAccount: itemAccountKeypair.publicKey,
+    //     owner: alice.publicKey,
+    //   })
+    //   .signers([alice])
+    //   .rpc()
+    // console.log("Delisted NFT")
 
     // Buy NFT
 
-    // await mintTo(
-    //   connection,
-    //   admin,
-    //   usdtMint.address,
-    //   tomUSDTAccount,
-    //   usdtMint.mintAuthority,
-    //   100 * DECIMALS
-    // )
-    //
+    await mintTo(
+      connection,
+      admin,
+      usdtMint.address,
+      tomUSDTAccount,
+      usdtMint.mintAuthority,
+      100 * DECIMALS
+    )
+
+    const tomAccount = await getAssociatedTokenAddress(
+      nftMintKeypair.publicKey,
+      tom.publicKey
+    )
     // const buyerAccountKeypair = Keypair.generate()
-    // await program.methods
-    //   .buyNft()
-    //   .accounts({
-    //     nftMint: nftMintKeypair.publicKey,
-    //     itemForSale: itemForSaleKeypair.publicKey,
-    //     itemForSalePda: itemForSalePDA,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //     systemProgram: SystemProgram.programId,
-    //     rent: web3.SYSVAR_RENT_PUBKEY,
-    //     nftAccount: itemAccountKeypair.publicKey,
-    //     loanMetadata: loanMetadataKeypair.publicKey,
-    //     buyer: tom.publicKey,
-    //     buyerAccount: buyerAccountKeypair.publicKey,
-    //     vaultMint: usdtMintPubkey,
-    //     vaultAccount: itemForSaleUSDTKeypair.publicKey,
-    //     buyerTokenAccount: tomUSDTAccount,
-    //   })
-    //   .signers([tom, buyerAccountKeypair])
-    //   .rpc()
+    await program.methods
+      .buyNft()
+      .accounts({
+        nftMint: nftMintKeypair.publicKey,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        itemAccount: itemAccountKeypair.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        buyer: tom.publicKey,
+        buyerAccount: tomAccount,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+        buyerTokenAccount: tomUSDTAccount,
+      })
+      .signers([tom])
+      .preInstructions([
+        await createAssociatedTokenAccountInstruction(
+          tom.publicKey,
+          tomAccount,
+          tom.publicKey,
+          nftMintKeypair.publicKey
+        ),
+      ])
+      .rpc()
+    console.log("Bought NFT")
     // console.table([
     //   {
     //     name: "Tom",

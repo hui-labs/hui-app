@@ -4,11 +4,18 @@ import { useWorkspace } from "@/hooks/useWorkspace"
 import React, { useState } from "react"
 import { Button, Col, Row, Table } from "antd"
 import { ColumnsType } from "antd/es/table"
-import { PublicKey } from "@solana/web3.js"
+import { PublicKey, SystemProgram } from "@solana/web3.js"
 import dayjs from "dayjs"
 import { formatUnits } from "@ethersproject/units"
-import { getMint } from "@solana/spl-token"
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  getMint,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
+import { web3 } from "@project-serum/anchor"
+import { USDTPubKey } from "@/common/constants"
 
 interface ItemForSaleDataType {
   key: React.Key
@@ -92,10 +99,7 @@ const Market = () => {
         program.programId
       )
 
-      const metadata = await program.account.loanMetadata.fetch(metadataAccount)
-      console.log("metadata", metadata)
-
-      const mint = await getMint(connection, vaultMint)
+      const mint = await getMint(connection, USDTPubKey)
       const buyerTokenAccount = await getOrCreateAssociatedTokenAccount(
         workspace.value,
         wallet.publicKey,
@@ -108,27 +112,37 @@ const Market = () => {
       }
       console.log(formatUnits(buyerTokenAccount.amount, 9))
 
-      // const buyerAccountKeypair = Keypair.generate()
-      // const tx = await program.methods
-      //   .buyNft()
-      //   .accounts({
-      //     nftMint,
-      //     itemForSale: publicKey,
-      //     itemForSalePda: itemForSalePDA,
-      //     tokenProgram: TOKEN_PROGRAM_ID,
-      //     systemProgram: SystemProgram.programId,
-      //     rent: web3.SYSVAR_RENT_PUBKEY,
-      //     itemAccount,
-      //     loanMetadata: metadataAccount,
-      //     buyer: wallet.publicKey,
-      //     buyerAccount: buyerAccountKeypair.publicKey,
-      //     vaultMint: vaultMint,
-      //     vaultAccount: vaultAccount,
-      //     buyerTokenAccount: buyerTokenAccount.address,
-      //   })
-      //   .signers([buyerAccountKeypair])
-      //   .rpc()
-      // console.log(tx)
+      const associatedNftTokenAccount = await getAssociatedTokenAddress(
+        nftMint,
+        wallet.publicKey
+      )
+      const tx = await program.methods
+        .buyNft()
+        .accounts({
+          nftMint,
+          itemForSale: publicKey,
+          itemForSalePda: itemForSalePDA,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          itemAccount,
+          loanMetadata: metadataAccount,
+          buyer: wallet.publicKey,
+          buyerAccount: associatedNftTokenAccount,
+          vaultMint: vaultMint,
+          vaultAccount: vaultAccount,
+          buyerTokenAccount: buyerTokenAccount.address,
+        })
+        .preInstructions([
+          await createAssociatedTokenAccountInstruction(
+            wallet.publicKey,
+            associatedNftTokenAccount,
+            wallet.publicKey,
+            nftMint
+          ),
+        ])
+        .rpc()
+      console.log(tx)
       // const a = connection.getTokenAccountBalance()
     }
   }
