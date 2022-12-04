@@ -324,7 +324,7 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
       const loans = await program.account.masterLoan.all()
-      // console.log("all loan", loans)
+      console.log("all loan", loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),

@@ -1,11 +1,16 @@
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useRouter } from "next/router"
 import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
-import { programId, TOKEN_LISTS } from "@/common/constants"
+import {
+  programId,
+  TOKEN_LISTS,
+  USDCPubKey,
+  USDTPubKey,
+} from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
 import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
@@ -15,6 +20,9 @@ import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
 import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
+import * as anchor from "@project-serum/anchor"
+import { useGetMint } from "@/hooks/useGetMint"
+import { useAccount } from "@/hooks/useAccount"
 
 const { Title } = Typography
 
@@ -90,7 +98,10 @@ const columns: ColumnsType<DataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, { onWithdraw, onClose, availableAmount, isAdmin }) => {
+    render: (
+      _,
+      { onWithdraw, onClose, onDeposit, availableAmount, isAdmin }
+    ) => {
       if (isAdmin) {
         return (
           <Space>
@@ -101,6 +112,16 @@ const columns: ColumnsType<DataType> = [
               }}
             >
               Withdraw
+            </Button>
+            <Button
+              danger
+              type="primary"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeposit()
+              }}
+            >
+              Deposit
             </Button>
             <Button
               danger
@@ -140,6 +161,15 @@ const LenderPage: React.FC = () => {
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
+  const usdcMint = useGetMint(workspace, USDCPubKey)
+  const usdtMint = useGetMint(workspace, USDTPubKey)
+  const usdcAccount = useAccount(workspace, usdcMint)
+  const usdtAccount = useAccount(workspace, usdtMint)
+  const usdtAccountRef = useRef()
+
+  useEffect(() => {
+    usdtAccountRef.current = usdtAccount.value
+  }, [usdtAccount])
 
   const onWithdraw = async (poolPubKey: PublicKey, amount: BN) => {
     if (workspace.value) {
@@ -183,6 +213,29 @@ const LenderPage: React.FC = () => {
     }
   }
 
+  const onDeposit = async (poolPubKey: PublicKey, vaultAccount) => {
+    if (workspace.value) {
+      const { program, wallet, connection } = workspace.value
+
+      const depositTopUpAmount = new anchor.BN(30 * 10 ** 9)
+      const depositLoanFee = depositTopUpAmount
+        .div(new BN(10 ** 9))
+        .mul(new BN(1_000_000))
+      const poolVaultAccount = await getAccount(connection, vaultAccount)
+
+      await program.methods
+        .deposit(depositTopUpAmount, depositLoanFee)
+        .accounts({
+          depositor: wallet.publicKey,
+          pool: poolPubKey,
+          loanVault: poolVaultAccount.address,
+          tokenDepositor: usdtAccountRef.current.address,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc()
+    }
+  }
+
   const onClose = async (poolPubKey: PublicKey) => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
@@ -221,6 +274,7 @@ const LenderPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
+          onDeposit: () => onDeposit(publicKey, account.vaultAccount),
           onClose: () => onClose(publicKey),
           onWithdraw: (amount: BN) => onWithdraw(publicKey, amount),
         }
@@ -307,6 +361,7 @@ const LenderPage: React.FC = () => {
       </Space>
 
       <div>
+        {console.log("myPools", myPools)}
         <Title level={3}>Your Pools</Title>
         <Row>
           <Col span={24}>
