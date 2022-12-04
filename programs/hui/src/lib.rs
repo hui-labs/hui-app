@@ -150,9 +150,9 @@ pub mod hui {
 
     // WARNING: only for testing, will be disable on production
     pub fn close_pool(ctx: Context<ClosePool>) -> Result<()> {
-        let data_account = &ctx.accounts.pool;
-        let owner_info = ctx.accounts.owner.to_account_info();
-        data_account.close(owner_info)?;
+        // let data_account = &ctx.accounts.pool;
+        // let owner_info = ctx.accounts.owner.to_account_info();
+        // data_account.close(owner_info)?;
         // let data_account_info: &AccountInfo = data_account.as_ref();
         // require_keys_eq!(*data_account_info.owner, System::id());
 
@@ -161,9 +161,9 @@ pub mod hui {
 
     // WARNING: only for testing, will be disable on production
     pub fn close_loan(ctx: Context<CloseLoan>) -> Result<()> {
-        let data_account = &ctx.accounts.loan;
-        let owner_info = ctx.accounts.owner.to_account_info();
-        data_account.close(owner_info)?;
+        // let data_account = &ctx.accounts.loan;
+        // let owner_info = ctx.accounts.owner.to_account_info();
+        // data_account.close(owner_info)?;
         // let data_account_info: &AccountInfo = data_account.as_ref();
         // require_keys_eq!(*data_account_info.owner, System::id());
 
@@ -316,17 +316,10 @@ pub mod hui {
             1,
         )?;
 
-        // let data_account = &ctx.accounts.item_for_sale;
-        // let owner_info = ctx.accounts.item_for_sale_pda.to_account_info();
-        // data_account.close(owner_info)?;
-
         Ok(())
     }
 
     pub fn delist_nft(ctx: Context<DelistNft>) -> Result<()> {
-        let item_for_sale = &mut ctx.accounts.item_for_sale;
-        item_for_sale.is_open = false;
-
         let signer_seeds = ctx
             .accounts
             .item_for_sale
@@ -339,7 +332,73 @@ pub mod hui {
                 .with_signer(signer_seeds),
             1,
         )?;
+        // token::close_account(
+        //     ctx.accounts
+        //         .to_close_vault_account_context()
+        //         .with_signer(signer_seeds),
+        // )?;
+        // token::close_account(
+        //     ctx.accounts
+        //         .to_close_item_account_context()
+        //         .with_signer(signer_seeds),
+        // )?;
         Ok(())
+    }
+
+    pub fn claim_fund(ctx: Context<ClaimFund>) -> Result<()> {
+        let signer_seeds = ctx
+            .accounts
+            .item_for_sale
+            .signer_seeds(&ctx.accounts.item_for_sale_pda, ctx.program_id)?;
+        let signer_seeds = &[&signer_seeds.value()[..]];
+
+        let amount = ctx.accounts.vault_account.amount;
+        token::transfer(
+            ctx.accounts
+                .to_transfer_owner_context()
+                .with_signer(signer_seeds),
+            amount,
+        )?;
+
+        // let item_for_sale = &ctx.accounts.item_for_sale;
+        // let owner_info = ctx.accounts.owner.to_account_info();
+        // item_for_sale.close(owner_info)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct ClaimFund<'info> {
+    #[account(mut, close = owner)]
+    pub item_for_sale: Box<Account<'info, ItemForSale>>,
+    /// CHECK: This is not dangerous because we don't read or write from this account
+    #[account(mut)]
+    pub item_for_sale_pda: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub vault_mint: Box<Account<'info, Mint>>,
+    #[account(mut)]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(mut)]
+    pub owner_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+impl<'info> ClaimFund<'info> {
+    fn to_transfer_owner_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+        let cpi_accounts = Transfer {
+            from: self.vault_account.to_account_info().clone(),
+            to: self.owner_account.to_account_info().clone(),
+            authority: self.item_for_sale_pda.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
 
@@ -359,6 +418,8 @@ pub struct DelistNft<'info> {
     pub nft_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub item_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -373,29 +434,24 @@ impl<'info> DelistNft<'info> {
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
-}
 
-#[derive(Accounts)]
-pub struct ClaimBuyNft<'info> {
-    #[account(mut, close = item_for_sale_pda)]
-    pub item_for_sale: Box<Account<'info, ItemForSale>>,
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    #[account(mut)]
-    pub item_for_sale_pda: AccountInfo<'info>,
+    fn to_close_vault_account_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.vault_account.to_account_info().clone(),
+            authority: self.item_for_sale_pda.clone(),
+            destination: self.owner.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
 
-    #[account(mut)]
-    pub vault_mint: Box<Account<'info, Mint>>,
-    #[account(mut)]
-    pub vault_account: Box<Account<'info, TokenAccount>>,
-
-    #[account(mut)]
-    pub owner: Signer<'info>,
-    #[account(mut)]
-    pub owner_account: Box<Account<'info, TokenAccount>>,
-
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
+    fn to_close_item_account_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.item_account.to_account_info().clone(),
+            authority: self.item_for_sale_pda.clone(),
+            destination: self.nft_account.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
 }
 
 #[derive(Accounts)]
@@ -608,7 +664,7 @@ pub struct ClaimLoan<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
     pub master_loan: Box<Account<'info, MasterLoan>>,
-    #[account(mut, constraint = loan_metadata.parent == master_loan.key())]
+    #[account(mut, close = owner, constraint = loan_metadata.parent == master_loan.key())]
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
     #[account(mut)]
     pub token_account: Box<Account<'info, TokenAccount>>,
