@@ -10,17 +10,18 @@ import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useBalance } from "@/hooks/useBalance"
 import { useAccount } from "@/hooks/useAccount"
 import { useMintTo } from "@/hooks/useMintTo"
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { Typography } from "antd"
 
 const { Title } = Typography
 
 const Airdrop = () => {
   const workspace = useWorkspace()
-  const usdcMint = useGetMint(workspace, USDCPubKey)
-  const usdtMint = useGetMint(workspace, USDTPubKey)
-  const usdcAccount = useAccount(workspace, usdcMint)
-  const usdtAccount = useAccount(workspace, usdtMint)
+  const [reload, setReload] = useState(false)
+  const usdcMint = useGetMint(workspace, USDCPubKey, reload)
+  const usdtMint = useGetMint(workspace, USDTPubKey, reload)
+  const usdcAccount = useAccount(workspace, usdcMint, undefined, reload)
+  const usdtAccount = useAccount(workspace, usdtMint, undefined, reload)
 
   const [usdcState, mintUSDCTo] = useMintTo({
     workspace,
@@ -33,11 +34,12 @@ const Airdrop = () => {
     account: usdtAccount,
   })
   useEffect(() => {
-    console.log("usdcAccount", usdcAccount.value?.amount)
-  }, [usdcAccount])
+    setReload((state) => !state)
+  }, [usdcState, usdtState])
+
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
-  const balance = useBalance(workspace)
+  const balance = useBalance(workspace, undefined, reload)
   const solBalance = useFormatUnit(balance.value)
 
   return (

@@ -1062,8 +1062,5 @@
       "name": "NftAlreadyListed",
       "msg": "NFT has already listed"
     }
-  ],
-  "metadata": {
-    "address": "AE8LAvZBiDFWFX1P6apvXrTzDxsQumwmDS23RUvXp86D"
-  }
+  ]
 }

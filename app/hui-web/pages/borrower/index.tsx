@@ -319,74 +319,69 @@ const BorrowerPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { program, wallet } = workspace.value
-      const loans = await program.account.masterLoan.all()
-      // console.log("all loan", loans)
-      const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
-        return {
-          key: publicKey.toBase58(),
-          owner: account.owner,
-          isAdmin: account.borrower.toBase58() === wallet.publicKey.toBase58(),
-          vaultMint: account.vaultMint,
-          vaultAccount: account.vaultAccount,
-          collateralMint: account.collateralMint,
-          status: "",
-          minLoanAmount: formatUnits(
-            account.minLoanAmount.toString(),
-            decimals
-          ),
-          maxLoanAmount: formatUnits(
-            account.maxLoanAmount.toString(),
-            decimals
-          ),
-          receivedAmount: formatUnits(
-            account.receivedAmount.toString(),
-            decimals
-          ),
-          interestRate: formatUnits(account.interestRate.toString(), 4),
-          maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
-        }
-      })
+      const { wallet, client } = workspace.value
+      const loans = await client
+        .from("LoanMetadata")
+        .offset(0)
+        .limit(10)
+        .select()
 
-      // const accounts = await Promise.all(
-      //   rawData.map((item) =>
-      //     getAccount(connection, item.vaultAccount, commitmentLevel)
-      //   )
-      // )
+      setTimeout(async () => {
+        const loans = await client.select()
+        console.log("all loans", loans)
+        const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
+          console.log("all account", account)
+          return {
+            key: publicKey.toBase58(),
+            owner: account.owner,
+            isAdmin: account.owner.toBase58() === wallet.publicKey.toBase58(),
+            vaultMint: account.vaultMint,
+            vaultAccount: account.vaultAccount,
+            collateralMint: account.collateralMint,
+            status: "",
+            minLoanAmount: formatUnits(
+              account.minLoanAmount.toString(),
+              decimals
+            ),
+            maxLoanAmount: formatUnits(
+              account.maxLoanAmount.toString(),
+              decimals
+            ),
+            // receivedAmount: formatUnits(
+            //   account.receivedAmount.toString(),
+            //   decimals
+            // ),
+            interestRate: formatUnits(account.interestRate.toString(), 4),
+            maxLoanThreshold: formatUnits(
+              account.maxLoanThreshold.toString(),
+              4
+            ),
+          }
+        })
 
-      const cache = rawData.reduce((acc, cur) => {
-        acc[cur.vaultAccount.toBase58()] = cur
-        return acc
-      }, {} as Record<string, LoanDataType>)
-
-      // accounts.forEach((account) => {
-      //   if (account.address.toBase58() in cache) {
-      //     cache[account.address.toBase58()].availableAmount = formatUnits(
-      //       account.amount,
-      //       9
-      //     )
-      //   }
-      // })
-
-      const data = Object.values(cache).reduce(
-        (acc, cur) => {
-          acc[cur.isAdmin ? 0 : 1].push(cur)
+        const cache = rawData.reduce((acc, cur) => {
+          acc[cur.vaultAccount.toBase58()] = cur
           return acc
-        },
-        [[], []] as [LoanDataType[], LoanDataType[]]
-      )
+        }, {} as Record<string, LoanDataType>)
 
-      setMyLoans(data[0])
+        const data = Object.values(cache).reduce(
+          (acc, cur) => {
+            acc[cur.isAdmin ? 0 : 1].push(cur)
+            return acc
+          },
+          [[], []] as [LoanDataType[], LoanDataType[]]
+        )
+        console.log("all data", data)
+        setMyLoans(data[1])
+      }, 1000)
     }
   }, [workspace.value])
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet } = workspace.value
-      const pools = await program.account.pool.all()
-
+      const { connection, wallet, client } = workspace.value
+      const pools = await client.from("Pool").offset(0).limit(10).select()
       console.log("pools", pools)
-
       const rawData: PoolDataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -442,7 +437,6 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [PoolDataType[], PoolDataType[]]
       )
 
-      console.log("data", data)
       setAvailablePools(data[1]) // mình là nguoi di vay => pool khong phải cua minh => admin = 1
     }
   }, [workspace.value])

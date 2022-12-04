@@ -8,7 +8,8 @@ import { useAssociatedAccount } from "@/hooks/useAssociatedAccount"
 export const useAccount = (
   workspace: AsyncState<Workspace | null>,
   address: AsyncState<Mint | null>,
-  owner?: PublicKey
+  owner?: PublicKey,
+  reload: boolean
 ) => {
   const associatedAccount = useAssociatedAccount(workspace, address, owner)
 
@@ -22,5 +23,5 @@ export const useAccount = (
     }
 
     return null
-  }, [workspace.value, associatedAccount.value, owner])
+  }, [workspace.value, associatedAccount.value, owner, reload])
 }
