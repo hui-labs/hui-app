@@ -26,6 +26,7 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
 import * as anchor from "@project-serum/anchor"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
@@ -255,8 +256,9 @@ const LenderPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet } = workspace.value
-      const pools = await program.account.pool.all()
+      const { connection, client, wallet } = workspace.value
+      const pools = await client.from("Pool").offset(0).limit(10).select()
+      console.log("pools", pools)
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -294,7 +296,7 @@ const LenderPage: React.FC = () => {
           getAccount(connection, item.vaultAccount, commitmentLevel)
         )
       )
-
+      console.log("accounts", accounts)
       const cache = rawData.reduce((acc, cur) => {
         acc[cur.vaultAccount.toBase58()] = cur
         return acc
