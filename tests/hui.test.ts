@@ -2,14 +2,12 @@ import * as anchor from "@project-serum/anchor"
 import { BN, Program, web3 } from "@project-serum/anchor"
 import { Hui } from "../target/types/hui"
 import {
-  closeAccount,
   createAccount,
   createMint,
   getAccount,
   getMint,
   mintTo,
   TOKEN_PROGRAM_ID,
-  transfer,
 } from "@solana/spl-token"
 import {
   Keypair,
@@ -61,7 +59,12 @@ describe("test hui flow", () => {
     )
 
     const [poolPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("pool"), usdtMintPubkey.toBuffer()],
+      [
+        Buffer.from("pool"),
+        alice.publicKey.toBuffer(),
+        usdcMintPubkey.toBuffer(),
+        usdtMintPubkey.toBuffer(),
+      ],
       program.programId
     )
 
@@ -165,29 +168,27 @@ describe("test hui flow", () => {
       100 * DECIMALS
     )
     const topUpAmount = new BN(100 * DECIMALS)
-    const requiredLoanFee: BN = await program.methods
-      .estimateLoanFee(topUpAmount)
-      .accounts({
-        mint: usdtMint.address,
-      })
-      .view()
+    const loanFee = topUpAmount.div(new BN(DECIMALS)).mul(new BN(1_000_000))
 
-    const pool = web3.Keypair.generate()
+    const poolKeypair = Keypair.generate()
     const poolVaultKeypair = web3.Keypair.generate()
     const tx = await program.methods
       .initPool(
         {
-          interestRate: new BN(10), // 0.001
+          interestRate: new BN(10 * 10 ** 4), // 0.001
           maxLoanAmount: new BN(100 * DECIMALS),
-          maxLoanThreshold: new BN(0.8 * DECIMALS),
+          maxLoanThreshold: new BN(80 * 10 ** 4),
           minLoanAmount: new BN(10 * DECIMALS),
         },
         topUpAmount,
-        requiredLoanFee
+        loanFee,
+        {
+          oneMonth: {},
+        }
       )
       .accounts({
-        pool: pool.publicKey,
-        pda: poolPDA,
+        pool: poolKeypair.publicKey,
+        poolPda: poolPDA,
         vaultAccount: poolVaultKeypair.publicKey,
         vaultMint: usdtMintPubkey,
         collateralMint: usdcMintPubkey,
@@ -198,19 +199,21 @@ describe("test hui flow", () => {
         tokenDepositor: aliceUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .preInstructions([await program.account.pool.createInstruction(pool)])
-      .signers([alice, pool, poolVaultKeypair])
+      .preInstructions([
+        await program.account.pool.createInstruction(poolKeypair),
+      ])
+      .signers([alice, poolKeypair, poolVaultKeypair])
       .rpc()
 
     console.log("Your transaction signature:", tx)
 
     // Tom
     // Create loan PDA
-    const [loanPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("loan"), pool.publicKey.toBuffer()],
+    const [masterLoanPDA] = await PublicKey.findProgramAddress(
+      [Buffer.from("masterLoan"), poolKeypair.publicKey.toBuffer()],
       program.programId
     )
-    const loan = web3.Keypair.generate()
+    const masterLoanKeypair = Keypair.generate()
 
     // Create loan vault USDC
     const formatUnit = (amount: string, decimals: number = 9) =>
@@ -237,7 +240,16 @@ describe("test hui flow", () => {
     const collateralKeypair = Keypair.generate()
     const vaultKeypair = Keypair.generate()
 
-    const printTable = async () => {
+    const poolVaultAccount = await getAccount(
+      connection,
+      poolVaultKeypair.publicKey
+    )
+
+    const printTable = async (message: string) => {
+      if (message) {
+        console.log(message)
+      }
+
       console.table([
         {
           name: "Tom USDT",
@@ -264,21 +276,24 @@ describe("test hui flow", () => {
           address: bobUSDTAccount.toBase58(),
           amount: await getTokenBalance(connection, bobUSDTAccount),
         },
+        {
+          name: "Pool Vault USDT",
+          address: poolVaultAccount.address.toBase58(),
+          amount: await getTokenBalance(connection, poolVaultAccount.address),
+        },
       ])
     }
-    await printTable()
+    await printTable("Created pool")
 
     await program.methods
-      .initLoan(new BN(100 * DECIMALS), {
-        oneMonth: {},
-      })
+      .initLoan(new BN(100 * DECIMALS))
       .accounts({
         nftMint: nftMintKeypair.publicKey,
         nftAccount: nftKeypair.publicKey,
-        loan: loan.publicKey,
-        pool: pool.publicKey,
+        masterLoan: masterLoanKeypair.publicKey,
+        pool: poolKeypair.publicKey,
         poolPda: poolPDA,
-        loanPda: loanPDA,
+        loanPda: masterLoanPDA,
         systemFeeAccount: systemUSDTFeeAccount,
 
         tokenDepositor: bobUSDCAccount,
@@ -295,9 +310,11 @@ describe("test hui flow", () => {
         vaultMint: usdtMintPubkey,
         vaultAccount: vaultKeypair.publicKey,
       })
-      .preInstructions([await program.account.loan.createInstruction(loan)])
+      .preInstructions([
+        await program.account.masterLoan.createInstruction(masterLoanKeypair),
+      ])
       .signers([
-        loan,
+        masterLoanKeypair,
         bob,
         collateralKeypair,
         vaultKeypair,
@@ -306,16 +323,16 @@ describe("test hui flow", () => {
       ])
       .rpc()
 
-    const poolVaultAccount = await getAccount(
-      connection,
-      poolVaultKeypair.publicKey
-    )
     const collateralAccount = await getAccount(
       connection,
       collateralKeypair.publicKey
     )
     const vaultAccount = await getAccount(connection, vaultKeypair.publicKey)
-    const printTableAll = async () => {
+    const printTableAll = async (message?: string) => {
+      if (message) {
+        console.log(message)
+      }
+
       console.table([
         {
           name: "Tom USDT",
@@ -364,21 +381,18 @@ describe("test hui flow", () => {
         },
       ])
     }
-    await printTableAll()
+    await printTableAll("Created loan")
 
     // Deposit USDC to the pool
     const depositTopUpAmount = new anchor.BN(10 * DECIMALS)
-    const requiredDepositLoanFee: BN = await program.methods
-      .estimateLoanFee(depositTopUpAmount)
-      .accounts({
-        mint: usdtMint.address,
-      })
-      .view()
+    const depositLoanFee = depositTopUpAmount
+      .div(new BN(DECIMALS))
+      .mul(new BN(1_000_000))
     await program.methods
-      .deposit(depositTopUpAmount, requiredDepositLoanFee)
+      .deposit(depositTopUpAmount, depositLoanFee)
       .accounts({
         depositor: alice.publicKey,
-        pool: pool.publicKey,
+        pool: poolKeypair.publicKey,
         loanVault: poolVaultAccount.address,
         tokenDepositor: aliceUSDTAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -386,15 +400,14 @@ describe("test hui flow", () => {
       .signers([alice])
       .rpc()
     await sleep()
-    await printTableAll()
+    await printTableAll("Deposit successfully")
 
     // Withdraw USDC to the pool
-    console.log("withdraw")
     await program.methods
       .withdraw(new anchor.BN(30 * DECIMALS))
       .accounts({
         depositor: alice.publicKey,
-        pool: pool.publicKey,
+        pool: poolKeypair.publicKey,
         poolPda: poolPDA,
         tokenDepositor: aliceUSDTAccount,
         poolVault: poolVaultAccount.address,
@@ -403,17 +416,7 @@ describe("test hui flow", () => {
       .signers([alice])
       .rpc()
     await sleep()
-    await printTableAll()
-
-    const interestRate = await program.methods
-      .settlementAmount()
-      .accounts({
-        loan: loan.publicKey,
-      })
-      .view()
-    console.log("interestRate", formatUnit(interestRate))
-    // const loanAccount = await program.account.loan.fetch(loan.publicKey)
-    // console.log(loanAccount)
+    await printTableAll("Withdraw successfully")
 
     await mintTo(
       connection,
@@ -426,104 +429,260 @@ describe("test hui flow", () => {
     await sleep()
     await printTableAll()
 
-    console.log("finalSettlement")
+    const [loanMetadataPDA] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("loan"),
+        masterLoanKeypair.publicKey.toBuffer(),
+        nftKeypair.publicKey.toBuffer(),
+        nftMintKeypair.publicKey.toBuffer(),
+      ],
+      SystemProgram.programId
+    )
+    // Claims
+    // const aliceNftTokenAccount = await createAccount(
+    //   connection,
+    //   alice,
+    //   nftMintKeypair.publicKey,
+    //   alice.publicKey,
+    //   undefined,
+    //   undefined,
+    //   TOKEN_PROGRAM_ID
+    // )
+    const aliceNftTokenAccountKeypair = Keypair.generate()
+    const loanMetadataKeypair = Keypair.generate()
+    await program.methods
+      .claimNft()
+      .accounts({
+        masterLoan: masterLoanKeypair.publicKey,
+        masterLoanPda: masterLoanPDA,
+        nftMint: nftMintKeypair.publicKey,
+        nftAccount: nftKeypair.publicKey,
+        claimAccount: aliceNftTokenAccountKeypair.publicKey,
+        owner: alice.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        loanMetadataPda: loanMetadataPDA,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      })
+      .signers([alice, loanMetadataKeypair, aliceNftTokenAccountKeypair])
+      .preInstructions([
+        await program.account.loanMetadata.createInstruction(
+          loanMetadataKeypair
+        ),
+      ])
+      .rpc()
+    await sleep()
+    const masterLoan = await program.account.masterLoan.fetch(
+      masterLoanKeypair.publicKey
+    )
+    console.log("isClaimed", masterLoan.isClaimed)
+
     await program.methods
       .finalSettlement(new BN((80 + 5.99999976) * DECIMALS))
       .accounts({
-        loan: loan.publicKey,
-        loanPda: loanPDA,
+        masterLoan: masterLoanKeypair.publicKey,
+        masterLoanPda: masterLoanPDA,
         tokenDepositor: bobUSDTAccount,
         tokenReceiver: bobUSDCAccount,
         depositor: bob.publicKey,
         collateralAccount: collateralAccount.address,
         vaultAccount: vaultAccount.address,
         tokenProgram: TOKEN_PROGRAM_ID,
+        loanMetadata: loanMetadataKeypair.publicKey,
       })
       .signers([bob])
       .rpc()
-    await printTableAll()
+    await printTableAll("Final settlement")
 
-    // Claims
-    console.log("Claim NFT")
-    const aliceNftTokenAccount = await createAccount(
-      connection,
-      alice,
-      nftMintKeypair.publicKey,
-      alice.publicKey,
-      undefined,
-      undefined,
-      TOKEN_PROGRAM_ID
+    const tryGetAccountBalance = async (account: PublicKey) => {
+      try {
+        return (
+          await connection.getTokenAccountBalance(account)
+        ).value.amount.toString()
+      } catch (e) {
+        console.log(`Account ${account.toBase58()} closed`)
+        return 0
+      }
+    }
+
+    console.table([
+      {
+        name: "Alice",
+        nft: await tryGetAccountBalance(aliceNftTokenAccountKeypair.publicKey),
+      },
+    ])
+    // Transfer NFT
+    // await transfer(
+    //   connection,
+    //   alice,
+    //   aliceNftTokenAccount,
+    //   tomNftTokenAccount,
+    //   alice,
+    //   1
+    // )
+    // await printNft()
+
+    // List NFT
+    console.log("List NFT")
+    const itemAccountKeypair = Keypair.generate()
+    const itemForSaleKeypair = Keypair.generate()
+    const itemForSaleUSDTKeypair = Keypair.generate()
+    const [itemForSalePDA] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("itemForSale"),
+        alice.publicKey.toBuffer(),
+        nftMintKeypair.publicKey.toBuffer(),
+        itemAccountKeypair.publicKey.toBuffer(),
+      ],
+      program.programId
     )
     await program.methods
-      .claimNft()
+      .listNft(new BN(50 * DECIMALS))
       .accounts({
-        loan: loan.publicKey,
-        nftAccount: nftKeypair.publicKey,
-        loanPda: loanPDA,
-        tokenAccount: aliceNftTokenAccount,
+        seller: alice.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .rpc()
-    const tomNftTokenAccount = await createAccount(
-      connection,
-      tom,
-      nftMintKeypair.publicKey,
-      tom.publicKey,
-      undefined,
-      undefined,
-      TOKEN_PROGRAM_ID
-    )
-    await transfer(
-      connection,
-      alice,
-      aliceNftTokenAccount,
-      tomNftTokenAccount,
-      alice,
-      1
-    )
-    console.log(
-      (await connection.getTokenAccountBalance(aliceNftTokenAccount)).value
-    )
-    console.log(
-      (await connection.getTokenAccountBalance(tomNftTokenAccount)).value
-    )
-    await program.methods
-      .claimLoan()
-      .accounts({
-        loan: loan.publicKey,
-        loanPda: loanPDA,
-        owner: tom.publicKey,
-        nftAccount: tomNftTokenAccount,
+        nftAccount: aliceNftTokenAccountKeypair.publicKey,
         nftMint: nftMintKeypair.publicKey,
-        nftDestination: tom.publicKey,
-        vault: vaultAccount.address,
-        tokenAccount: tomUSDTAccount,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        itemAccount: itemAccountKeypair.publicKey,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
       })
-      .signers([tom])
+      .preInstructions([
+        await program.account.itemForSale.createInstruction(itemForSaleKeypair),
+      ])
+      .signers([
+        alice,
+        itemAccountKeypair,
+        itemForSaleKeypair,
+        itemForSaleUSDTKeypair,
+      ])
       .rpc()
-    await sleep()
-    await printTableAll()
-    console.log(
-      (await connection.getTokenAccountBalance(tomNftTokenAccount)).value
-    )
-    await closeAccount(
-      connection,
-      alice,
-      aliceNftTokenAccount,
-      alice.publicKey,
-      alice
-    )
 
-    console.log("Closing pool account")
+    // Cancel sale
+    console.log("Cancel sale")
     await program.methods
-      .closePool()
+      .cancelSale()
       .accounts({
-        pool: pool.publicKey,
+        nftMint: nftMintKeypair.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        nftAccount: aliceNftTokenAccountKeypair.publicKey,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        itemForSalePda: itemForSalePDA,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemAccount: itemAccountKeypair.publicKey,
         owner: alice.publicKey,
       })
+      .signers([alice])
       .rpc()
-    console.log("Closed pool account")
+
+    // Buy NFT
+
+    // await mintTo(
+    //   connection,
+    //   admin,
+    //   usdtMint.address,
+    //   tomUSDTAccount,
+    //   usdtMint.mintAuthority,
+    //   100 * DECIMALS
+    // )
+    //
+    // const buyerAccountKeypair = Keypair.generate()
+    // await program.methods
+    //   .buyNft()
+    //   .accounts({
+    //     nftMint: nftMintKeypair.publicKey,
+    //     itemForSale: itemForSaleKeypair.publicKey,
+    //     itemForSalePda: itemForSalePDA,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     systemProgram: SystemProgram.programId,
+    //     rent: web3.SYSVAR_RENT_PUBKEY,
+    //     nftAccount: itemAccountKeypair.publicKey,
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //     buyer: tom.publicKey,
+    //     buyerAccount: buyerAccountKeypair.publicKey,
+    //     vaultMint: usdtMintPubkey,
+    //     vaultAccount: itemForSaleUSDTKeypair.publicKey,
+    //     buyerTokenAccount: tomUSDTAccount,
+    //   })
+    //   .signers([tom, buyerAccountKeypair])
+    //   .rpc()
+    // console.table([
+    //   {
+    //     name: "Tom",
+    //     nft: await tryGetAccountBalance(buyerAccountKeypair.publicKey),
+    //   },
+    // ])
+
+    // Claim loan
+    // await program.methods
+    //   .claimLoan()
+    //   .accounts({
+    //     masterLoan: masterLoanKeypair.publicKey,
+    //     masterLoanPda: masterLoanPDA,
+    //     owner: tom.publicKey,
+    //     nftAccount: tomNftTokenAccount,
+    //     nftMint: nftMintKeypair.publicKey,
+    //     vaultAccount: vaultAccount.address,
+    //     tokenAccount: tomUSDTAccount,
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     systemProgram: SystemProgram.programId,
+    //   })
+    //   .signers([tom])
+    //   .rpc()
+    // await sleep()
+    // await printTableAll("Claim rewards and close token account")
+    // await printNft()
+
+    // await closeAccount(
+    //   connection,
+    //   alice,
+    //   aliceNftTokenAccount,
+    //   alice.publicKey,
+    //   alice
+    // )
+    //
+    // await program.methods
+    //   .closePool()
+    //   .accounts({
+    //     pool: masterLoan.publicKey,
+    //     owner: alice.publicKey,
+    //   })
+    //   .rpc()
+    // console.log("Closed pool account")
+    // const a1 = Keypair.generate()
+    // const a2 = Keypair.generate()
+    // await program.methods
+    //   .splitLoan(new BN(2))
+    //   .accounts({
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //   })
+    //   .preInstructions([
+    //     await program.account.loanMetadata.createInstruction(a1),
+    //     await program.account.loanMetadata.createInstruction(a2),
+    //   ])
+    //   .remainingAccounts([
+    //     {
+    //       pubkey: a1.publicKey,
+    //       isWritable: true,
+    //       isSigner: false,
+    //     },
+    //     {
+    //       pubkey: a2.publicKey,
+    //       isWritable: true,
+    //       isSigner: false,
+    //     },
+    //   ])
+    //   .signers([a1, a2])
+    //   .rpc()
   })
 })
 

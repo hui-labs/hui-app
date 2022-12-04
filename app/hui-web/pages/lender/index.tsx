@@ -1,9 +1,16 @@
 import React, { useState } from "react"
-import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
+import {
+  Button,
+  Col,
+  Row,
+  Segmented,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd"
 import { useRouter } from "next/router"
-import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import { programId, TOKEN_LISTS } from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
@@ -127,10 +134,10 @@ const columns: ColumnsType<DataType> = [
 
 const LenderPage: React.FC = () => {
   const router = useRouter()
-  const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
+  const [tabs, setTabs] = useState<string>("pool")
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
@@ -201,7 +208,7 @@ const LenderPage: React.FC = () => {
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
-          status: Object.keys(account.status)[0],
+          status: "",
           availableAmount: "0",
           minLoanAmount: formatUnits(
             account.minLoanAmount.toString(),
@@ -295,51 +302,55 @@ const LenderPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
-      <Title level={2}>Lender</Title>
-      <Space wrap>
-        <Button type="primary" onClick={() => router.push("/lender/add")}>
-          Create Pool
-        </Button>
-        <Button type="primary" onClick={onLoadData}>
-          Load Data
-        </Button>
-      </Space>
+    <div className="px-6 mt-5 max-w-screen-lg mx-auto">
+      <div className="flex justify-between items-center mb-5">
+        <Title level={2}>Lender</Title>
+        <div className="h-full">
+          <button
+            className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800 ml-5"
+            onClick={() => router.push("/lender/add")}
+          >
+            Create Pool
+          </button>
+        </div>
+      </div>
 
       <div>
-        <Title level={3}>Your Pools</Title>
-        <Row>
-          <Col span={24}>
-            <Table
-              columns={columns}
-              pagination={false}
-              expandable={
-                {
-                  // expandedRowRender: (data) => {
-                  //   return (
-                  //     <>
-                  //       <p style={{ margin: 0 }}>
-                  //         loan: {loans[data.key]?.receivedAmount}
-                  //       </p>
-                  //     </>
-                  //   )
-                  // },
-                  // rowExpandable: (data) => loans[data.key]?.receivedAmount,
-                }
-              }
-              onRow={(record, rowIndex) => {
-                return {
-                  onClick: (event) => {
-                    console.log("record", record)
-                    router.push(`/lender/pool?id=${record.key}`)
-                  }, // click row
-                }
-              }}
-              dataSource={myPools}
-            />
-          </Col>
-        </Row>
+        <div className="flex justify-between items-center mb-3">
+          <Title level={3}>
+            {tabs === "loan" ? "Your Loans" : "Available Pools"}
+          </Title>
+          <Segmented
+            className="bg-indigo-500 text-white selection:bg-amber-400 hover:text-white my-5"
+            size="large"
+            options={[
+              {
+                label: "Your Pools",
+                value: "pool",
+              },
+              { label: "Loan Are Owned", value: "loan" },
+            ]}
+            onChange={(v) => setTabs(v as string)}
+          />
+        </div>
+        {tabs === "pool" && (
+          <Row>
+            <Col span={24}>
+              <Table
+                columns={columns}
+                pagination={false}
+                onRow={(record) => {
+                  return {
+                    onClick: async () => {
+                      await router.push(`/lender/pool?id=${record.key}`)
+                    },
+                  }
+                }}
+                dataSource={myPools}
+              />
+            </Col>
+          </Row>
+        )}
       </div>
     </div>
   )

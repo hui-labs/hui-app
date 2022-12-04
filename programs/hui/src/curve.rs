@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::AppError;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Copy, Clone, PartialEq, Eq)]
 pub enum LoanTerm {
     TwoMinutes,
     OneMonth,
@@ -17,21 +17,18 @@ pub enum LoanTerm {
 pub struct ConstantProduct;
 
 impl ConstantProduct {
-    pub const DECIMALS: u64 = 10_u64.pow(9);
-    // Decimals equals 2
-    pub fn calc_loan_fee(&self, loan_fee: u64, amount: u64) -> u64 {
-        (amount / Self::DECIMALS) * loan_fee
-    }
+    // pub const DECIMALS: u64 = 10_u64.pow(9);
+    // pub const PERCENTAGE_DECIMALS: u64 = 10_u64.pow(4);
 
-    pub fn calc_max_loan_amount(&self, threshold: u64, amount: u64) -> Result<u64> {
+    pub fn calc_percentage(&self, amount: u64, threshold: u64) -> Result<u64> {
         let amount = to_u128(amount)?;
-        let threshold = to_u128(threshold * 100)?;
-        to_u64(amount.mul(threshold).div(100_00))
+        let threshold = to_u128(threshold)?;
+        to_u64(amount.mul(threshold).div(1_000_000))
     }
 
-    pub fn calc_interest_amount(&self, amount: u64, interest_rate: u64, loan_term: LoanTerm) -> Result<u128> {
+    pub fn calc_interest_amount(&self, amount: u64, interest_rate: u64, loan_term: LoanTerm) -> Result<u64> {
         let received_amount = to_u128(amount)?;
-        let interest_rate = to_u128(interest_rate * 100)?;
+        let interest_rate = to_u128(interest_rate)?;
 
         let interest_rate_1m = interest_rate.div(12);
         let interest_rate_by_term = match loan_term {
@@ -43,9 +40,9 @@ impl ConstantProduct {
         };
         let interest_amount = received_amount
             .mul(interest_rate_by_term)
-            .div(to_u128(ConstantProduct::DECIMALS)?);
+            .div(1_000_000);
 
-        Ok(interest_amount)
+        to_u64(interest_amount)
     }
 }
 

@@ -3,17 +3,6 @@ export type Hui = {
   "name": "hui",
   "instructions": [
     {
-      "name": "initSystem",
-      "accounts": [
-        {
-          "name": "systemFeeAccount",
-          "isMut": true,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "initPool",
       "accounts": [
         {
@@ -27,7 +16,7 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "pda",
+          "name": "poolPda",
           "isMut": false,
           "isSigner": false
         },
@@ -84,27 +73,16 @@ export type Hui = {
           "type": "u64"
         },
         {
-          "name": "feeAmount",
+          "name": "commissionFee",
           "type": "u64"
+        },
+        {
+          "name": "loanTerm",
+          "type": {
+            "defined": "LoanTerm"
+          }
         }
       ]
-    },
-    {
-      "name": "estimateLoanFee",
-      "accounts": [
-        {
-          "name": "mint",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ],
-      "returns": "u64"
     },
     {
       "name": "deposit",
@@ -150,7 +128,7 @@ export type Hui = {
       "name": "initLoan",
       "accounts": [
         {
-          "name": "loan",
+          "name": "masterLoan",
           "isMut": true,
           "isSigner": false
         },
@@ -244,12 +222,6 @@ export type Hui = {
         {
           "name": "amount",
           "type": "u64"
-        },
-        {
-          "name": "loanTerm",
-          "type": {
-            "defined": "LoanTerm"
-          }
         }
       ]
     },
@@ -289,9 +261,24 @@ export type Hui = {
       "name": "claimNft",
       "accounts": [
         {
-          "name": "loan",
+          "name": "masterLoan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanMetadataPda",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "nftAccount",
@@ -299,8 +286,18 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "tokenAccount",
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "claimAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "masterLoanPda",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -309,7 +306,12 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "loanPda",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -358,18 +360,6 @@ export type Hui = {
       ]
     },
     {
-      "name": "settlementAmount",
-      "accounts": [
-        {
-          "name": "loan",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [],
-      "returns": "u128"
-    },
-    {
       "name": "finalSettlement",
       "accounts": [
         {
@@ -378,12 +368,17 @@ export type Hui = {
           "isSigner": true
         },
         {
-          "name": "loan",
+          "name": "loanMetadata",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanPda",
+          "name": "masterLoan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterLoanPda",
           "isMut": false,
           "isSigner": false
         },
@@ -425,22 +420,17 @@ export type Hui = {
       "accounts": [
         {
           "name": "owner",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
-          "name": "loan",
+          "name": "masterLoan",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "nftAccount",
+          "name": "loanMetadata",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "nftDestination",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -454,12 +444,17 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "vault",
+          "name": "nftAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanPda",
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterLoanPda",
           "isMut": false,
           "isSigner": false
         },
@@ -467,15 +462,9 @@ export type Hui = {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "splitLoan",
-      "accounts": [
+        },
         {
-          "name": "loan",
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -483,10 +472,197 @@ export type Hui = {
       "args": []
     },
     {
-      "name": "mergeLoan",
+      "name": "listNft",
       "accounts": [
         {
-          "name": "loan",
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buyNft",
+      "accounts": [
+        {
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "buyerAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "buyerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancelSale",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -496,7 +672,93 @@ export type Hui = {
   ],
   "accounts": [
     {
-      "name": "loan",
+      "name": "itemForSale",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "isOpen",
+            "type": "bool"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "loanMetadata",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "parent",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "claimAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "LoanStatus"
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
+          },
+          {
+            "name": "isListed",
+            "type": "bool"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "masterLoan",
       "type": {
         "kind": "struct",
         "fields": [
@@ -507,6 +769,14 @@ export type Hui = {
           {
             "name": "owner",
             "type": "publicKey"
+          },
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
           },
           {
             "name": "borrower",
@@ -526,6 +796,14 @@ export type Hui = {
           },
           {
             "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {
@@ -565,10 +843,8 @@ export type Hui = {
             "type": "u64"
           },
           {
-            "name": "status",
-            "type": {
-              "defined": "LoanStatus"
-            }
+            "name": "createdAt",
+            "type": "i64"
           }
         ]
       }
@@ -599,6 +875,12 @@ export type Hui = {
             "type": "publicKey"
           },
           {
+            "name": "loanTerm",
+            "type": {
+              "defined": "LoanTerm"
+            }
+          },
+          {
             "name": "fees",
             "type": {
               "defined": "Fees"
@@ -625,6 +907,10 @@ export type Hui = {
             "type": {
               "defined": "PoolStatus"
             }
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
           }
         ]
       }
@@ -698,32 +984,6 @@ export type Hui = {
       }
     },
     {
-      "name": "AppError",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "ExceededSlippage"
-          },
-          {
-            "name": "ZeroTradingTokens"
-          },
-          {
-            "name": "EmptySupply"
-          },
-          {
-            "name": "InvalidOwner"
-          },
-          {
-            "name": "ConversionFailure"
-          },
-          {
-            "name": "FeeNotEnough"
-          }
-        ]
-      }
-    },
-    {
       "name": "LoanStatus",
       "type": {
         "kind": "enum",
@@ -732,7 +992,7 @@ export type Hui = {
             "name": "Opening"
           },
           {
-            "name": "Disabled"
+            "name": "Final"
           },
           {
             "name": "Closed"
@@ -759,6 +1019,48 @@ export type Hui = {
           }
         ]
       }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "SignerIsNotNftOwner",
+      "msg": "Signer is not nft owner"
+    },
+    {
+      "code": 6001,
+      "name": "PoolAmountNotEnough",
+      "msg": "Pool amount is not enough"
+    },
+    {
+      "code": 6002,
+      "name": "AmountTooLarge",
+      "msg": "Provided amount is too large"
+    },
+    {
+      "code": 6003,
+      "name": "AmountTooSmall",
+      "msg": "Provided amount is too small"
+    },
+    {
+      "code": 6004,
+      "name": "AmountIsZero",
+      "msg": "Provided amount is zero"
+    },
+    {
+      "code": 6005,
+      "name": "FeeNotEnough",
+      "msg": "Provided fee is invalid"
+    },
+    {
+      "code": 6006,
+      "name": "NftAlreadyClaimed",
+      "msg": "NFT has already claimed"
+    },
+    {
+      "code": 6007,
+      "name": "NftAlreadyListed",
+      "msg": "NFT has already listed"
     }
   ]
 };
@@ -768,17 +1070,6 @@ export const IDL: Hui = {
   "name": "hui",
   "instructions": [
     {
-      "name": "initSystem",
-      "accounts": [
-        {
-          "name": "systemFeeAccount",
-          "isMut": true,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "initPool",
       "accounts": [
         {
@@ -792,7 +1083,7 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "pda",
+          "name": "poolPda",
           "isMut": false,
           "isSigner": false
         },
@@ -849,27 +1140,16 @@ export const IDL: Hui = {
           "type": "u64"
         },
         {
-          "name": "feeAmount",
+          "name": "commissionFee",
           "type": "u64"
+        },
+        {
+          "name": "loanTerm",
+          "type": {
+            "defined": "LoanTerm"
+          }
         }
       ]
-    },
-    {
-      "name": "estimateLoanFee",
-      "accounts": [
-        {
-          "name": "mint",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ],
-      "returns": "u64"
     },
     {
       "name": "deposit",
@@ -915,7 +1195,7 @@ export const IDL: Hui = {
       "name": "initLoan",
       "accounts": [
         {
-          "name": "loan",
+          "name": "masterLoan",
           "isMut": true,
           "isSigner": false
         },
@@ -1009,12 +1289,6 @@ export const IDL: Hui = {
         {
           "name": "amount",
           "type": "u64"
-        },
-        {
-          "name": "loanTerm",
-          "type": {
-            "defined": "LoanTerm"
-          }
         }
       ]
     },
@@ -1054,9 +1328,24 @@ export const IDL: Hui = {
       "name": "claimNft",
       "accounts": [
         {
-          "name": "loan",
+          "name": "masterLoan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "loanMetadataPda",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
         },
         {
           "name": "nftAccount",
@@ -1064,8 +1353,18 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "tokenAccount",
+          "name": "nftMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "claimAccount",
           "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "masterLoanPda",
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1074,7 +1373,12 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "loanPda",
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -1123,18 +1427,6 @@ export const IDL: Hui = {
       ]
     },
     {
-      "name": "settlementAmount",
-      "accounts": [
-        {
-          "name": "loan",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": [],
-      "returns": "u128"
-    },
-    {
       "name": "finalSettlement",
       "accounts": [
         {
@@ -1143,12 +1435,17 @@ export const IDL: Hui = {
           "isSigner": true
         },
         {
-          "name": "loan",
+          "name": "loanMetadata",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanPda",
+          "name": "masterLoan",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterLoanPda",
           "isMut": false,
           "isSigner": false
         },
@@ -1190,22 +1487,17 @@ export const IDL: Hui = {
       "accounts": [
         {
           "name": "owner",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true
         },
         {
-          "name": "loan",
+          "name": "masterLoan",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "nftAccount",
+          "name": "loanMetadata",
           "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "nftDestination",
-          "isMut": false,
           "isSigner": false
         },
         {
@@ -1219,12 +1511,17 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "vault",
+          "name": "nftAccount",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "loanPda",
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "masterLoanPda",
           "isMut": false,
           "isSigner": false
         },
@@ -1232,15 +1529,9 @@ export const IDL: Hui = {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "splitLoan",
-      "accounts": [
+        },
         {
-          "name": "loan",
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
         }
@@ -1248,10 +1539,197 @@ export const IDL: Hui = {
       "args": []
     },
     {
-      "name": "mergeLoan",
+      "name": "listNft",
       "accounts": [
         {
-          "name": "loan",
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "seller",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buyNft",
+      "accounts": [
+        {
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "buyer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "buyerAccount",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "buyerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancelSale",
+      "accounts": [
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "loanMetadata",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nftMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
@@ -1261,7 +1739,93 @@ export const IDL: Hui = {
   ],
   "accounts": [
     {
-      "name": "loan",
+      "name": "itemForSale",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "vaultAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "isOpen",
+            "type": "bool"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "loanMetadata",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "parent",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "claimAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "LoanStatus"
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
+          },
+          {
+            "name": "isListed",
+            "type": "bool"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "masterLoan",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1272,6 +1836,14 @@ export const IDL: Hui = {
           {
             "name": "owner",
             "type": "publicKey"
+          },
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "isClaimed",
+            "type": "bool"
           },
           {
             "name": "borrower",
@@ -1291,6 +1863,14 @@ export const IDL: Hui = {
           },
           {
             "name": "vaultMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "nftAccount",
             "type": "publicKey"
           },
           {
@@ -1330,10 +1910,8 @@ export const IDL: Hui = {
             "type": "u64"
           },
           {
-            "name": "status",
-            "type": {
-              "defined": "LoanStatus"
-            }
+            "name": "createdAt",
+            "type": "i64"
           }
         ]
       }
@@ -1364,6 +1942,12 @@ export const IDL: Hui = {
             "type": "publicKey"
           },
           {
+            "name": "loanTerm",
+            "type": {
+              "defined": "LoanTerm"
+            }
+          },
+          {
             "name": "fees",
             "type": {
               "defined": "Fees"
@@ -1390,6 +1974,10 @@ export const IDL: Hui = {
             "type": {
               "defined": "PoolStatus"
             }
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
           }
         ]
       }
@@ -1463,32 +2051,6 @@ export const IDL: Hui = {
       }
     },
     {
-      "name": "AppError",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "ExceededSlippage"
-          },
-          {
-            "name": "ZeroTradingTokens"
-          },
-          {
-            "name": "EmptySupply"
-          },
-          {
-            "name": "InvalidOwner"
-          },
-          {
-            "name": "ConversionFailure"
-          },
-          {
-            "name": "FeeNotEnough"
-          }
-        ]
-      }
-    },
-    {
       "name": "LoanStatus",
       "type": {
         "kind": "enum",
@@ -1497,7 +2059,7 @@ export const IDL: Hui = {
             "name": "Opening"
           },
           {
-            "name": "Disabled"
+            "name": "Final"
           },
           {
             "name": "Closed"
@@ -1524,6 +2086,48 @@ export const IDL: Hui = {
           }
         ]
       }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "SignerIsNotNftOwner",
+      "msg": "Signer is not nft owner"
+    },
+    {
+      "code": 6001,
+      "name": "PoolAmountNotEnough",
+      "msg": "Pool amount is not enough"
+    },
+    {
+      "code": 6002,
+      "name": "AmountTooLarge",
+      "msg": "Provided amount is too large"
+    },
+    {
+      "code": 6003,
+      "name": "AmountTooSmall",
+      "msg": "Provided amount is too small"
+    },
+    {
+      "code": 6004,
+      "name": "AmountIsZero",
+      "msg": "Provided amount is zero"
+    },
+    {
+      "code": 6005,
+      "name": "FeeNotEnough",
+      "msg": "Provided fee is invalid"
+    },
+    {
+      "code": 6006,
+      "name": "NftAlreadyClaimed",
+      "msg": "NFT has already claimed"
+    },
+    {
+      "code": 6007,
+      "name": "NftAlreadyListed",
+      "msg": "NFT has already listed"
     }
   ]
 };

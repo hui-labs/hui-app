@@ -18,9 +18,9 @@ default = []
 [dependencies]
 anchor-lang = "0.25.0"
 anchor-spl = "0.25.0"
-spl-token = {version = "3.3.0", features = ["no-entrypoint"]}
-spl-math = {version="0.1.0", features = [ "no-entrypoint" ]}
-mpl-token-metadata = {version = "1.6.1", features = ["no-entrypoint"]}
+spl-token = { version = "3.3.0", features = ["no-entrypoint"] }
+spl-math = { version = "0.1.0", features = ["no-entrypoint"] }
+mpl-token-metadata = { version = "1.6.1", features = ["no-entrypoint"] }
 thiserror = "1.0"
 enum_dispatch = "0.3.7"
 num-derive = "0.3"
