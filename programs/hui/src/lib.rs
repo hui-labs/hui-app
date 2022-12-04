@@ -382,6 +382,20 @@ pub struct ClaimBuyNft<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub item_for_sale_pda: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub vault_mint: Box<Account<'info, Mint>>,
+    #[account(mut)]
+    pub vault_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    #[account(mut)]
+    pub owner_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
