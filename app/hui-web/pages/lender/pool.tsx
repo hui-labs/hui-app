@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Col, Row, Table, Tag } from "antd"
+import { Button, Col, Row, Space, Table, Tag } from "antd"
 import { useWorkspace } from "@/hooks/useWorkspace"
 import { TOKEN_LISTS } from "@/common/constants"
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
@@ -9,10 +9,13 @@ import useAsyncEffect from "use-async-effect"
 import { formatUnits } from "@ethersproject/units"
 import { DataType } from "@/pages/lender/index"
 import { ColumnsType } from "antd/es/table"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
-import { PublicKey } from "@solana/web3.js"
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { web3 } from "@project-serum/anchor"
 
-const columns: ColumnsType<DataType & { borrower: PublicKey }> = [
+const columns: ColumnsType<
+  DataType & { borrower: PublicKey; onClaimNFT: () => void }
+> = [
   {
     title: "Vault Token",
     dataIndex: "vaultMint",
@@ -85,16 +88,85 @@ const columns: ColumnsType<DataType & { borrower: PublicKey }> = [
     dataIndex: "receivedAmount",
     key: "receivedAmount",
   },
+  {
+    title: "Action",
+    dataIndex: "",
+    key: "x",
+    render: (_, { onClaimNFT, availableAmount, isAdmin }) => {
+      return (
+        <Space>
+          <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
+        </Space>
+      )
+    },
+  },
 ]
 
 const LoansOfPool: React.FC = () => {
-  useAutoConnectWallet()
   const router = useRouter()
   const { id } = router.query
   const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [loans, setLoans] = useState<any[]>([])
   const decimals = 9
+
+  const onClaimNFT = async (
+    masterLoanPubKey: PublicKey,
+    poolPubKey: PublicKey,
+    nftAccount: PublicKey,
+    nftMint: PublicKey,
+    isClaimed: boolean
+  ) => {
+    if (isClaimed) {
+      console.log("You have already claimed")
+      return null
+    }
+    if (workspace.value) {
+      const { program, wallet } = workspace.value
+
+      const loanMetadataKeypair = Keypair.generate()
+      const claimAccountKeypair = Keypair.generate()
+
+      const [masterLoanPDA] = await PublicKey.findProgramAddress(
+        [Buffer.from("masterLoan"), poolPubKey.toBuffer()],
+        program.programId
+      )
+      const [loanMetadataPDA] = await PublicKey.findProgramAddress(
+        [
+          Buffer.from("loan"),
+          masterLoanPubKey.toBuffer(),
+          nftAccount.toBuffer(),
+          nftMint.toBuffer(),
+        ],
+        SystemProgram.programId
+      )
+
+      const tx = await program.methods
+        .claimNft()
+        .accounts({
+          masterLoan: masterLoanPubKey,
+          masterLoanPda: masterLoanPDA,
+          nftMint,
+          nftAccount,
+          claimAccount: claimAccountKeypair.publicKey,
+          owner: wallet.publicKey,
+          loanMetadata: loanMetadataKeypair.publicKey,
+          loanMetadataPda: loanMetadataPDA,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([loanMetadataKeypair, claimAccountKeypair])
+        .preInstructions([
+          await program.account.loanMetadata.createInstruction(
+            loanMetadataKeypair
+          ),
+        ])
+        .rpc()
+      console.log("tx", tx)
+    }
+  }
+
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
@@ -111,6 +183,9 @@ const LoansOfPool: React.FC = () => {
             owner,
             borrower,
             receivedAmount,
+            nftAccount,
+            nftMint,
+            isClaimed,
           } = account
           return {
             key: publicKey.toBase58(),
@@ -127,7 +202,7 @@ const LoansOfPool: React.FC = () => {
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
-            status: Object.keys(account.status)[0],
+            status: "",
             availableAmount: "0",
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
@@ -142,6 +217,8 @@ const LoansOfPool: React.FC = () => {
               account.maxLoanThreshold.toString(),
               4
             ),
+            onClaimNFT: () =>
+              onClaimNFT(publicKey, pool, nftAccount, nftMint, isClaimed),
           }
         })
 

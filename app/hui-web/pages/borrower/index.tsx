@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react"
+import React, { useState } from "react"
 import {
   Button,
   Col,
@@ -6,29 +6,34 @@ import {
   InputNumber,
   Modal,
   Row,
+  Segmented,
   Select,
   Space,
   Table,
   Tag,
   Typography,
 } from "antd"
-import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
-import { SystemFeeUSDTPubKey, TOKEN_LISTS } from "@/common/constants"
+import {
+  DEFAULT_DECIMALS,
+  SystemFeeUSDTPubKey,
+  TOKEN_LISTS,
+} from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN, web3 } from "@project-serum/anchor"
-import { FormInstance } from "antd/es/form/hooks/useForm"
-import { Values } from "async-validator"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 
 const { Title } = Typography
 const { Option } = Select
+
+interface LoanForm {
+  loanTerm: string
+  loanAmount: number
+}
 
 interface PoolDataType {
   key: React.Key
@@ -104,7 +109,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
     render: (_, { showModal }) => {
       return (
         <Space>
-          <Button type="primary" onClick={showModal}>
+          <Button className="bg-indigo-500" type="primary" onClick={showModal}>
             Loan
           </Button>
         </Space>
@@ -192,28 +197,24 @@ const loanColumns: ColumnsType<LoanDataType> = [
 const decimals = 9
 
 const BorrowerPage: React.FC = () => {
-  useAutoConnectWallet()
-  const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [form] = Form.useForm()
   const [availablePools, setAvailablePools] = useState<PoolDataType[]>([])
   const [myLoans, setMyLoans] = useState<LoanDataType[]>([])
   const [open, setOpen] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
-  const formRef = useRef<FormInstance<Values> | null>(null)
+  const [tabs, setTabs] = useState<string>("pool")
 
   const showModal = () => {
     setOpen(true)
   }
 
-  const handleOk = async () => {
-    if (formRef.current && selectedPool && workspace.value) {
-      const loanTerm = formRef.current.getFieldValue("loanTerm")
-      const loanAmount = formRef.current?.getFieldValue("loanAmount")
+  const handleSubmit = async (data: LoanForm) => {
+    if (data && selectedPool && workspace.value) {
+      const loanAmount = data?.loanAmount
 
       setConfirmLoading(true)
       const pool = availablePools.find((v) => v.key === selectedPool.toBase58())
-      console.log(pool)
       if (pool) {
         const { wallet, connection } = workspace.value
         const depositorMint = await getMint(connection, pool.collateralMint)
@@ -233,7 +234,6 @@ const BorrowerPage: React.FC = () => {
 
         await onCreateLoan(
           loanAmount,
-          loanTerm,
           selectedPool,
           depositorAccount.address,
           receiverAccount.address
@@ -248,7 +248,6 @@ const BorrowerPage: React.FC = () => {
   }
   const onCreateLoan = async (
     amount: number,
-    loanTerm: string,
     poolPubkey: PublicKey,
     tokenDepositorPubkey: PublicKey,
     tokenReceiverPubkey: PublicKey
@@ -279,9 +278,7 @@ const BorrowerPage: React.FC = () => {
       const nftAccountKeypair = Keypair.generate()
 
       await program.methods
-        .initLoan(new BN(amount * 10 ** 9), {
-          [loanTerm]: {},
-        })
+        .initLoan(new BN(amount * DEFAULT_DECIMALS))
         .accounts({
           vaultAccount: vaultKeypair.publicKey,
           vaultMint: poolAccount.vaultMint,
@@ -333,7 +330,7 @@ const BorrowerPage: React.FC = () => {
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
-          status: Object.keys(account.status)[0],
+          status: "",
           minLoanAmount: formatUnits(
             account.minLoanAmount.toString(),
             decimals
@@ -396,7 +393,7 @@ const BorrowerPage: React.FC = () => {
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
-          status: Object.keys(account.status)[0],
+          status: "",
           availableAmount: "0",
           minLoanAmount: formatUnits(
             account.minLoanAmount.toString(),
@@ -448,58 +445,76 @@ const BorrowerPage: React.FC = () => {
   }, [workspace.value])
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
+    <div className="px-6 mt-5 max-w-screen-lg mx-auto">
       <Title level={2}>Borrower</Title>
-
-      <div>
-        <Title level={3}>Your Loans</Title>
-        <Row>
-          <Col span={24}>
-            <Table
-              columns={loanColumns}
-              pagination={false}
-              expandable={{
-                expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                // rowExpandable: (record) => record.name !== "Not Expandable",
-              }}
-              dataSource={myLoans}
-            />
-          </Col>
-        </Row>
+      <div className="flex justify-between items-center mt-10">
+        <Title level={3}>
+          {tabs === "loan" ? "Your Loans" : "Available Pools"}
+        </Title>
+        <Segmented
+          className="bg-indigo-500 text-white selection:bg-amber-400 hover:text-white my-5"
+          size="large"
+          options={[
+            {
+              label: "Available Pools",
+              value: "pool",
+            },
+            { label: "Your Loan", value: "loan" },
+          ]}
+          onChange={(v) => setTabs(v as string)}
+        />
       </div>
+      {tabs === "loan" && (
+        <div>
+          <Row>
+            <Col span={24}>
+              <Table
+                columns={loanColumns}
+                pagination={false}
+                expandable={{
+                  expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
+                  // rowExpandable: (record) => record.name !== "Not Expandable",
+                }}
+                dataSource={myLoans}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
 
-      <div>
-        <Title level={3}>Available Pools</Title>
-        <Row>
-          <Col span={24}>
-            <Table
-              columns={poolColumns}
-              pagination={false}
-              expandable={{
-                expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                // rowExpandable: (record) => record.name !== "Not Expandable",
-              }}
-              dataSource={availablePools}
-            />
-          </Col>
-        </Row>
-      </div>
+      {tabs === "pool" && (
+        <div>
+          <Row>
+            <Col span={24}>
+              <Table
+                columns={poolColumns}
+                pagination={false}
+                expandable={{
+                  expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
+                  // rowExpandable: (record) => record.name !== "Not Expandable",
+                }}
+                dataSource={availablePools}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
 
       <Modal
         title="Title"
         open={open}
-        onOk={handleOk}
+        onOk={() => form.submit()}
         confirmLoading={confirmLoading}
         onCancel={handleCancel}
+        okButtonProps={{ className: "bg-indigo-500" }}
       >
         <Row>
           <Col span={24}>
             <Form
-              ref={formRef}
               layout="vertical"
               form={form}
               name="control-hooks"
+              onFinish={handleSubmit}
             >
               <Form.Item
                 name="loanTerm"

@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState } from "react"
-import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
+import {
+  Button,
+  Col,
+  Row,
+  Segmented,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd"
 import { useRouter } from "next/router"
-import useIsMounted from "@/hooks/useIsMounted"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import type { ColumnsType } from "antd/es/table"
 import {
   programId,
@@ -19,7 +26,6 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
-import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
 import * as anchor from "@project-serum/anchor"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
@@ -106,10 +112,9 @@ const columns: ColumnsType<DataType> = [
         return (
           <Space>
             <Button
-              onClick={(e) => {
-                e.stopPropagation()
+              onClick={() =>
                 onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-              }}
+              }
             >
               Withdraw
             </Button>
@@ -155,9 +160,7 @@ const columns: ColumnsType<DataType> = [
 ]
 
 const LenderPage: React.FC = () => {
-  useAutoConnectWallet()
   const router = useRouter()
-  const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
@@ -166,29 +169,29 @@ const LenderPage: React.FC = () => {
   const usdcAccount = useAccount(workspace, usdcMint)
   const usdtAccount = useAccount(workspace, usdtMint)
   const usdtAccountRef = useRef()
+  const [tabs, setTabs] = useState<string>("pool")
 
   useEffect(() => {
     usdtAccountRef.current = usdtAccount.value
   }, [usdtAccount])
 
-  const onWithdraw = async (poolPubKey: PublicKey, amount: BN) => {
+  const onWithdraw = async (
+    poolPubKey: PublicKey,
+    poolVaultPubkey: PublicKey,
+    mintPubKey: PublicKey,
+    amount: BN
+  ) => {
     if (workspace.value) {
       const { program, wallet, connection } = workspace.value
-      const poolAccount = await program.account.pool.fetch(poolPubKey)
 
       const [poolPDA] = await PublicKey.findProgramAddress(
-        [
-          Buffer.from("pool"),
-          poolAccount.owner.toBuffer(),
-          poolAccount.collateralMint.toBuffer(),
-          poolAccount.vaultMint.toBuffer(),
-        ],
+        [Buffer.from("pool"), mintPubKey.toBuffer()],
         program.programId
       )
 
       const mint = await getMint(
         connection,
-        poolAccount.vaultMint,
+        mintPubKey,
         commitmentLevel,
         TOKEN_PROGRAM_ID
       )
@@ -204,7 +207,7 @@ const LenderPage: React.FC = () => {
           pool: poolPubKey,
           poolPda: poolPDA,
           tokenDepositor: tokenDepositor.address,
-          poolVault: poolAccount.vaultAccount,
+          poolVault: poolVaultPubkey,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc()
@@ -262,7 +265,7 @@ const LenderPage: React.FC = () => {
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
-          status: Object.keys(account.status)[0],
+          status: "",
           availableAmount: "0",
           minLoanAmount: formatUnits(
             account.minLoanAmount.toString(),
@@ -276,7 +279,13 @@ const LenderPage: React.FC = () => {
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
           onDeposit: () => onDeposit(publicKey, account.vaultAccount),
           onClose: () => onClose(publicKey),
-          onWithdraw: (amount: BN) => onWithdraw(publicKey, amount),
+          onWithdraw: (amount: BN) =>
+            onWithdraw(
+              publicKey,
+              account.vaultAccount,
+              account.vaultMint,
+              amount
+            ),
         }
       })
 
@@ -351,34 +360,55 @@ const LenderPage: React.FC = () => {
   }
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
-      <Title level={2}>Lender</Title>
-      <Space wrap>
-        <Button type="primary" onClick={() => router.push("/lender/add")}>
-          Create Pool
-        </Button>
-      </Space>
+    <div className="px-6 mt-5 max-w-screen-lg mx-auto">
+      <div className="flex justify-between items-center mb-5">
+        <Title level={2}>Lender</Title>
+        <div className="h-full">
+          <button
+            className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800 ml-5"
+            onClick={() => router.push("/lender/add")}
+          >
+            Create Pool
+          </button>
+        </div>
+      </div>
 
       <div>
-        {console.log("myPools", myPools)}
-        <Title level={3}>Your Pools</Title>
-        <Row>
-          <Col span={24}>
-            <Table
-              columns={columns}
-              pagination={false}
-              // onRow={(record, rowIndex) => {
-              //   return {
-              //     onClick: (event) => {
-              //       router.push(`/lender/pool?id=${record.key}`)
-              //     },
-              //   }
-              // }}
-              dataSource={myPools}
-            />
-          </Col>
-        </Row>
+        <div className="flex justify-between items-center mb-3">
+          <Title level={3}>
+            {tabs === "loan" ? "Your Loans" : "Available Pools"}
+          </Title>
+          <Segmented
+            className="bg-indigo-500 text-white selection:bg-amber-400 hover:text-white my-5"
+            size="large"
+            options={[
+              {
+                label: "Your Pools",
+                value: "pool",
+              },
+              { label: "Loan Are Owned", value: "loan" },
+            ]}
+            onChange={(v) => setTabs(v as string)}
+          />
+        </div>
+        {tabs === "pool" && (
+          <Row>
+            <Col span={24}>
+              <Table
+                columns={columns}
+                pagination={false}
+                onRow={(record) => {
+                  return {
+                    onClick: async () => {
+                      await router.push(`/lender/pool?id=${record.key}`)
+                    },
+                  }
+                }}
+                dataSource={myPools}
+              />
+            </Col>
+          </Row>
+        )}
       </div>
     </div>
   )

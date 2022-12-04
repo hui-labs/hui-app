@@ -19,3 +19,7 @@ export const TOKEN_LISTS: Record<string, string> = {
   [process.env.NEXT_PUBLIC_USDC_MINT_PUBKEY!]: "USDC",
   [process.env.NEXT_PUBLIC_USDT_MINT_PUBKEY!]: "USDT",
 }
+
+export const SYSTEM_LOAN_COMMISSION_FEE = 1_000_000
+export const DEFAULT_DECIMALS = 10 ** 9
+export const DEFAULT_PERCENTAGE_DECIMALS = 10 ** 4

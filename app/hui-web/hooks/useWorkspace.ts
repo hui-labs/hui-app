@@ -1,11 +1,12 @@
 import idl from "@/contracts/idl/hui.json"
-import { Connection, PublicKey } from "@solana/web3.js"
+import { Connection } from "@solana/web3.js"
 import { AnchorWallet, useAnchorWallet } from "@solana/wallet-adapter-react"
 import { AnchorProvider, Program } from "@project-serum/anchor"
 import { Hui } from "@/contracts/types/hui"
 import { useEffect, useState } from "react"
 import { AsyncState } from "react-use/lib/useAsyncFn"
 import { programId } from "@/common/constants"
+import { AnchorClient } from "@/services/anchorClient"
 
 const idlInterface = JSON.parse(JSON.stringify(idl))
 
@@ -14,6 +15,7 @@ export interface Workspace {
   connection: Connection
   provider: AnchorProvider
   program: Program<Hui>
+  client: AnchorClient
 }
 
 export const commitmentLevel = "processed"
@@ -32,8 +34,10 @@ export const useWorkspace = (): AsyncState<Workspace | null> => {
         preflightCommitment: commitmentLevel,
       })
       const program = new Program<Hui>(idlInterface, programId, provider)
+      const client = new AnchorClient(program)
 
       setWorkspace({
+        client,
         wallet,
         connection,
         provider,
