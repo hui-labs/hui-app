@@ -706,6 +706,15 @@ impl<'info> ClaimLoan<'info> {
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
+
+    fn to_close_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.vault_account.to_account_info().clone(),
+            authority: self.owner.to_account_info().clone(),
+            destination: self.owner.to_account_info().clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
 }
 
 #[derive(Accounts)]
