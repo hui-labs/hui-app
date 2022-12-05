@@ -552,6 +552,7 @@ describe("test hui flow", () => {
       ],
       program.programId
     )
+
     await program.methods
       .listNft(new BN(50 * DECIMALS))
       .accounts({
@@ -579,25 +580,52 @@ describe("test hui flow", () => {
       ])
       .rpc()
     console.log("Listed NFT")
-    await sleep()
 
-    // await program.methods
-    //   .delistNft()
-    //   .accounts({
-    //     nftMint: nftMintKeypair.publicKey,
-    //     nftAccount: account,
-    //     rent: web3.SYSVAR_RENT_PUBKEY,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //     systemProgram: SystemProgram.programId,
-    //     itemForSalePda: itemForSalePDA,
-    //     itemForSale: itemForSaleKeypair.publicKey,
-    //     itemAccount: itemAccountKeypair.publicKey,
-    //     owner: alice.publicKey,
-    //     vaultAccount: itemForSaleUSDTKeypair.publicKey,
-    //   })
-    //   .signers([alice])
-    //   .rpc()
-    // console.log("Delisted NFT")
+    await program.methods
+      .delistNft()
+      .accounts({
+        nftMint: nftMintKeypair.publicKey,
+        nftAccount: account,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        itemForSalePda: itemForSalePDA,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemAccount: itemAccountKeypair.publicKey,
+        owner: alice.publicKey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+      })
+      .signers([alice])
+      .rpc()
+    console.log("Delisted NFT")
+
+    await program.methods
+      .listNft(new BN(50 * DECIMALS))
+      .accounts({
+        seller: alice.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        nftAccount: account,
+        nftMint: nftMintKeypair.publicKey,
+        itemAccount: itemAccountKeypair.publicKey,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+      })
+      .preInstructions([
+        await program.account.itemForSale.createInstruction(itemForSaleKeypair),
+      ])
+      .signers([
+        alice,
+        itemAccountKeypair,
+        itemForSaleKeypair,
+        itemForSaleUSDTKeypair,
+      ])
+      .rpc()
+    console.log("Listed NFT again")
 
     // Buy NFT
     await mintTo(
@@ -642,22 +670,22 @@ describe("test hui flow", () => {
       .rpc()
     console.log("Bought NFT")
 
-    // await program.methods
-    //   .claimFund()
-    //   .accounts({
-    //     itemForSale: itemForSaleKeypair.publicKey,
-    //     itemForSalePda: itemForSalePDA,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //     systemProgram: SystemProgram.programId,
-    //     rent: web3.SYSVAR_RENT_PUBKEY,
-    //     owner: alice.publicKey,
-    //     ownerAccount: aliceUSDTAccount,
-    //     vaultMint: usdtMintPubkey,
-    //     vaultAccount: itemForSaleUSDTKeypair.publicKey,
-    //   })
-    //   .signers([alice])
-    //   .rpc()
-    // console.log("Claim Fund")
+    await program.methods
+      .claimFund()
+      .accounts({
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        owner: alice.publicKey,
+        ownerAccount: aliceUSDTAccount,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+      })
+      .signers([alice])
+      .rpc()
+    console.log("Claim Fund")
     // console.table([
     //   {
     //     name: "Tom",
@@ -682,8 +710,7 @@ describe("test hui flow", () => {
       })
       .signers([tom])
       .rpc()
-    await sleep()
-    await printTableAll("Claim rewards and close token account")
+    await printTableAll("Claim loan")
 
     // await closeAccount(
     //   connection,
