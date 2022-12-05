@@ -680,6 +680,7 @@ describe("test hui flow", () => {
         rent: web3.SYSVAR_RENT_PUBKEY,
         owner: alice.publicKey,
         ownerAccount: aliceUSDTAccount,
+        nftAccount: account,
         vaultMint: usdtMintPubkey,
         vaultAccount: itemForSaleUSDTKeypair.publicKey,
       })

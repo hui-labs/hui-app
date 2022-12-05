@@ -703,6 +703,11 @@
           "isSigner": false
         },
         {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false

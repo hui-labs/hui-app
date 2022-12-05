@@ -360,9 +360,7 @@ pub mod hui {
             amount,
         )?;
 
-        // let item_for_sale = &ctx.accounts.item_for_sale;
-        // let owner_info = ctx.accounts.owner.to_account_info();
-        // item_for_sale.close(owner_info)?;
+        token::close_account(ctx.accounts.to_close_nft_account_context())?;
 
         Ok(())
     }
@@ -385,6 +383,8 @@ pub struct ClaimFund<'info> {
     pub owner: Signer<'info>,
     #[account(mut)]
     pub owner_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub nft_account: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -397,6 +397,15 @@ impl<'info> ClaimFund<'info> {
             from: self.vault_account.to_account_info().clone(),
             to: self.owner_account.to_account_info().clone(),
             authority: self.item_for_sale_pda.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    }
+
+    fn to_close_nft_account_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+        let cpi_accounts = CloseAccount {
+            account: self.nft_account.to_account_info().clone(),
+            destination: self.owner.to_account_info().clone(),
+            authority: self.owner.to_account_info().clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }

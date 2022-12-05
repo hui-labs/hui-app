@@ -703,6 +703,11 @@ export type Hui = {
           "isSigner": false
         },
         {
+          "name": "nftAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
@@ -1825,6 +1830,11 @@ export const IDL: Hui = {
         },
         {
           "name": "ownerAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "nftAccount",
           "isMut": true,
           "isSigner": false
         },

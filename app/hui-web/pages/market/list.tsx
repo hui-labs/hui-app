@@ -1,14 +1,15 @@
 import { useWorkspace } from "@/hooks/useWorkspace"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import { BN, web3 } from "@project-serum/anchor"
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
-import { Button, Col, Row, Table, Tag } from "antd"
+import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { Button, Col, Row, Table } from "antd"
 import React, { useState } from "react"
 import { ColumnsType } from "antd/es/table"
 import { DEFAULT_DECIMALS, USDTPubKey } from "@/common/constants"
 import useAsyncEffect from "use-async-effect"
 import bs58 from "bs58"
 import { AnchorClient } from "@/services/anchorClient"
+import { formatUnits } from "@ethersproject/units"
 
 interface LoanMetadataDataType {
   key: React.Key
@@ -20,49 +21,10 @@ interface LoanMetadataDataType {
   parent: PublicKey
   onListNFT: () => void
   onDelistNFT: () => void
+  onClaimFund: () => void
 }
 
 const columns: ColumnsType<LoanMetadataDataType> = [
-  {
-    title: "Is Listed",
-    dataIndex: "isListed",
-    key: "isListed",
-    render: (_, { isListed }) => (
-      <div>
-        <Tag color={"blue"}>{isListed ? "True" : "False"}</Tag>
-      </div>
-    ),
-  },
-  {
-    title: "Is Sold",
-    dataIndex: "isSold",
-    key: "isSold",
-    render: (_, { isSold }) => (
-      <div>
-        <Tag color={"blue"}>{isSold ? "True" : "False"}</Tag>
-      </div>
-    ),
-  },
-  {
-    title: "Is Owner",
-    dataIndex: "isOwner",
-    key: "isOwner",
-    render: (_, { isOwner }) => (
-      <div>
-        <Tag color={"blue"}>{isOwner ? "True" : "False"}</Tag>
-      </div>
-    ),
-  },
-  {
-    title: "Is Claimed",
-    dataIndex: "isClaimed",
-    key: "isClaimed",
-    render: (_, { isClaimed }) => (
-      <div>
-        <Tag color={"blue"}>{isClaimed ? "True" : "False"}</Tag>
-      </div>
-    ),
-  },
   {
     title: "Price (USDT)",
     dataIndex: "price",
@@ -82,11 +44,29 @@ const columns: ColumnsType<LoanMetadataDataType> = [
     title: "Action",
     dataIndex: "",
     key: "",
-    render: (_, { onListNFT, onDelistNFT }) => {
+    render: (
+      _,
+      { onListNFT, onDelistNFT, onClaimFund, isSold, isOwner, isListed }
+    ) => {
+      if (isSold && isOwner) {
+        return (
+          <div>
+            <Button onClick={onClaimFund}>Claim</Button>
+          </div>
+        )
+      }
+
+      if (isListed) {
+        return (
+          <div>
+            <Button onClick={onDelistNFT}>Delist</Button>
+          </div>
+        )
+      }
+
       return (
         <div>
           <Button onClick={onListNFT}>List</Button>
-          <Button onClick={onDelistNFT}>Delist</Button>
         </div>
       )
     },
@@ -102,6 +82,7 @@ const ListNFT = () => {
 
   const itemForSaleFetcher = async (
     client: AnchorClient,
+    ownerPubKey: PublicKey,
     nftMintPubKey: PublicKey
   ) => {
     return client
@@ -111,6 +92,12 @@ const ListNFT = () => {
           memcmp: {
             offset: 8,
             bytes: bs58.encode(nftMintPubKey.toBuffer()),
+          },
+        },
+        {
+          memcmp: {
+            offset: 8 + 32 + 32 + 32,
+            bytes: bs58.encode(ownerPubKey.toBuffer()),
           },
         },
       ])
@@ -138,16 +125,18 @@ const ListNFT = () => {
 
   const fetchNftInfo = async (
     client: AnchorClient,
+    ownerPubKey: PublicKey,
     nftMintPubKey: PublicKey,
     tokenAccount: any
   ) => {
     const [q1, q2] = await Promise.allSettled([
       loanMetadataFetcher(client, nftMintPubKey),
-      itemForSaleFetcher(client, nftMintPubKey),
+      itemForSaleFetcher(client, ownerPubKey, nftMintPubKey),
     ])
 
     const results: Record<string, any> = {
       tokenAccount,
+      nftMintPubKey,
     }
 
     if (q1.status === "fulfilled") {
@@ -180,131 +169,110 @@ const ListNFT = () => {
           }
         })
         .filter(({ tokenAmount }) => {
-          return tokenAmount.amount === "1"
+          return tokenAmount.amount === "1" || tokenAmount.amount === "0"
         })
-
-      console.log("nftAccounts", nftAccounts)
-
-      const itemForSales = await client
-        .from("ItemForSale")
-        .filters([
-          {
-            memcmp: {
-              offset: 8 + 32 + 32 + 32,
-              bytes: bs58.encode(wallet.publicKey.toBuffer()),
-            },
-          },
-        ])
-        .limit(10)
-        .select()
-      console.log("itemForSales", itemForSales)
 
       const nftAccountsDetail = await Promise.all(
         nftAccounts.map((account) =>
-          fetchNftInfo(client, new PublicKey(account.mint), account.tokenAmount)
+          fetchNftInfo(
+            client,
+            wallet.publicKey,
+            new PublicKey(account.mint),
+            account.tokenAmount
+          )
         )
       )
       console.log(nftAccountsDetail)
+
+      const data = nftAccountsDetail
+        .filter((v) => v.itemForSale !== null || v.tokenAccount.amount !== "0")
+        .map<LoanMetadataDataType>(
+          ({ itemForSale, loanMetadata, nftMintPubKey }) => {
+            return {
+              key: loanMetadata.publicKey.toBase58(),
+              parent: loanMetadata?.account.parent,
+              isListed: itemForSale?.account.isOpen,
+              isClaimed: loanMetadata?.account.isClaimed,
+              isSold: itemForSale?.account.isSold,
+              isOwner:
+                itemForSale?.account.owner.toBase58() ===
+                wallet.publicKey.toBase58(),
+              price: itemForSale
+                ? formatUnits(itemForSale?.account.price.toString(), 9)
+                : "0",
+              onListNFT: () =>
+                onListNFT(loanMetadata?.publicKey, nftMintPubKey),
+              onDelistNFT: () =>
+                onDelistNFT(
+                  nftMintPubKey,
+                  itemForSale?.publicKey,
+                  itemForSale?.account.vaultAccount
+                ),
+              onClaimFund: () =>
+                onClaimFund(
+                  itemForSale?.publicKey,
+                  nftMintPubKey,
+                  itemForSale?.account.ownerAccount,
+                  itemForSale?.account.itemAccount,
+                  itemForSale?.account.vaultAccount
+                ),
+            }
+          }
+        )
+
+      setListLoanMetadatas(data)
     }
   }, [workspace.value])
 
-  // useAsyncEffect(async () => {
-  //   if (workspace.value) {
-  //     const { client, program, connection, wallet } = workspace.value
-  //
-  //     const loanMetadatas = await client
-  //       .from("LoanMetadata")
-  //       .offset(0)
-  //       .limit(10)
-  //       .select()
-  //
-  //     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-  //       wallet.publicKey,
-  //       {
-  //         programId: TOKEN_PROGRAM_ID,
-  //       }
-  //     )
-  //
-  //     const map = tokenAccounts.value.reduce<any>((acc, item) => {
-  //       const { mint, tokenAmount } = item.account.data.parsed.info
-  //       if (tokenAmount.amount === "1" || tokenAmount.amount === "0") {
-  //         acc[mint] = true
-  //       }
-  //
-  //       return acc
-  //     }, {})
-  //
-  //     const selectedAccounts = loanMetadatas.filter((v) => {
-  //       return map[v.account.nftMint.toBase58()]
-  //     })
-  //
-  //     const fetcher = async (nftMintPubKey: PublicKey) => {
-  //       return client
-  //         .from("ItemForSale")
-  //         .filters([
-  //           {
-  //             memcmp: {
-  //               offset: 8,
-  //               bytes: bs58.encode(nftMintPubKey.toBuffer()),
-  //             },
-  //           },
-  //         ])
-  //         .limit(1)
-  //         .select()
-  //     }
-  //     const nftMintKeys = selectedAccounts.map((value) => value.account.nftMint)
-  //     const itemForSales = await Promise.allSettled(nftMintKeys.map(fetcher))
-  //     const results: any[] = selectedAccounts.map((loanMetadata, index) => {
-  //       const itemForSale = itemForSales[index]
-  //       if (itemForSale.status === "fulfilled") {
-  //         return {
-  //           ...loanMetadata,
-  //           itemForSale: itemForSale.value[0],
-  //         }
-  //       }
-  //
-  //       return loanMetadata
-  //     })
-  //
-  //     console.log("results", results)
-  //     const data = results.map<LoanMetadataDataType>(
-  //       ({ publicKey, account, itemForSale }) => {
-  //         return {
-  //           key: publicKey.toBase58(),
-  //           parent: account.parent,
-  //           isListed: itemForSale?.account.isOpen,
-  //           isClaimed: account.isClaimed,
-  //           isSold: itemForSale?.account.isSold,
-  //           isOwner:
-  //             itemForSale?.account.owner.toBase58() ===
-  //             wallet.publicKey.toBase58(),
-  //           price: itemForSale
-  //             ? formatUnits(itemForSale?.account.price.toString(), 9)
-  //             : "0",
-  //           onListNFT: () =>
-  //             onListNFT(publicKey, account.nftMint, account.claimAccount),
-  //           onDelistNFT: () =>
-  //             onDelistNFT(
-  //               publicKey,
-  //               account.nftMint,
-  //               itemForSale.publicKey,
-  //               itemForSale?.account.vaultAccount
-  //             ),
-  //         }
-  //       }
-  //     )
-  //
-  //     setListLoanMetadatas(data)
-  //   }
-  // }, [workspace.value])
+  const onClaimFund = async (
+    itemForSalePubKey: PublicKey,
+    nftMint: PublicKey,
+    nftAccount: PublicKey,
+    itemAccount: PublicKey,
+    vaultAccount: PublicKey
+  ) => {
+    if (workspace.value) {
+      const { wallet, program } = workspace.value
+      const [itemForSalePDA] = await PublicKey.findProgramAddress(
+        [
+          Buffer.from("itemForSale"),
+          wallet.publicKey.toBuffer(),
+          nftMint.toBuffer(),
+          itemAccount.toBuffer(),
+        ],
+        program.programId
+      )
+
+      const ownerAccount = await getAssociatedTokenAddress(
+        USDTPubKey,
+        wallet.publicKey
+      )
+      const tx = await program.methods
+        .claimFund()
+        .accounts({
+          itemForSale: itemForSalePubKey,
+          itemForSalePda: itemForSalePDA,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: web3.SYSVAR_RENT_PUBKEY,
+          owner: wallet.publicKey,
+          ownerAccount: ownerAccount,
+          vaultMint: USDTPubKey,
+          vaultAccount: vaultAccount,
+          nftAccount,
+        })
+        .rpc()
+
+      console.log(tx)
+    }
+  }
 
   const onListNFT = async (
     loanMetadataPubKey: PublicKey,
-    nftMint: PublicKey,
-    claimAccount: PublicKey
+    nftMint: PublicKey
   ) => {
     if (workspace.value) {
-      const { program, wallet, connection } = workspace.value
+      const { program, wallet } = workspace.value
       const itemAccountKeypair = Keypair.generate()
       const itemForSaleKeypair = Keypair.generate()
       const itemForSaleUSDTKeypair = Keypair.generate()
@@ -317,12 +285,11 @@ const ListNFT = () => {
         ],
         program.programId
       )
-      // const mint = await getMint(connection, nftMint)
-      // const nftAccount = await getOrCreateAssociatedTokenAccount(
-      //   workspace.value,
-      //   claimAccount,
-      //   mint
-      // )
+
+      const claimAccount = await getAssociatedTokenAddress(
+        nftMint,
+        wallet.publicKey
+      )
       const tx = await program.methods
         .listNft(new BN(50 * DEFAULT_DECIMALS))
         .accounts({
@@ -355,7 +322,6 @@ const ListNFT = () => {
   }
 
   const onDelistNFT = async (
-    publicKey: PublicKey,
     nftMint: PublicKey,
     saleAccount: PublicKey,
     vaultAccount: PublicKey
