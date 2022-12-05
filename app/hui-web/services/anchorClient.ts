@@ -41,10 +41,6 @@ export const getAccountPublicKeys = async (
   )
 
   const accounts = await connection.getProgramAccounts(programId, {
-    dataSlice: {
-      offset: 0,
-      length: 0,
-    },
     filters: [
       {
         memcmp: {
@@ -84,19 +80,21 @@ export const getPage = async <T = any>(
   }))
 }
 
-export class AnchorClient implements IBuilder {
+export class Builder implements IBuilder {
   private _account: Account | null = null
   private _limit = 10
   private _offset = 0
   private _filters: GetProgramAccountsFilter[] = []
 
-  constructor(private program: Program<Hui>) {}
+  constructor(private program: Program<Hui>) {
+  }
 
   async select<T = any>(): Promise<SelectResult<T>[]> {
     if (!this._account) {
       throw new Error("Unexpected error")
     }
 
+    console.log(this._account, this._limit, this._offset, this._filters)
     const accountPublicKeys = await getAccountPublicKeys(
       this.program.provider.connection,
       this._account,
@@ -137,6 +135,13 @@ export class AnchorClient implements IBuilder {
     return this
   }
 
+  private reset() {
+    this._account = null
+    this._filters = []
+    this._limit = 10
+    this._offset = 0
+  }
+
   private getNamespace(): AccountClient<Hui> {
     switch (this._account) {
       case "ItemForSale":
@@ -150,5 +155,16 @@ export class AnchorClient implements IBuilder {
       default:
         throw new Error("Not support this account")
     }
+  }
+}
+
+export class AnchorClient {
+  constructor(private program: Program<Hui>) {
+  }
+
+  from(account: Account): Builder {
+    const builder = new Builder(this.program)
+    builder.from(account)
+    return builder
   }
 }
