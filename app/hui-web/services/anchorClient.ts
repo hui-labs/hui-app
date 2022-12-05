@@ -85,15 +85,13 @@ export class Builder implements IBuilder {
   private _offset = 0
   private _filters: GetProgramAccountsFilter[] = []
 
-  constructor(private program: Program<Hui>) {
-  }
+  constructor(private program: Program<Hui>) {}
 
   async select<T = any>(): Promise<SelectResult<T>[]> {
     if (!this._account) {
       throw new Error("Unexpected error")
     }
 
-    console.log(this._account, this._limit, this._offset, this._filters)
     const accountPublicKeys = await getAccountPublicKeys(
       this.program.provider.connection,
       this._account,
@@ -109,12 +107,6 @@ export class Builder implements IBuilder {
   }
 
   filters(filters: GetProgramAccountsFilter[]): this {
-    // {
-    //   memcmp: {
-    //     offset: 8,
-    //       bytes: bs58.encode(pk.toBuffer()),
-    //   },
-    // },
     this._filters = filters
     return this
   }
@@ -134,13 +126,6 @@ export class Builder implements IBuilder {
     return this
   }
 
-  private reset() {
-    this._account = null
-    this._filters = []
-    this._limit = 10
-    this._offset = 0
-  }
-
   private getNamespace(): AccountClient<Hui> {
     switch (this._account) {
       case "ItemForSale":
@@ -158,8 +143,7 @@ export class Builder implements IBuilder {
 }
 
 export class AnchorClient {
-  constructor(private program: Program<Hui>) {
-  }
+  constructor(private program: Program<Hui>) {}
 
   from(account: Account): Builder {
     const builder = new Builder(this.program)
