@@ -585,7 +585,6 @@ describe("test hui flow", () => {
       .delistNft()
       .accounts({
         nftMint: nftMintKeypair.publicKey,
-        loanMetadata: loanMetadataKeypair.publicKey,
         nftAccount: account,
         rent: web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,

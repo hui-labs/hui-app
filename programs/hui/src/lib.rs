@@ -332,16 +332,16 @@ pub mod hui {
                 .with_signer(signer_seeds),
             1,
         )?;
-        // token::close_account(
-        //     ctx.accounts
-        //         .to_close_vault_account_context()
-        //         .with_signer(signer_seeds),
-        // )?;
-        // token::close_account(
-        //     ctx.accounts
-        //         .to_close_item_account_context()
-        //         .with_signer(signer_seeds),
-        // )?;
+        token::close_account(
+            ctx.accounts
+                .to_close_vault_account_context()
+                .with_signer(signer_seeds),
+        )?;
+        token::close_account(
+            ctx.accounts
+                .to_close_item_account_context()
+                .with_signer(signer_seeds),
+        )?;
         Ok(())
     }
 
@@ -411,8 +411,7 @@ pub struct DelistNft<'info> {
     /// CHECK: This is not dangerous because we don't read or write from this account
     #[account(mut)]
     pub item_for_sale_pda: AccountInfo<'info>,
-    pub loan_metadata: Box<Account<'info, LoanMetadata>>,
-    #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
+    #[account(mut)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
@@ -438,8 +437,8 @@ impl<'info> DelistNft<'info> {
     fn to_close_vault_account_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
         let cpi_accounts = CloseAccount {
             account: self.vault_account.to_account_info().clone(),
-            authority: self.item_for_sale_pda.clone(),
             destination: self.owner.to_account_info().clone(),
+            authority: self.item_for_sale_pda.clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
@@ -447,8 +446,8 @@ impl<'info> DelistNft<'info> {
     fn to_close_item_account_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
         let cpi_accounts = CloseAccount {
             account: self.item_account.to_account_info().clone(),
+            destination: self.owner.to_account_info().clone(),
             authority: self.item_for_sale_pda.clone(),
-            destination: self.nft_account.to_account_info().clone(),
         };
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
