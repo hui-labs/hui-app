@@ -2,8 +2,12 @@ import React, { useEffect, useRef, useState } from "react"
 import {
   Button,
   Col,
+  Form,
+  InputNumber,
+  Modal,
   Row,
   Segmented,
+  Select,
   Space,
   Table,
   Tag,
@@ -171,6 +175,8 @@ const LenderPage: React.FC = () => {
   const usdtAccount = useAccount(workspace, usdtMint)
   const usdtAccountRef = useRef()
   const [tabs, setTabs] = useState<string>("pool")
+  const [form] = Form.useForm()
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     usdtAccountRef.current = usdtAccount.value
@@ -218,26 +224,7 @@ const LenderPage: React.FC = () => {
   }
 
   const onDeposit = async (poolPubKey: PublicKey, vaultAccount) => {
-    if (workspace.value) {
-      const { program, wallet, connection } = workspace.value
-
-      const depositTopUpAmount = new anchor.BN(30 * 10 ** 9)
-      const depositLoanFee = depositTopUpAmount
-        .div(new BN(10 ** 9))
-        .mul(new BN(1_000_000))
-      const poolVaultAccount = await getAccount(connection, vaultAccount)
-
-      await program.methods
-        .deposit(depositTopUpAmount, depositLoanFee)
-        .accounts({
-          depositor: wallet.publicKey,
-          pool: poolPubKey,
-          loanVault: poolVaultAccount.address,
-          tokenDepositor: usdtAccountRef.current.address,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc()
-    }
+    showModal()
   }
 
   const onClose = async (poolPubKey: PublicKey) => {
@@ -361,6 +348,37 @@ const LenderPage: React.FC = () => {
     }
   }
 
+  const handleSubmit = async (data: any) => {
+    // if (workspace.value) {
+    //   const { program, wallet, connection } = workspace.value
+    //
+    //   const depositTopUpAmount = new anchor.BN(30 * 10 ** 9)
+    //   const depositLoanFee = depositTopUpAmount
+    //     .div(new BN(10 ** 9))
+    //     .mul(new BN(1_000_000))
+    //   const poolVaultAccount = await getAccount(connection, vaultAccount)
+    //
+    //   await program.methods
+    //     .deposit(depositTopUpAmount, depositLoanFee)
+    //     .accounts({
+    //       depositor: wallet.publicKey,
+    //       pool: poolPubKey,
+    //       loanVault: poolVaultAccount.address,
+    //       tokenDepositor: usdtAccountRef.current.address,
+    //       tokenProgram: TOKEN_PROGRAM_ID,
+    //     })
+    //     .rpc()
+    // }
+  }
+
+  const showModal = () => {
+    setOpen(true)
+  }
+
+  const handleCancel = () => {
+    setOpen(false)
+  }
+
   return (
     <div className="px-6 mt-5 max-w-screen-lg mx-auto">
       <div className="flex justify-between items-center mb-5">
@@ -411,6 +429,32 @@ const LenderPage: React.FC = () => {
             </Col>
           </Row>
         )}
+        <Modal
+          title="Title"
+          open={open}
+          onOk={() => form.submit()}
+          onCancel={handleCancel}
+          okButtonProps={{ className: "bg-indigo-500" }}
+        >
+          <Row>
+            <Col span={24}>
+              <Form
+                layout="vertical"
+                form={form}
+                name="control-hooks"
+                onFinish={handleSubmit}
+              >
+                <Form.Item
+                  name="loanAmount"
+                  label="Loan Amount"
+                  rules={[{ required: true }]}
+                >
+                  <InputNumber style={{ width: "100%" }} />
+                </Form.Item>
+              </Form>
+            </Col>
+          </Row>
+        </Modal>
       </div>
     </div>
   )
