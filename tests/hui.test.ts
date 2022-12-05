@@ -3,8 +3,10 @@ import { BN, Program, web3 } from "@project-serum/anchor"
 import { Hui } from "../target/types/hui"
 import {
   createAccount,
+  createAssociatedTokenAccountInstruction,
   createMint,
   getAccount,
+  getAssociatedTokenAddress,
   getMint,
   mintTo,
   TOKEN_PROGRAM_ID,
@@ -236,7 +238,7 @@ describe("test hui flow", () => {
     }
 
     const nftMintKeypair = Keypair.generate()
-    const nftKeypair = Keypair.generate()
+    const nftAccountKeypair = Keypair.generate()
     const collateralKeypair = Keypair.generate()
     const vaultKeypair = Keypair.generate()
 
@@ -289,7 +291,7 @@ describe("test hui flow", () => {
       .initLoan(new BN(100 * DECIMALS))
       .accounts({
         nftMint: nftMintKeypair.publicKey,
-        nftAccount: nftKeypair.publicKey,
+        nftAccount: nftAccountKeypair.publicKey,
         masterLoan: masterLoanKeypair.publicKey,
         pool: poolKeypair.publicKey,
         poolPda: poolPDA,
@@ -319,7 +321,7 @@ describe("test hui flow", () => {
         collateralKeypair,
         vaultKeypair,
         nftMintKeypair,
-        nftKeypair,
+        nftAccountKeypair,
       ])
       .rpc()
 
@@ -427,13 +429,13 @@ describe("test hui flow", () => {
       10 * DECIMALS
     )
     await sleep()
-    await printTableAll()
+    await printTableAll("Mint USDT to bob")
 
     const [loanMetadataPDA] = await PublicKey.findProgramAddress(
       [
         Buffer.from("loan"),
         masterLoanKeypair.publicKey.toBuffer(),
-        nftKeypair.publicKey.toBuffer(),
+        nftAccountKeypair.publicKey.toBuffer(),
         nftMintKeypair.publicKey.toBuffer(),
       ],
       SystemProgram.programId
@@ -448,7 +450,13 @@ describe("test hui flow", () => {
     //   undefined,
     //   TOKEN_PROGRAM_ID
     // )
-    const aliceNftTokenAccountKeypair = Keypair.generate()
+
+    const account = await getAssociatedTokenAddress(
+      nftMintKeypair.publicKey,
+      alice.publicKey
+    )
+    console.log("account", account.toBase58())
+
     const loanMetadataKeypair = Keypair.generate()
     await program.methods
       .claimNft()
@@ -456,22 +464,30 @@ describe("test hui flow", () => {
         masterLoan: masterLoanKeypair.publicKey,
         masterLoanPda: masterLoanPDA,
         nftMint: nftMintKeypair.publicKey,
-        nftAccount: nftKeypair.publicKey,
-        claimAccount: aliceNftTokenAccountKeypair.publicKey,
+        nftAccount: nftAccountKeypair.publicKey,
+        claimAccount: account,
         owner: alice.publicKey,
         loanMetadata: loanMetadataKeypair.publicKey,
         loanMetadataPda: loanMetadataPDA,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
+        // associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
-      .signers([alice, loanMetadataKeypair, aliceNftTokenAccountKeypair])
+      .signers([alice, loanMetadataKeypair])
       .preInstructions([
         await program.account.loanMetadata.createInstruction(
           loanMetadataKeypair
         ),
+        await createAssociatedTokenAccountInstruction(
+          alice.publicKey,
+          account,
+          alice.publicKey,
+          nftMintKeypair.publicKey
+        ),
       ])
       .rpc()
+
     await sleep()
     const masterLoan = await program.account.masterLoan.fetch(
       masterLoanKeypair.publicKey
@@ -509,7 +525,7 @@ describe("test hui flow", () => {
     console.table([
       {
         name: "Alice",
-        nft: await tryGetAccountBalance(aliceNftTokenAccountKeypair.publicKey),
+        nft: await tryGetAccountBalance(account),
       },
     ])
     // Transfer NFT
@@ -524,7 +540,6 @@ describe("test hui flow", () => {
     // await printNft()
 
     // List NFT
-    console.log("List NFT")
     const itemAccountKeypair = Keypair.generate()
     const itemForSaleKeypair = Keypair.generate()
     const itemForSaleUSDTKeypair = Keypair.generate()
@@ -537,6 +552,7 @@ describe("test hui flow", () => {
       ],
       program.programId
     )
+
     await program.methods
       .listNft(new BN(50 * DECIMALS))
       .accounts({
@@ -545,7 +561,7 @@ describe("test hui flow", () => {
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
-        nftAccount: aliceNftTokenAccountKeypair.publicKey,
+        nftAccount: account,
         nftMint: nftMintKeypair.publicKey,
         itemAccount: itemAccountKeypair.publicKey,
         itemForSale: itemForSaleKeypair.publicKey,
@@ -563,15 +579,13 @@ describe("test hui flow", () => {
         itemForSaleUSDTKeypair,
       ])
       .rpc()
+    console.log("Listed NFT")
 
-    // Cancel sale
-    console.log("Cancel sale")
     await program.methods
-      .cancelSale()
+      .delistNft()
       .accounts({
         nftMint: nftMintKeypair.publicKey,
-        loanMetadata: loanMetadataKeypair.publicKey,
-        nftAccount: aliceNftTokenAccountKeypair.publicKey,
+        nftAccount: account,
         rent: web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
@@ -579,41 +593,99 @@ describe("test hui flow", () => {
         itemForSale: itemForSaleKeypair.publicKey,
         itemAccount: itemAccountKeypair.publicKey,
         owner: alice.publicKey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
       })
       .signers([alice])
       .rpc()
+    console.log("Delisted NFT")
+
+    await program.methods
+      .listNft(new BN(50 * DECIMALS))
+      .accounts({
+        seller: alice.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        nftAccount: account,
+        nftMint: nftMintKeypair.publicKey,
+        itemAccount: itemAccountKeypair.publicKey,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+      })
+      .preInstructions([
+        await program.account.itemForSale.createInstruction(itemForSaleKeypair),
+      ])
+      .signers([
+        alice,
+        itemAccountKeypair,
+        itemForSaleKeypair,
+        itemForSaleUSDTKeypair,
+      ])
+      .rpc()
+    console.log("Listed NFT again")
 
     // Buy NFT
+    await mintTo(
+      connection,
+      admin,
+      usdtMint.address,
+      tomUSDTAccount,
+      usdtMint.mintAuthority,
+      100 * DECIMALS
+    )
 
-    // await mintTo(
-    //   connection,
-    //   admin,
-    //   usdtMint.address,
-    //   tomUSDTAccount,
-    //   usdtMint.mintAuthority,
-    //   100 * DECIMALS
-    // )
-    //
-    // const buyerAccountKeypair = Keypair.generate()
-    // await program.methods
-    //   .buyNft()
-    //   .accounts({
-    //     nftMint: nftMintKeypair.publicKey,
-    //     itemForSale: itemForSaleKeypair.publicKey,
-    //     itemForSalePda: itemForSalePDA,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //     systemProgram: SystemProgram.programId,
-    //     rent: web3.SYSVAR_RENT_PUBKEY,
-    //     nftAccount: itemAccountKeypair.publicKey,
-    //     loanMetadata: loanMetadataKeypair.publicKey,
-    //     buyer: tom.publicKey,
-    //     buyerAccount: buyerAccountKeypair.publicKey,
-    //     vaultMint: usdtMintPubkey,
-    //     vaultAccount: itemForSaleUSDTKeypair.publicKey,
-    //     buyerTokenAccount: tomUSDTAccount,
-    //   })
-    //   .signers([tom, buyerAccountKeypair])
-    //   .rpc()
+    const tomAccount = await getAssociatedTokenAddress(
+      nftMintKeypair.publicKey,
+      tom.publicKey
+    )
+    await program.methods
+      .buyNft()
+      .accounts({
+        nftMint: nftMintKeypair.publicKey,
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        itemAccount: itemAccountKeypair.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        buyer: tom.publicKey,
+        buyerAccount: tomAccount,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+        buyerTokenAccount: tomUSDTAccount,
+      })
+      .signers([tom])
+      .preInstructions([
+        await createAssociatedTokenAccountInstruction(
+          tom.publicKey,
+          tomAccount,
+          tom.publicKey,
+          nftMintKeypair.publicKey
+        ),
+      ])
+      .rpc()
+    console.log("Bought NFT")
+
+    await program.methods
+      .claimFund()
+      .accounts({
+        itemForSale: itemForSaleKeypair.publicKey,
+        itemForSalePda: itemForSalePDA,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+        owner: alice.publicKey,
+        ownerAccount: aliceUSDTAccount,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: itemForSaleUSDTKeypair.publicKey,
+      })
+      .signers([alice])
+      .rpc()
+    console.log("Claim Fund")
     // console.table([
     //   {
     //     name: "Tom",
@@ -622,25 +694,23 @@ describe("test hui flow", () => {
     // ])
 
     // Claim loan
-    // await program.methods
-    //   .claimLoan()
-    //   .accounts({
-    //     masterLoan: masterLoanKeypair.publicKey,
-    //     masterLoanPda: masterLoanPDA,
-    //     owner: tom.publicKey,
-    //     nftAccount: tomNftTokenAccount,
-    //     nftMint: nftMintKeypair.publicKey,
-    //     vaultAccount: vaultAccount.address,
-    //     tokenAccount: tomUSDTAccount,
-    //     loanMetadata: loanMetadataKeypair.publicKey,
-    //     tokenProgram: TOKEN_PROGRAM_ID,
-    //     systemProgram: SystemProgram.programId,
-    //   })
-    //   .signers([tom])
-    //   .rpc()
-    // await sleep()
-    // await printTableAll("Claim rewards and close token account")
-    // await printNft()
+    await program.methods
+      .claimLoan()
+      .accounts({
+        masterLoan: masterLoanKeypair.publicKey,
+        masterLoanPda: masterLoanPDA,
+        owner: tom.publicKey,
+        nftAccount: tomAccount,
+        nftMint: nftMintKeypair.publicKey,
+        vaultAccount: vaultAccount.address,
+        tokenAccount: tomUSDTAccount,
+        loanMetadata: loanMetadataKeypair.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([tom])
+      .rpc()
+    await printTableAll("Claim loan")
 
     // await closeAccount(
     //   connection,

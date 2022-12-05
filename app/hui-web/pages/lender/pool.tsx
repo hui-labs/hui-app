@@ -7,15 +7,34 @@ import useIsMounted from "@/hooks/useIsMounted"
 import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
 import { formatUnits } from "@ethersproject/units"
-import { DataType } from "@/pages/lender/index"
 import { ColumnsType } from "antd/es/table"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import { web3 } from "@project-serum/anchor"
 
-const columns: ColumnsType<
-  DataType & { borrower: PublicKey; onClaimNFT: () => void }
-> = [
+interface DataType {
+  key: React.Key
+  isAdmin: boolean
+  owner: PublicKey
+  vaultMint: PublicKey
+  vaultAccount: PublicKey
+  collateralMint: PublicKey
+  availableAmount: string
+  interestRate: string
+  maxLoanAmount: string
+  minLoanAmount: string
+  maxLoanThreshold: string
+  status: string
+  isClaimed: boolean
+  borrower: PublicKey
+  onClaimNFT: () => void
+}
+
+const columns: ColumnsType<DataType> = [
   {
     title: "Vault Token",
     dataIndex: "vaultMint",
@@ -53,6 +72,16 @@ const columns: ColumnsType<
     ),
   },
   { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
+  {
+    title: "Is Claimed",
+    dataIndex: "isClaimed",
+    key: "isClaimed",
+    render: (_, { isClaimed }) => (
+      <div>
+        <Tag color={"blue"}>{isClaimed ? "True" : "False"}</Tag>
+      </div>
+    ),
+  },
   {
     title: "Max Loan Amount",
     dataIndex: "maxLoanAmount",
@@ -107,7 +136,7 @@ const LoansOfPool: React.FC = () => {
   const { id } = router.query
   const mounted = useIsMounted()
   const workspace = useWorkspace()
-  const [loans, setLoans] = useState<any[]>([])
+  const [loans, setLoans] = useState<DataType[]>([])
   const decimals = 9
 
   const onClaimNFT = async (
@@ -125,12 +154,12 @@ const LoansOfPool: React.FC = () => {
       const { program, wallet } = workspace.value
 
       const loanMetadataKeypair = Keypair.generate()
-      const claimAccountKeypair = Keypair.generate()
 
       const [masterLoanPDA] = await PublicKey.findProgramAddress(
         [Buffer.from("masterLoan"), poolPubKey.toBuffer()],
         program.programId
       )
+      //['ynSEjsgeWPJqM7M1Vd7foG3WuUiVzMWCiV1FzYVA9zo', '69qzHLJsEVdDuyV6yxbGm7v1UiHcSSh53wNkNoacaz4r', 'Do1wWc2Cu5RkQDg8iU5DQo9m1EGrXPHnS18YyZH3pHXs']
       const [loanMetadataPDA] = await PublicKey.findProgramAddress(
         [
           Buffer.from("loan"),
@@ -140,7 +169,10 @@ const LoansOfPool: React.FC = () => {
         ],
         SystemProgram.programId
       )
-
+      const associatedNftTokenAccount = await getAssociatedTokenAddress(
+        nftMint,
+        wallet.publicKey
+      )
       const tx = await program.methods
         .claimNft()
         .accounts({
@@ -148,7 +180,7 @@ const LoansOfPool: React.FC = () => {
           masterLoanPda: masterLoanPDA,
           nftMint,
           nftAccount,
-          claimAccount: claimAccountKeypair.publicKey,
+          claimAccount: associatedNftTokenAccount,
           owner: wallet.publicKey,
           loanMetadata: loanMetadataKeypair.publicKey,
           loanMetadataPda: loanMetadataPDA,
@@ -156,10 +188,16 @@ const LoansOfPool: React.FC = () => {
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
-        .signers([loanMetadataKeypair, claimAccountKeypair])
+        .signers([loanMetadataKeypair])
         .preInstructions([
           await program.account.loanMetadata.createInstruction(
             loanMetadataKeypair
+          ),
+          await createAssociatedTokenAccountInstruction(
+            wallet.publicKey,
+            associatedNftTokenAccount,
+            wallet.publicKey,
+            nftMint
           ),
         ])
         .rpc()
@@ -169,8 +207,12 @@ const LoansOfPool: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { program, wallet } = workspace.value
-      const allLoanOnProgram = await program.account.masterLoan.all()
+      const { program, wallet, client } = workspace.value
+      const allLoanOnProgram = await client
+        .from("MasterLoan")
+        .offset(0)
+        .limit(10)
+        .select()
       const masterLoans = allLoanOnProgram
         .filter((itemLoan) => itemLoan.account.pool.toBase58() === id)
         .map(({ publicKey, account }) => {
@@ -192,8 +234,9 @@ const LoansOfPool: React.FC = () => {
             owner: owner,
             borrower: borrower,
             collateralAccount,
+            isClaimed,
             fee: formatUnits(fee.toString(), decimals),
-            loanFee: formatUnits(loanFee.toString(), decimals),
+            loanFee: formatUnits(loanFee.toString(), 4),
             transferFee: formatUnits(transferFee.toString(), decimals),
             loanTerm: Object.keys(loanTerm)[0],
             pool,

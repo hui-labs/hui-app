@@ -319,13 +319,9 @@ const BorrowerPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { wallet, client } = workspace.value
-      const loans = await client
-        .from("LoanMetadata")
-        .offset(0)
-        .limit(10)
-        .select()
-      console.log("all loan", loans)
+      const { program, wallet, client } = workspace.value
+      const loans = await client.from("MasterLoan").offset(0).limit(10).select()
+      // console.log("all loan", loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -358,21 +354,29 @@ const BorrowerPage: React.FC = () => {
       //   )
       // )
 
-        const cache = rawData.reduce((acc, cur) => {
-          acc[cur.vaultAccount.toBase58()] = cur
-          return acc
-        }, {} as Record<string, LoanDataType>)
+      const cache = rawData.reduce((acc, cur) => {
+        acc[cur.vaultAccount.toBase58()] = cur
+        return acc
+      }, {} as Record<string, LoanDataType>)
 
-        const data = Object.values(cache).reduce(
-          (acc, cur) => {
-            acc[cur.isAdmin ? 0 : 1].push(cur)
-            return acc
-          },
-          [[], []] as [LoanDataType[], LoanDataType[]]
-        )
-        console.log("all data", data)
-        setMyLoans(data[1])
-      }, 1000)
+      // accounts.forEach((account) => {
+      //   if (account.address.toBase58() in cache) {
+      //     cache[account.address.toBase58()].availableAmount = formatUnits(
+      //       account.amount,
+      //       9
+      //     )
+      //   }
+      // })
+
+      const data = Object.values(cache).reduce(
+        (acc, cur) => {
+          acc[cur.isAdmin ? 0 : 1].push(cur)
+          return acc
+        },
+        [[], []] as [LoanDataType[], LoanDataType[]]
+      )
+
+      setMyLoans(data[0])
     }
   }, [workspace.value])
 
@@ -436,7 +440,7 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [PoolDataType[], PoolDataType[]]
       )
 
-      setAvailablePools(data[1]) // mình là nguoi di vay => pool khong phải cua minh => admin = 1
+      setAvailablePools(data[1])
     }
   }, [workspace.value])
 

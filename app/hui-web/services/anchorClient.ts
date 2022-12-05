@@ -1,6 +1,10 @@
 import { AccountClient, Program } from "@project-serum/anchor"
 import { Hui } from "@/contracts/types/hui"
-import { Connection, PublicKey } from "@solana/web3.js"
+import {
+  Connection,
+  GetProgramAccountsFilter,
+  PublicKey,
+} from "@solana/web3.js"
 import { sha256 } from "js-sha256"
 import { programId } from "@/common/constants"
 import bs58 from "bs58"
@@ -14,6 +18,8 @@ export interface IBuilder {
 
   limit(value: number): this
 
+  filters(filters: GetProgramAccountsFilter[]): this
+
   select<T = any>(): Promise<SelectResult<T>[]>
 }
 
@@ -26,7 +32,8 @@ export const DISCRIMINATOR_LENGTH = 8
 
 export const getAccountPublicKeys = async (
   connection: Connection,
-  name: string
+  name: string,
+  filters: GetProgramAccountsFilter[]
 ) => {
   const discriminator = Buffer.from(sha256.digest(`account:${name}`)).slice(
     0,
@@ -34,17 +41,14 @@ export const getAccountPublicKeys = async (
   )
 
   const accounts = await connection.getProgramAccounts(programId, {
-    dataSlice: {
-      offset: 0,
-      length: 0,
-    },
     filters: [
       {
         memcmp: {
           offset: 0,
           bytes: bs58.encode(discriminator),
         },
-      }, // Ensure it's a CandyMachine account.
+      },
+      ...filters,
     ],
   })
 
@@ -75,21 +79,25 @@ export const getPage = async <T = any>(
   }))
 }
 
-export class AnchorClient implements IBuilder {
+export class Builder implements IBuilder {
   private _account: Account | null = null
   private _limit = 10
   private _offset = 0
+  private _filters: GetProgramAccountsFilter[] = []
 
-  constructor(private program: Program<Hui>) {}
+  constructor(private program: Program<Hui>) {
+  }
 
   async select<T = any>(): Promise<SelectResult<T>[]> {
     if (!this._account) {
       throw new Error("Unexpected error")
     }
 
+    console.log(this._account, this._limit, this._offset, this._filters)
     const accountPublicKeys = await getAccountPublicKeys(
       this.program.provider.connection,
-      this._account
+      this._account,
+      this._filters
     )
 
     return await getPage(
@@ -98,6 +106,17 @@ export class AnchorClient implements IBuilder {
       this._offset,
       this._limit
     )
+  }
+
+  filters(filters: GetProgramAccountsFilter[]): this {
+    // {
+    //   memcmp: {
+    //     offset: 8,
+    //       bytes: bs58.encode(pk.toBuffer()),
+    //   },
+    // },
+    this._filters = filters
+    return this
   }
 
   from(account: Account): this {
@@ -115,6 +134,13 @@ export class AnchorClient implements IBuilder {
     return this
   }
 
+  private reset() {
+    this._account = null
+    this._filters = []
+    this._limit = 10
+    this._offset = 0
+  }
+
   private getNamespace(): AccountClient<Hui> {
     switch (this._account) {
       case "ItemForSale":
@@ -128,5 +154,16 @@ export class AnchorClient implements IBuilder {
       default:
         throw new Error("Not support this account")
     }
+  }
+}
+
+export class AnchorClient {
+  constructor(private program: Program<Hui>) {
+  }
+
+  from(account: Account): Builder {
+    const builder = new Builder(this.program)
+    builder.from(account)
+    return builder
   }
 }

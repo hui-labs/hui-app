@@ -293,7 +293,7 @@
         {
           "name": "claimAccount",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "masterLoanPda",
@@ -491,7 +491,7 @@
         },
         {
           "name": "loanMetadata",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -571,7 +571,7 @@
           "isSigner": false
         },
         {
-          "name": "nftAccount",
+          "name": "itemAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -588,7 +588,7 @@
         {
           "name": "buyerAccount",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "buyerTokenAccount",
@@ -614,7 +614,7 @@
       "args": []
     },
     {
-      "name": "cancelSale",
+      "name": "delistNft",
       "accounts": [
         {
           "name": "owner",
@@ -628,12 +628,7 @@
         },
         {
           "name": "itemForSalePda",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "loanMetadata",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -648,6 +643,62 @@
         },
         {
           "name": "itemAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimFund",
+      "accounts": [
+        {
+          "name": "itemForSale",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "itemForSalePda",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultMint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "ownerAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -677,15 +728,23 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owner",
-            "type": "publicKey"
-          },
-          {
             "name": "nftMint",
             "type": "publicKey"
           },
           {
-            "name": "nftAccount",
+            "name": "ownerAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "metadataAccount",
+            "type": "publicKey"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "itemAccount",
             "type": "publicKey"
           },
           {
@@ -698,6 +757,10 @@
           },
           {
             "name": "isOpen",
+            "type": "bool"
+          },
+          {
+            "name": "isSold",
             "type": "bool"
           },
           {
@@ -717,15 +780,15 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "nftMint",
+            "type": "publicKey"
+          },
+          {
             "name": "parent",
             "type": "publicKey"
           },
           {
             "name": "nftAccount",
-            "type": "publicKey"
-          },
-          {
-            "name": "nftMint",
             "type": "publicKey"
           },
           {
@@ -744,10 +807,6 @@
           },
           {
             "name": "isClaimed",
-            "type": "bool"
-          },
-          {
-            "name": "isListed",
             "type": "bool"
           },
           {

@@ -37,7 +37,7 @@ import { useAccount } from "@/hooks/useAccount"
 
 const { Title } = Typography
 
-export interface DataType {
+interface DataType {
   key: React.Key
   isAdmin: boolean
   owner: PublicKey

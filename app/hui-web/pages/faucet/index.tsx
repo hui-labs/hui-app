@@ -33,6 +33,7 @@ const Airdrop = () => {
     mint: usdtMint,
     account: usdtAccount,
   })
+
   useEffect(() => {
     setReload((state) => !state)
   }, [usdcState, usdtState])
