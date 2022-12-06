@@ -20,8 +20,6 @@ export const useMintTo = ({
   owner,
 }: MintToConfig) => {
   return useAsyncFn(async () => {
-    console.log("workspace", workspace.value)
-    console.log("mint", mint.value)
     if (workspace.value && mint.value) {
       const { wallet } = workspace.value
       const account = await getOrCreateAssociatedTokenAccount(
