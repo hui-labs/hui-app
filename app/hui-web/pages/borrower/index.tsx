@@ -384,7 +384,7 @@ const BorrowerPage: React.FC = () => {
     if (workspace.value) {
       const { connection, wallet, client } = workspace.value
       const pools = await client.from("Pool").offset(0).limit(10).select()
-      console.log("pools", pools)
+
       const rawData: PoolDataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),

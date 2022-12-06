@@ -9,7 +9,7 @@ export const useAccount = (
   workspace: AsyncState<Workspace | null>,
   address: AsyncState<Mint | null>,
   owner?: PublicKey,
-  reload: boolean
+  reload?: boolean
 ) => {
   const associatedAccount = useAssociatedAccount(workspace, address, owner)
 

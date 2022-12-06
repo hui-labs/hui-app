@@ -50,6 +50,7 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  onDeposit: () => void
   onClose: () => void
   onWithdraw: (amount: BN) => void
 }
@@ -124,8 +125,6 @@ const columns: ColumnsType<DataType> = [
               Withdraw
             </Button>
             <Button
-              danger
-              type="primary"
               onClick={(e) => {
                 e.stopPropagation()
                 onDeposit()
@@ -173,10 +172,12 @@ const LenderPage: React.FC = () => {
   const usdtMint = useGetMint(workspace, USDTPubKey)
   const usdcAccount = useAccount(workspace, usdcMint)
   const usdtAccount = useAccount(workspace, usdtMint)
-  const usdtAccountRef = useRef()
+  const usdtAccountRef = useRef<any>()
+  const poolSelectedRef = useRef<any>({ poolPubKey: "", vaultAccount: "" })
   const [tabs, setTabs] = useState<string>("pool")
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
+  const [_, triggerReload] = useState(false)
 
   useEffect(() => {
     usdtAccountRef.current = usdtAccount.value
@@ -223,7 +224,11 @@ const LenderPage: React.FC = () => {
     }
   }
 
-  const onDeposit = async (poolPubKey: PublicKey, vaultAccount) => {
+  const onDeposit = async (poolPubKey, vaultAccount) => {
+    poolSelectedRef.current = {
+      poolPubKey,
+      vaultAccount,
+    }
     showModal()
   }
 
@@ -245,7 +250,7 @@ const LenderPage: React.FC = () => {
     if (workspace.value) {
       const { connection, client, wallet } = workspace.value
       const pools = await client.from("Pool").offset(0).limit(10).select()
-      console.log("pools", pools)
+
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -283,7 +288,7 @@ const LenderPage: React.FC = () => {
           getAccount(connection, item.vaultAccount, commitmentLevel)
         )
       )
-      console.log("accounts", accounts)
+
       const cache = rawData.reduce((acc, cur) => {
         acc[cur.vaultAccount.toBase58()] = cur
         return acc
@@ -308,7 +313,7 @@ const LenderPage: React.FC = () => {
 
       setMyPools(data[0])
     }
-  }, [workspace.value])
+  }, [workspace.value, _])
 
   const onLoadData = async () => {
     if (workspace.value) {
@@ -348,27 +353,31 @@ const LenderPage: React.FC = () => {
     }
   }
 
-  const handleSubmit = async (data: any) => {
-    // if (workspace.value) {
-    //   const { program, wallet, connection } = workspace.value
-    //
-    //   const depositTopUpAmount = new anchor.BN(30 * 10 ** 9)
-    //   const depositLoanFee = depositTopUpAmount
-    //     .div(new BN(10 ** 9))
-    //     .mul(new BN(1_000_000))
-    //   const poolVaultAccount = await getAccount(connection, vaultAccount)
-    //
-    //   await program.methods
-    //     .deposit(depositTopUpAmount, depositLoanFee)
-    //     .accounts({
-    //       depositor: wallet.publicKey,
-    //       pool: poolPubKey,
-    //       loanVault: poolVaultAccount.address,
-    //       tokenDepositor: usdtAccountRef.current.address,
-    //       tokenProgram: TOKEN_PROGRAM_ID,
-    //     })
-    //     .rpc()
-    // }
+  const handleSubmit = async (props: { depositAmount: number }) => {
+    const { depositAmount } = props
+    const { poolPubKey, vaultAccount } = poolSelectedRef.current
+    if (workspace.value) {
+      const { program, wallet, connection } = workspace.value
+
+      const depositTopUpAmount = new anchor.BN(depositAmount * 10 ** 9)
+      const depositLoanFee = depositTopUpAmount
+        .div(new BN(10 ** 9))
+        .mul(new BN(1_000_000))
+      const poolVaultAccount = await getAccount(connection, vaultAccount)
+
+      await program.methods
+        .deposit(depositTopUpAmount, depositLoanFee)
+        .accounts({
+          depositor: wallet.publicKey,
+          pool: poolPubKey,
+          loanVault: poolVaultAccount.address,
+          tokenDepositor: usdtAccountRef.current.address,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc()
+      triggerReload((state) => !state)
+      handleCancel()
+    }
   }
 
   const showModal = () => {
@@ -445,8 +454,8 @@ const LenderPage: React.FC = () => {
                 onFinish={handleSubmit}
               >
                 <Form.Item
-                  name="loanAmount"
-                  label="Loan Amount"
+                  name="depositAmount"
+                  label="Deposit Amount"
                   rules={[{ required: true }]}
                 >
                   <InputNumber style={{ width: "100%" }} />
