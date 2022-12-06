@@ -21,6 +21,8 @@ export interface IBuilder {
   filters(filters: GetProgramAccountsFilter[]): this
 
   select<T = any>(): Promise<SelectResult<T>[]>
+
+  one<T = any>(): Promise<SelectResult<T>>
 }
 
 interface SelectResult<T> {
@@ -86,7 +88,8 @@ export class Builder implements IBuilder {
   private _offset = 0
   private _filters: GetProgramAccountsFilter[] = []
 
-  constructor(private program: Program<Hui>) {}
+  constructor(private program: Program<Hui>) {
+  }
 
   async select<T = any>(): Promise<SelectResult<T>[]> {
     if (!this._account) {
@@ -105,6 +108,11 @@ export class Builder implements IBuilder {
       this._offset,
       this._limit
     )
+  }
+
+  async one<T = any>(): Promise<SelectResult<T>> {
+    const results = await this.select()
+    return results[0]
   }
 
   filters(filters: GetProgramAccountsFilter[]): this {
@@ -144,7 +152,8 @@ export class Builder implements IBuilder {
 }
 
 export class AnchorClient {
-  constructor(private program: Program<Hui>) {}
+  constructor(private program: Program<Hui>) {
+  }
 
   from(account: Account): Builder {
     const builder = new Builder(this.program)

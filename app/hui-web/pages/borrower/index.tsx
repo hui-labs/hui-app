@@ -22,10 +22,17 @@ import {
 } from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
-import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import {
+  getAccount,
+  getAssociatedTokenAddress,
+  getMint,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN, web3 } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
+import bs58 from "bs58"
+import { AnchorClient } from "@/services/anchorClient"
 
 const { Title } = Typography
 const { Option } = Select
@@ -130,6 +137,7 @@ interface LoanDataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  onFinal: () => void
 }
 
 const loanColumns: ColumnsType<LoanDataType> = [
@@ -184,10 +192,12 @@ const loanColumns: ColumnsType<LoanDataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, {}) => {
+    render: (_, { onFinal, status }) => {
+      if (status === "final") return null
+
       return (
         <Space>
-          <Button type="primary">Final</Button>
+          <Button onClick={onFinal}>Final</Button>
         </Space>
       )
     },
@@ -317,36 +327,121 @@ const BorrowerPage: React.FC = () => {
   }
   const [selectedPool, setSelectedPool] = useState<PublicKey | null>(null)
 
+  const loanMetadataFetcher = async (client: AnchorClient, loan: any) => {
+    const loanMetadata = await client
+      .from("LoanMetadata")
+      .filters([
+        {
+          memcmp: {
+            offset: 8 + 32,
+            bytes: bs58.encode(loan.publicKey.toBuffer()),
+          },
+        },
+      ])
+      .limit(1)
+      .one()
+
+    return {
+      ...loan,
+      loanMetadata,
+    }
+  }
+
+  const onFinal = async (
+    masterLoanPubKey: PublicKey,
+    poolPubKey: PublicKey,
+    vaultMint: PublicKey,
+    vaultAccount: PublicKey,
+    collateralMint: PublicKey,
+    collateralAccount: PublicKey,
+    loanMetadata: any
+  ) => {
+    if (workspace.value) {
+      const { program, wallet, client } = workspace.value
+      const [masterLoanPDA] = await PublicKey.findProgramAddress(
+        [Buffer.from("masterLoan"), poolPubKey.toBuffer()],
+        program.programId
+      )
+      const tokenDepositor = await getAssociatedTokenAddress(
+        vaultMint,
+        wallet.publicKey
+      )
+      const tokenReceiver = await getAssociatedTokenAddress(
+        collateralMint,
+        wallet.publicKey
+      )
+
+      const tx = await program.methods
+        .finalSettlement(new BN((80 + 5.99999976) * DEFAULT_DECIMALS))
+        .accounts({
+          masterLoan: masterLoanPubKey,
+          masterLoanPda: masterLoanPDA,
+          tokenDepositor,
+          tokenReceiver,
+          depositor: wallet.publicKey,
+          collateralAccount,
+          vaultAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          loanMetadata: loanMetadata.publicKey,
+        })
+        .rpc()
+      console.log(tx)
+    }
+  }
+
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { program, wallet, client } = workspace.value
       const loans = await client.from("MasterLoan").offset(0).limit(10).select()
-      // console.log("all loan", loans)
-      const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
-        return {
-          key: publicKey.toBase58(),
-          owner: account.owner,
-          isAdmin: account.borrower.toBase58() === wallet.publicKey.toBase58(),
-          vaultMint: account.vaultMint,
-          vaultAccount: account.vaultAccount,
-          collateralMint: account.collateralMint,
-          status: "",
-          minLoanAmount: formatUnits(
-            account.minLoanAmount.toString(),
-            decimals
-          ),
-          maxLoanAmount: formatUnits(
-            account.maxLoanAmount.toString(),
-            decimals
-          ),
-          receivedAmount: formatUnits(
-            account.receivedAmount.toString(),
-            decimals
-          ),
-          interestRate: formatUnits(account.interestRate.toString(), 4),
-          maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
+      const loansDetail = await Promise.all(
+        loans.map((loan) => loanMetadataFetcher(client, loan))
+      )
+
+      console.log("all loan", loansDetail)
+      const rawData: LoanDataType[] = loansDetail.map(
+        ({ publicKey, account, loanMetadata }) => {
+          const status = loanMetadata
+            ? Object.keys(loanMetadata?.account.status)[0]
+            : ""
+          return {
+            key: publicKey.toBase58(),
+            owner: account.owner,
+            isAdmin:
+              account.borrower.toBase58() === wallet.publicKey.toBase58(),
+            vaultMint: account.vaultMint,
+            vaultAccount: account.vaultAccount,
+            collateralMint: account.collateralMint,
+            status,
+            minLoanAmount: formatUnits(
+              account.minLoanAmount.toString(),
+              decimals
+            ),
+            maxLoanAmount: formatUnits(
+              account.maxLoanAmount.toString(),
+              decimals
+            ),
+            receivedAmount: formatUnits(
+              account.receivedAmount.toString(),
+              decimals
+            ),
+            interestRate: formatUnits(account.interestRate.toString(), 4),
+            maxLoanThreshold: formatUnits(
+              account.maxLoanThreshold.toString(),
+              4
+            ),
+            onFinal: () =>
+              onFinal(
+                publicKey,
+                account.pool,
+                account.vaultMint,
+                account.vaultAccount,
+                account.collateralMint,
+                account.collateralAccount,
+                loanMetadata
+              ),
+          }
         }
-      })
+      )
 
       // const accounts = await Promise.all(
       //   rawData.map((item) =>
@@ -471,10 +566,6 @@ const BorrowerPage: React.FC = () => {
               <Table
                 columns={loanColumns}
                 pagination={false}
-                expandable={{
-                  expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                  // rowExpandable: (record) => record.name !== "Not Expandable",
-                }}
                 dataSource={myLoans}
               />
             </Col>
@@ -489,10 +580,6 @@ const BorrowerPage: React.FC = () => {
               <Table
                 columns={poolColumns}
                 pagination={false}
-                expandable={{
-                  expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                  // rowExpandable: (record) => record.name !== "Not Expandable",
-                }}
                 dataSource={availablePools}
               />
             </Col>
