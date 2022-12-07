@@ -7,7 +7,6 @@ import {
   Modal,
   Row,
   Segmented,
-  Select,
   Space,
   Table,
   Tag,
@@ -24,7 +23,13 @@ import {
 } from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
-import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAccount,
+  getAssociatedTokenAddress,
+  getMint,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
@@ -168,20 +173,11 @@ const LenderPage: React.FC = () => {
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
-  const usdcMint = useGetMint(workspace, USDCPubKey)
-  const usdtMint = useGetMint(workspace, USDTPubKey)
-  const usdcAccount = useAccount(workspace, usdcMint)
-  const usdtAccount = useAccount(workspace, usdtMint)
-  const usdtAccountRef = useRef<any>()
   const poolSelectedRef = useRef<any>({ poolPubKey: "", vaultAccount: "" })
   const [tabs, setTabs] = useState<string>("pool")
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
   const [_, triggerReload] = useState(false)
-
-  useEffect(() => {
-    usdtAccountRef.current = usdtAccount.value
-  }, [usdtAccount])
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
@@ -224,10 +220,11 @@ const LenderPage: React.FC = () => {
     }
   }
 
-  const onDeposit = async (poolPubKey, vaultAccount) => {
+  const onDeposit = async (poolPubKey, vaultAccount, vaultMint) => {
     poolSelectedRef.current = {
       poolPubKey,
       vaultAccount,
+      vaultMint,
     }
     showModal()
   }
@@ -250,6 +247,7 @@ const LenderPage: React.FC = () => {
     if (workspace.value) {
       const { connection, client, wallet } = workspace.value
       const pools = await client.from("Pool").offset(0).limit(10).select()
+      console.log("pools", pools)
 
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
@@ -271,7 +269,8 @@ const LenderPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
-          onDeposit: () => onDeposit(publicKey, account.vaultAccount),
+          onDeposit: () =>
+            onDeposit(publicKey, account.vaultAccount, account.vaultMint),
           onClose: () => onClose(publicKey),
           onWithdraw: (amount: BN) =>
             onWithdraw(
@@ -355,7 +354,7 @@ const LenderPage: React.FC = () => {
 
   const handleSubmit = async (props: { depositAmount: number }) => {
     const { depositAmount } = props
-    const { poolPubKey, vaultAccount } = poolSelectedRef.current
+    const { poolPubKey, vaultAccount, vaultMint } = poolSelectedRef.current
     if (workspace.value) {
       const { program, wallet, connection } = workspace.value
 
@@ -364,14 +363,31 @@ const LenderPage: React.FC = () => {
         .div(new BN(10 ** 9))
         .mul(new BN(1_000_000))
       const poolVaultAccount = await getAccount(connection, vaultAccount)
-
+      const vaultMintAddress = await getMint(
+        connection,
+        vaultMint,
+        commitmentLevel,
+        TOKEN_PROGRAM_ID
+      )
+      const associatedTokenVault = await getAssociatedTokenAddress(
+        vaultMintAddress.address,
+        wallet.publicKey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+      const accountVault = await getAccount(
+        connection,
+        associatedTokenVault,
+        commitmentLevel
+      )
       await program.methods
         .deposit(depositTopUpAmount, depositLoanFee)
         .accounts({
           depositor: wallet.publicKey,
           pool: poolPubKey,
           loanVault: poolVaultAccount.address,
-          tokenDepositor: usdtAccountRef.current.address,
+          tokenDepositor: accountVault.address,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc()
