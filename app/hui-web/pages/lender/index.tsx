@@ -1,7 +1,10 @@
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   Button,
   Col,
+  Form,
+  InputNumber,
+  Modal,
   Row,
   Segmented,
   Space,
@@ -12,15 +15,30 @@ import {
 import { useRouter } from "next/router"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import type { ColumnsType } from "antd/es/table"
-import { programId, TOKEN_LISTS } from "@/common/constants"
+import {
+  programId,
+  TOKEN_LISTS,
+  USDCPubKey,
+  USDTPubKey,
+} from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
-import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAccount,
+  getAssociatedTokenAddress,
+  getMint,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
+import * as anchor from "@project-serum/anchor"
+import { useGetMint } from "@/hooks/useGetMint"
+import { useAccount } from "@/hooks/useAccount"
 
 const { Title } = Typography
 
@@ -37,6 +55,7 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  onDeposit: () => void
   onClose: () => void
   onWithdraw: (amount: BN) => void
 }
@@ -96,7 +115,10 @@ const columns: ColumnsType<DataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, { onWithdraw, onClose, availableAmount, isAdmin }) => {
+    render: (
+      _,
+      { onWithdraw, onClose, onDeposit, availableAmount, isAdmin }
+    ) => {
       if (isAdmin) {
         return (
           <Space>
@@ -107,7 +129,22 @@ const columns: ColumnsType<DataType> = [
             >
               Withdraw
             </Button>
-            <Button danger type="primary" onClick={() => onClose()}>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeposit()
+              }}
+            >
+              Deposit
+            </Button>
+            <Button
+              danger
+              type="primary"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+            >
               Close
             </Button>
           </Space>
@@ -136,7 +173,11 @@ const LenderPage: React.FC = () => {
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
   const decimals = 9
+  const poolSelectedRef = useRef<any>({ poolPubKey: "", vaultAccount: "" })
   const [tabs, setTabs] = useState<string>("pool")
+  const [form] = Form.useForm()
+  const [open, setOpen] = useState(false)
+  const [_, triggerReload] = useState(false)
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
@@ -179,6 +220,15 @@ const LenderPage: React.FC = () => {
     }
   }
 
+  const onDeposit = async (poolPubKey, vaultAccount, vaultMint) => {
+    poolSelectedRef.current = {
+      poolPubKey,
+      vaultAccount,
+      vaultMint,
+    }
+    showModal()
+  }
+
   const onClose = async (poolPubKey: PublicKey) => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
@@ -195,8 +245,10 @@ const LenderPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet, client } = workspace.value
+      const { connection, client, wallet } = workspace.value
       const pools = await client.from("Pool").offset(0).limit(10).select()
+      console.log("pools", pools)
+
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -217,6 +269,8 @@ const LenderPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
+          onDeposit: () =>
+            onDeposit(publicKey, account.vaultAccount, account.vaultMint),
           onClose: () => onClose(publicKey),
           onWithdraw: (amount: BN) =>
             onWithdraw(
@@ -258,7 +312,7 @@ const LenderPage: React.FC = () => {
 
       setMyPools(data[0])
     }
-  }, [workspace.value])
+  }, [workspace.value, _])
 
   const onLoadData = async () => {
     if (workspace.value) {
@@ -296,6 +350,58 @@ const LenderPage: React.FC = () => {
         return connection.getMultipleAccountsInfo(paginatedPublicKeys)
       }
     }
+  }
+
+  const handleSubmit = async (props: { depositAmount: number }) => {
+    const { depositAmount } = props
+    const { poolPubKey, vaultAccount, vaultMint } = poolSelectedRef.current
+    if (workspace.value) {
+      const { program, wallet, connection } = workspace.value
+
+      const depositTopUpAmount = new anchor.BN(depositAmount * 10 ** 9)
+      const depositLoanFee = depositTopUpAmount
+        .div(new BN(10 ** 9))
+        .mul(new BN(1_000_000))
+      const poolVaultAccount = await getAccount(connection, vaultAccount)
+      const vaultMintAddress = await getMint(
+        connection,
+        vaultMint,
+        commitmentLevel,
+        TOKEN_PROGRAM_ID
+      )
+      const associatedTokenVault = await getAssociatedTokenAddress(
+        vaultMintAddress.address,
+        wallet.publicKey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+      const accountVault = await getAccount(
+        connection,
+        associatedTokenVault,
+        commitmentLevel
+      )
+      await program.methods
+        .deposit(depositTopUpAmount, depositLoanFee)
+        .accounts({
+          depositor: wallet.publicKey,
+          pool: poolPubKey,
+          loanVault: poolVaultAccount.address,
+          tokenDepositor: accountVault.address,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc()
+      triggerReload((state) => !state)
+      handleCancel()
+    }
+  }
+
+  const showModal = () => {
+    setOpen(true)
+  }
+
+  const handleCancel = () => {
+    setOpen(false)
   }
 
   return (
@@ -348,6 +454,32 @@ const LenderPage: React.FC = () => {
             </Col>
           </Row>
         )}
+        <Modal
+          title="Title"
+          open={open}
+          onOk={() => form.submit()}
+          onCancel={handleCancel}
+          okButtonProps={{ className: "bg-indigo-500" }}
+        >
+          <Row>
+            <Col span={24}>
+              <Form
+                layout="vertical"
+                form={form}
+                name="control-hooks"
+                onFinish={handleSubmit}
+              >
+                <Form.Item
+                  name="depositAmount"
+                  label="Deposit Amount"
+                  rules={[{ required: true }]}
+                >
+                  <InputNumber style={{ width: "100%" }} />
+                </Form.Item>
+              </Form>
+            </Col>
+          </Row>
+        </Modal>
       </div>
     </div>
   )
