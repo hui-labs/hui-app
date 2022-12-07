@@ -73,7 +73,6 @@ export const getPage = async <T = any>(
   }
 
   const accounts = await accountClient.fetchMultiple(paginatedPublicKeys)
-
   return accounts.map<SelectResult<T>>((account, index) => ({
     publicKey: paginatedPublicKeys[index],
     account: account as any,
