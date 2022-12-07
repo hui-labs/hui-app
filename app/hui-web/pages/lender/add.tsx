@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useRef, useState } from "react"
 import {
   Button,
   Col,
@@ -59,6 +59,8 @@ const AddPool: React.FC = () => {
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const router = useRouter()
+  const vaultTokenSelectedRef = useRef<any>(null)
+  const collateralTokenSelectedRef = useRef<any>(null)
 
   const estimatedLoanCommissionFee = useMemo(() => {
     return ((topUpAmount || 0) / DEFAULT_DECIMALS) * SYSTEM_LOAN_COMMISSION_FEE
@@ -79,8 +81,12 @@ const AddPool: React.FC = () => {
   const currentBalance: number = useMemo(() => {
     switch (vaultMint) {
       case "usdt":
+        vaultTokenSelectedRef.current = usdtMint
+        collateralTokenSelectedRef.current = usdcMint
         return parseFloat(usdtBalance)
       case "usdc":
+        vaultTokenSelectedRef.current = usdcMint
+        collateralTokenSelectedRef.current = usdtMint
         return parseFloat(usdcBalance)
       default:
         return 0
@@ -194,31 +200,38 @@ const AddPool: React.FC = () => {
 
   const onSubmit = async () => {
     setIsOpen(false)
-    if (workspace.value && usdtMint.value && usdcMint.value) {
+    vaultTokenSelectedRef.current
+    collateralTokenSelectedRef.current
+
+    if (
+      workspace.value &&
+      vaultTokenSelectedRef.current.value &&
+      collateralTokenSelectedRef.current.value
+    ) {
       const { wallet, program, connection } = workspace.value
 
       const [poolPDA] = await PublicKey.findProgramAddress(
         [
           Buffer.from("pool"),
           wallet.publicKey.toBuffer(),
-          usdcMint.value.address.toBuffer(),
-          usdtMint.value.address.toBuffer(),
+          collateralTokenSelectedRef.current.value.address.toBuffer(),
+          vaultTokenSelectedRef.current.value.address.toBuffer(),
         ],
         program.programId
       )
 
       try {
-        const usdtAssociatedAccount = await getAssociatedTokenAddress(
-          usdtMint.value.address,
+        const vaultAssociatedAccount = await getAssociatedTokenAddress(
+          vaultTokenSelectedRef.current.value.address,
           wallet.publicKey,
           false,
           TOKEN_PROGRAM_ID,
           ASSOCIATED_TOKEN_PROGRAM_ID
         )
 
-        const walletUsdtAccount = await getAccount(
+        const walletVaultAccount = await getAccount(
           connection,
-          usdtAssociatedAccount,
+          vaultAssociatedAccount,
           commitmentLevel
         )
 
@@ -252,12 +265,12 @@ const AddPool: React.FC = () => {
             pool: pool.publicKey,
             poolPda: poolPDA,
             systemProgram: SystemProgram.programId,
-            vaultMint: usdtMint.value.address,
+            vaultMint: vaultTokenSelectedRef.current.value.address,
             vaultAccount: vaultKeypair.publicKey,
-            collateralMint: usdcMint.value.address,
+            collateralMint: collateralTokenSelectedRef.current.value.address,
             depositor: wallet.publicKey,
             systemFeeAccount: SystemFeeUSDTPubKey,
-            tokenDepositor: walletUsdtAccount.address,
+            tokenDepositor: walletVaultAccount.address,
             tokenProgram: TOKEN_PROGRAM_ID,
             rent: web3.SYSVAR_RENT_PUBKEY,
           })
