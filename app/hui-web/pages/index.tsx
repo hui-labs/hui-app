@@ -193,8 +193,8 @@ const LenderPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet } = workspace.value
-      const pools = await program.account.pool.all()
+      const { connection, program, wallet, client } = workspace.value
+      const pools = await client.from("Pool").offset(0).limit(10).select()
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),

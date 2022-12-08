@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useState } from "react"
 import {
   Button,
   Col,
@@ -7,7 +7,6 @@ import {
   Modal,
   Row,
   Segmented,
-  Select,
   Space,
   Table,
   Tag,
@@ -584,12 +583,12 @@ const BorrowerPage: React.FC = () => {
         />
       </div>
 
-      {tabs === "pool" && (
+      {tabs === "loan" && (
         <div>
           <Row>
             <Col span={24}>
               <Table
-                columns={poolColumns}
+                columns={loanColumns}
                 pagination={false}
                 dataSource={myLoans}
               />
@@ -598,12 +597,12 @@ const BorrowerPage: React.FC = () => {
         </div>
       )}
 
-      {tabs === "loan" && (
+      {tabs === "pool" && (
         <div>
           <Row>
             <Col span={24}>
               <Table
-                columns={loanColumns}
+                columns={poolColumns}
                 pagination={false}
                 dataSource={availablePools}
               />

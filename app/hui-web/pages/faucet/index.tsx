@@ -23,6 +23,11 @@ const Airdrop = () => {
   const usdcAccount = useAccount(workspace, usdcMint, undefined, reload)
   const usdtAccount = useAccount(workspace, usdtMint, undefined, reload)
 
+  useEffect(() => {
+    console.log(usdcAccount.value?.address.toBase58())
+    console.log(usdtAccount.value?.address.toBase58())
+  }, [usdcAccount, usdtAccount])
+
   const [usdcState, mintUSDCTo] = useMintTo({
     workspace,
     mint: usdcMint,

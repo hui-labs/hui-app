@@ -1,16 +1,16 @@
 import * as anchor from "@project-serum/anchor"
-import { Program, web3 } from "@project-serum/anchor"
+import { Program } from "@project-serum/anchor"
 import { Hui } from "../app/hui-web/contracts/types/hui"
 import { exec } from "child_process"
-import base58 from "bs58"
-import * as fs from "fs"
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet"
-import { createAccount, createMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { createAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { PublicKey } from "@solana/web3.js"
-import * as path from "path"
-import * as os from "os"
 
-anchor.setProvider(anchor.AnchorProvider.local("http://127.0.0.1:8899"))
+anchor.setProvider(
+  anchor.AnchorProvider.local(
+    "https://solana-devnet.g.alchemy.com/v2/DUPxh6-6BQsfz8p5EIT0pghxVoMsCs4l"
+  )
+)
 const program = anchor.workspace.Hui as Program<Hui>
 const connection = program.provider.connection
 
@@ -29,69 +29,59 @@ const getProgramId = () => {
   })
 }
 
-const getPrivateKey = async () => {
-  const privateKeyUint8 = fs.readFileSync(
-    path.join(os.homedir(), "/.config/solana/id.json")
-  )
-  const keypair = web3.Keypair.fromSecretKey(
-    Uint8Array.from(JSON.parse(privateKeyUint8.toString()))
-  )
-  return base58.encode(keypair.secretKey)
-}
-
 async function main() {
   const programId = await getProgramId()
   const wallet = NodeWallet.local()
   const admin = wallet.payer
   // Create USDC and USDT token
-  const usdcMintPubkey = await createMint(
-    connection,
-    admin,
-    admin.publicKey,
-    null,
-    9,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID
-  )
-  const usdtMintPubkey = await createMint(
-    connection,
-    admin,
-    admin.publicKey,
-    null,
-    9,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID
-  )
-  const wethMintPubkey = await createMint(
-    connection,
-    admin,
-    admin.publicKey,
-    null,
-    9,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID
-  )
-  const wbtcMintPubkey = await createMint(
-    connection,
-    admin,
-    admin.publicKey,
-    null,
-    9,
-    undefined,
-    undefined,
-    TOKEN_PROGRAM_ID
-  )
-  console.log("USDC Mint", usdcMintPubkey.toBase58())
-  console.log("USDT Mint", usdtMintPubkey.toBase58())
-  console.log("WETH Mint", wethMintPubkey.toBase58())
+  // const usdcMintPubkey = await createMint(
+  //   connection,
+  //   admin,
+  //   admin.publicKey,
+  //   null,
+  //   9,
+  //   undefined,
+  //   undefined,
+  //   TOKEN_PROGRAM_ID
+  // )
+  // const usdtMintPubkey = await createMint(
+  //   connection,
+  //   admin,
+  //   admin.publicKey,
+  //   null,
+  //   9,
+  //   undefined,
+  //   undefined,
+  //   TOKEN_PROGRAM_ID
+  // )
+  // const wethMintPubkey = await createMint(
+  //   connection,
+  //   admin,
+  //   admin.publicKey,
+  //   null,
+  //   9,
+  //   undefined,
+  //   undefined,
+  //   TOKEN_PROGRAM_ID
+  // )
+  // const wbtcMintPubkey = await createMint(
+  //   connection,
+  //   admin,
+  //   admin.publicKey,
+  //   null,
+  //   9,
+  //   undefined,
+  //   undefined,
+  //   TOKEN_PROGRAM_ID
+  // )
+  // console.log("USDC Mint", usdcMintPubkey.toBase58())
+  // console.log("USDT Mint", usdtMintPubkey.toBase58())
+  // console.log("WETH Mint", wethMintPubkey.toBase58())
 
   const systemUSDTFeeAccount = await createAccount(
     connection,
     admin,
-    new PublicKey(usdtMintPubkey),
+    new PublicKey("JB7priytaWzyfradidEUJ7WnzUAE5giWzbFbGNxq7ns6"),
     admin.publicKey,
     undefined,
     undefined,
@@ -100,7 +90,7 @@ async function main() {
   const systemUSDCFeeAccount = await createAccount(
     connection,
     admin,
-    new PublicKey(usdcMintPubkey),
+    new PublicKey("7e3gKwJYYCkW6UqGXBmDA8csZkKmLe4V8NVqJP6YmnjF"),
     admin.publicKey,
     undefined,
     undefined,
@@ -109,19 +99,19 @@ async function main() {
   console.log("System USDC Fee Account", systemUSDCFeeAccount.toBase58())
   console.log("System USDT Fee Account", systemUSDTFeeAccount.toBase58())
 
-  const privateKey = await getPrivateKey()
+  // const privateKey = await getPrivateKey()
 
-  const env = `NEXT_FAUCET_PRIVATE_KEY=${privateKey}
-NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8899
-NEXT_PUBLIC_PROGRAM_ID=${programId}
-NEXT_PUBLIC_USDC_MINT_PUBKEY=${usdcMintPubkey.toBase58()}
-NEXT_PUBLIC_USDT_MINT_PUBKEY=${usdtMintPubkey.toBase58()}
-NEXT_PUBLIC_WETH_MINT_PUBKEY=${wethMintPubkey.toBase58()}
-NEXT_PUBLIC_WBTC_MINT_PUBKEY=${wbtcMintPubkey.toBase58()}
-NEXT_PUBLIC_SYSTEM_USDC_FEE_PUBKEY=${systemUSDCFeeAccount.toBase58()}
-NEXT_PUBLIC_SYSTEM_USDT_FEE_PUBKEY=${systemUSDTFeeAccount.toBase58()}`
+  //   const env = `NEXT_FAUCET_PRIVATE_KEY=${privateKey}
+  // NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8899
+  // NEXT_PUBLIC_PROGRAM_ID=${programId}
+  // NEXT_PUBLIC_USDC_MINT_PUBKEY=${usdcMintPubkey.toBase58()}
+  // NEXT_PUBLIC_USDT_MINT_PUBKEY=${usdtMintPubkey.toBase58()}
+  // NEXT_PUBLIC_WETH_MINT_PUBKEY=${wethMintPubkey.toBase58()}
+  // NEXT_PUBLIC_WBTC_MINT_PUBKEY=${wbtcMintPubkey.toBase58()}
+  // NEXT_PUBLIC_SYSTEM_USDC_FEE_PUBKEY=${systemUSDCFeeAccount.toBase58()}
+  // NEXT_PUBLIC_SYSTEM_USDT_FEE_PUBKEY=${systemUSDTFeeAccount.toBase58()}`
 
-  fs.writeFileSync("./app/hui-web/.env.local", env)
+  // fs.writeFileSync("./app/hui-web/.env.local", env)
 }
 
 main().catch(console.log)

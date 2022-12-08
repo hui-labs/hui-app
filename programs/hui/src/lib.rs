@@ -1,6 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::AccountsClose;
-use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token;
 use anchor_spl::token::{Burn, CloseAccount, Mint, MintTo, Token, TokenAccount, Transfer};
 
@@ -149,7 +147,7 @@ pub mod hui {
     }
 
     // WARNING: only for testing, will be disable on production
-    pub fn close_pool(ctx: Context<ClosePool>) -> Result<()> {
+    pub fn close_pool(_ctx: Context<ClosePool>) -> Result<()> {
         // let data_account = &ctx.accounts.pool;
         // let owner_info = ctx.accounts.owner.to_account_info();
         // data_account.close(owner_info)?;
@@ -160,7 +158,7 @@ pub mod hui {
     }
 
     // WARNING: only for testing, will be disable on production
-    pub fn close_loan(ctx: Context<CloseLoan>) -> Result<()> {
+    pub fn close_loan(_ctx: Context<CloseLoan>) -> Result<()> {
         // let data_account = &ctx.accounts.loan;
         // let owner_info = ctx.accounts.owner.to_account_info();
         // data_account.close(owner_info)?;
@@ -716,14 +714,14 @@ impl<'info> ClaimLoan<'info> {
         CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 
-    fn to_close_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
-        let cpi_accounts = CloseAccount {
-            account: self.vault_account.to_account_info().clone(),
-            authority: self.owner.to_account_info().clone(),
-            destination: self.owner.to_account_info().clone(),
-        };
-        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
-    }
+    // fn to_close_vault_context(&self) -> CpiContext<'_, '_, '_, 'info, CloseAccount<'info>> {
+    //     let cpi_accounts = CloseAccount {
+    //         account: self.vault_account.to_account_info().clone(),
+    //         authority: self.owner.to_account_info().clone(),
+    //         destination: self.owner.to_account_info().clone(),
+    //     };
+    //     CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
+    // }
 }
 
 #[derive(Accounts)]
