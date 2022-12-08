@@ -427,47 +427,47 @@ const AddPool: React.FC = () => {
       <Modal
         title="Pool details"
         open={isOpen}
-        width={500}
+        width={600}
         okButtonProps={{ className: "bg-indigo-500" }}
         onOk={onSubmit}
         onCancel={() => setIsOpen(false)}
       >
         <div className="flex justify-between mb-4 px-5 mt-7">
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Vault Token</h4>
             <p>{vaultMint?.toUpperCase()}</p>
           </div>
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Collateral Token</h4>
             <p>{form.getFieldValue("collateralMint")?.toUpperCase()}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Top Up Amount</h4>
             <p>{form.getFieldValue("topUpAmount")}</p>
           </div>
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Total & Fee</h4>
             <p>{totalTopUpAmount.toFixed(2)}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Loan Term</h4>
             <p>{loanOfTerm}</p>
           </div>
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Interest Rate</h4>
             <p>{`${interestRate} %`}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Interest Income</h4>
             <p>{interestIncome}</p>
           </div>
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Max Total Income</h4>
             <p>
               {(form.getFieldValue("maxLoanThreshold") *
@@ -478,17 +478,17 @@ const AddPool: React.FC = () => {
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Max Loan Amount</h4>
             <p>{form.getFieldValue("maxLoanAmount")}</p>
           </div>
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Min Loan Amount</h4>
             <p>{form.getFieldValue("minLoanAmount")}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
-          <div className="flex justify-between border-b w-48">
+          <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Max Loan Threshold</h4>
             <p>{`${form.getFieldValue("maxLoanThreshold")} %`}</p>
           </div>

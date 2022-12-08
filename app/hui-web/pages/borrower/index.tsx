@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useMemo, useState } from "react"
 import {
   Button,
   Col,
@@ -17,8 +17,11 @@ import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import type { ColumnsType } from "antd/es/table"
 import {
   DEFAULT_DECIMALS,
+  SystemFeeUSDCPubKey,
   SystemFeeUSDTPubKey,
   TOKEN_LISTS,
+  USDCPubKey,
+  USDTPubKey,
 } from "@/common/constants"
 import { formatUnits } from "@ethersproject/units"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
@@ -26,9 +29,11 @@ import { getAccount, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
 import { BN, web3 } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
+import { useGetMint } from "@/hooks/useGetMint"
+import { useAccount } from "@/hooks/useAccount"
+import { useFormatUnit } from "@/hooks/useFormatUnit"
 
 const { Title } = Typography
-const { Option } = Select
 
 interface LoanForm {
   loanTerm: string
@@ -48,7 +53,7 @@ interface PoolDataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
-  showModal: () => void
+  showModal: (data: PoolDataType) => void
 }
 
 const poolColumns: ColumnsType<PoolDataType> = [
@@ -106,10 +111,14 @@ const poolColumns: ColumnsType<PoolDataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, { showModal }) => {
+    render: (data: PoolDataType, { showModal }) => {
       return (
         <Space>
-          <Button className="bg-indigo-500" type="primary" onClick={showModal}>
+          <Button
+            className="bg-indigo-500"
+            type="primary"
+            onClick={() => showModal(data)}
+          >
             Loan
           </Button>
         </Space>
@@ -204,10 +213,14 @@ const BorrowerPage: React.FC = () => {
   const [open, setOpen] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [tabs, setTabs] = useState<string>("pool")
-
-  const showModal = () => {
-    setOpen(true)
-  }
+  const [poolDetails, setPoolDetails] = useState<PoolDataType>()
+  const loanAmount = Form.useWatch("loanAmount", form)
+  const usdcMint = useGetMint(workspace, USDCPubKey)
+  const usdtMint = useGetMint(workspace, USDTPubKey)
+  const usdcAccount = useAccount(workspace, usdcMint, SystemFeeUSDCPubKey)
+  const usdtAccount = useAccount(workspace, usdtMint, SystemFeeUSDTPubKey)
+  const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
+  const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
 
   const handleSubmit = async (data: LoanForm) => {
     if (data && selectedPool && workspace.value) {
@@ -319,9 +332,8 @@ const BorrowerPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { program, wallet, client } = workspace.value
+      const { wallet, client } = workspace.value
       const loans = await client.from("MasterLoan").offset(0).limit(10).select()
-      // console.log("all loan", loans)
       const rawData: LoanDataType[] = loans.map(({ publicKey, account }) => {
         return {
           key: publicKey.toBase58(),
@@ -405,9 +417,9 @@ const BorrowerPage: React.FC = () => {
           ),
           interestRate: formatUnits(account.interestRate.toString(), 4),
           maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
-          showModal: () => {
+          showModal: (data: PoolDataType) => {
             setSelectedPool(publicKey)
-            showModal()
+            showModal(data)
           },
         }
       })
@@ -439,10 +451,21 @@ const BorrowerPage: React.FC = () => {
         },
         [[], []] as [PoolDataType[], PoolDataType[]]
       )
-
-      setAvailablePools(data[1])
+      setAvailablePools(() => data[1])
     }
   }, [workspace.value])
+
+  const showModal = (data: PoolDataType) => {
+    setPoolDetails(data)
+    setOpen(true)
+  }
+
+  // const showAvailableCollateral = useMemo(() => {
+  //   const compare =
+  //     TOKEN_LISTS[poolDetails?.collateralMint.toBase58()].toLowerCase()
+  //
+  //   return compare === "usdc" ? parseInt(usdcBalance) : parseInt(usdtBalance)
+  // }, [poolDetails])
 
   return (
     <div className="px-6 mt-5 max-w-screen-lg mx-auto">
@@ -464,23 +487,6 @@ const BorrowerPage: React.FC = () => {
           onChange={(v) => setTabs(v as string)}
         />
       </div>
-      {tabs === "loan" && (
-        <div>
-          <Row>
-            <Col span={24}>
-              <Table
-                columns={loanColumns}
-                pagination={false}
-                expandable={{
-                  expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                  // rowExpandable: (record) => record.name !== "Not Expandable",
-                }}
-                dataSource={myLoans}
-              />
-            </Col>
-          </Row>
-        </div>
-      )}
 
       {tabs === "pool" && (
         <div>
@@ -489,11 +495,29 @@ const BorrowerPage: React.FC = () => {
               <Table
                 columns={poolColumns}
                 pagination={false}
-                expandable={{
-                  expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
-                  // rowExpandable: (record) => record.name !== "Not Expandable",
-                }}
+                // expandable={{
+                //   expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
+                //   // rowExpandable: (record) => record.name !== "Not Expandable",
+                // }}
                 dataSource={availablePools}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
+
+      {tabs === "loan" && (
+        <div>
+          <Row>
+            <Col span={24}>
+              <Table
+                columns={loanColumns}
+                pagination={false}
+                // expandable={{
+                //   expandedRowRender: (_) => <p style={{ margin: 0 }}>Hello</p>,
+                //   // rowExpandable: (record) => record.name !== "Not Expandable",
+                // }}
+                dataSource={myLoans}
               />
             </Col>
           </Row>
@@ -502,12 +526,80 @@ const BorrowerPage: React.FC = () => {
 
       <Modal
         title="Title"
+        width={600}
         open={open}
         onOk={() => form.submit()}
         confirmLoading={confirmLoading}
         onCancel={handleCancel}
         okButtonProps={{ className: "bg-indigo-500" }}
       >
+        {poolDetails && (
+          <>
+            <div className="flex justify-between mb-4 px-5 mt-7">
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Vault Token</h4>
+                <p>{TOKEN_LISTS[poolDetails.vaultMint.toBase58()]}</p>
+              </div>
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Collateral Token</h4>
+                <p>{TOKEN_LISTS[poolDetails.collateralMint.toBase58()]}</p>
+              </div>
+            </div>
+            <div className="flex justify-between mb-4 px-5">
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Top Up Amount</h4>
+                <p>{poolDetails.availableAmount}</p>
+              </div>
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Interest Rate/Month</h4>
+                <p>{`${poolDetails.interestRate} %`}</p>
+              </div>
+            </div>
+            <div className="flex justify-between mb-4 px-5">
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Max Loan Amount</h4>
+                <p>{poolDetails.maxLoanAmount}</p>
+              </div>
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Min Loan Amount</h4>
+                <p>{poolDetails.minLoanAmount}</p>
+              </div>
+            </div>
+            <div className="flex justify-between mb-4 px-5">
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Max Loan Threshold</h4>
+                <p>{`${poolDetails.maxLoanThreshold} %`}</p>
+              </div>
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Loan Term</h4>
+                {/*waiting for BE , hardcode 6 month*/}
+                <p>{6}</p>
+              </div>
+            </div>
+            <div className="flex justify-between mb-4 px-5">
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Collateral Amount</h4>
+                {/*formula is loanAmount / maxLoanThreshold * 100 */}
+                <p>
+                  {loanAmount
+                    ? (loanAmount * 100) /
+                      parseInt(poolDetails.maxLoanThreshold)
+                    : 0}
+                </p>
+              </div>
+              <div className="flex justify-between border-b w-56">
+                <h4 className="font-medium">Pay</h4>
+                {/*formula is loanAmount + loanAmount / interestRate * loanTerm (here is 6 month)*/}
+                <p>
+                  {loanAmount
+                    ? loanAmount +
+                      (loanAmount / parseInt(poolDetails.interestRate)) * 6
+                    : 0}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
         <Row>
           <Col span={24}>
             <Form
@@ -516,31 +608,37 @@ const BorrowerPage: React.FC = () => {
               name="control-hooks"
               onFinish={handleSubmit}
             >
-              <Form.Item
-                name="loanTerm"
-                label="Loan Term"
-                rules={[{ required: true }]}
-              >
-                <Select
-                  placeholder="Select a option and change input text above"
-                  allowClear
+              {poolDetails && (
+                <Form.Item
+                  name="loanAmount"
+                  label="Loan Amount"
+                  rules={[
+                    { required: true },
+                    {
+                      type: "number",
+                      max: parseInt(poolDetails.maxLoanAmount),
+                      message: "can't set value > max loan amount",
+                    },
+                    {
+                      type: "number",
+                      max: parseInt(poolDetails.availableAmount),
+                      message: "not enough token for loan",
+                    },
+                    // {
+                    //   type: "number",
+                    //   max: showAvailableCollateral,
+                    //   message: "not enough Collateral",
+                    // },
+                    {
+                      type: "number",
+                      min: parseInt(poolDetails.minLoanAmount),
+                      message: "can't set value < min loan amount",
+                    },
+                  ]}
                 >
-                  <Option value="twoMinutes">2 Minutes - Test</Option>
-                  <Option value="oneMonth">1 Month</Option>
-                  <Option value="threeMonths">3 Months</Option>
-                  <Option value="sixMonths">6 Months</Option>
-                  <Option value="nineMonths">9 Months</Option>
-                  <Option value="twelveMonths">12 Months</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                name="loanAmount"
-                label="Loan Amount"
-                rules={[{ required: true }]}
-              >
-                <InputNumber style={{ width: "100%" }} />
-              </Form.Item>
+                  <InputNumber style={{ width: "100%" }} />
+                </Form.Item>
+              )}
             </Form>
           </Col>
         </Row>

@@ -2,7 +2,6 @@ import React, { useState } from "react"
 import { Button, Col, Row, Space, Table, Tag } from "antd"
 import { useWorkspace } from "@/hooks/useWorkspace"
 import { TOKEN_LISTS } from "@/common/constants"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import useIsMounted from "@/hooks/useIsMounted"
 import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
@@ -15,6 +14,9 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
 import { web3 } from "@project-serum/anchor"
+import { Typography } from "antd"
+
+const { Title } = Typography
 
 interface DataType {
   key: React.Key
@@ -121,7 +123,7 @@ const columns: ColumnsType<DataType> = [
     title: "Action",
     dataIndex: "",
     key: "x",
-    render: (_, { onClaimNFT, availableAmount, isAdmin }) => {
+    render: (_, { onClaimNFT }) => {
       return (
         <Space>
           <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
@@ -134,7 +136,6 @@ const columns: ColumnsType<DataType> = [
 const LoansOfPool: React.FC = () => {
   const router = useRouter()
   const { id } = router.query
-  const mounted = useIsMounted()
   const workspace = useWorkspace()
   const [loans, setLoans] = useState<DataType[]>([])
   const decimals = 9
@@ -207,7 +208,7 @@ const LoansOfPool: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { program, wallet, client } = workspace.value
+      const { wallet, client } = workspace.value
       const allLoanOnProgram = await client
         .from("MasterLoan")
         .offset(0)
@@ -270,8 +271,11 @@ const LoansOfPool: React.FC = () => {
   }, [id, workspace.value])
 
   return (
-    <div>
-      <div>{mounted && <WalletMultiButton />}</div>
+    <div className="px-6 mt-5 max-w-screen-lg mx-auto">
+      <div className="flex justify-between items-center mb-5">
+        <Title level={2}>Details</Title>
+      </div>
+
       <Row>
         <Col span={100}>
           <Table columns={columns} pagination={false} dataSource={loans} />
