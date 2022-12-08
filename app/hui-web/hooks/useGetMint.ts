@@ -6,7 +6,8 @@ import { AsyncState } from "react-use/lib/useAsyncFn"
 
 export const useGetMint = (
   workspace: AsyncState<Workspace | null>,
-  mintAddress: PublicKey
+  mintAddress: PublicKey,
+  reload?: boolean
 ) => {
   return useAsync(async () => {
     if (workspace.value) {
@@ -19,5 +20,5 @@ export const useGetMint = (
     }
 
     return null
-  }, [workspace.value, mintAddress])
+  }, [workspace.value, mintAddress, reload])
 }
