@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useRef, useState } from "react"
 import {
   Button,
   Col,
@@ -15,12 +15,7 @@ import {
 import { useRouter } from "next/router"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import type { ColumnsType } from "antd/es/table"
-import {
-  programId,
-  TOKEN_LISTS,
-  USDCPubKey,
-  USDTPubKey,
-} from "@/common/constants"
+import { programId, TOKEN_LISTS } from "@/common/constants"
 import { formatUnits, parseUnits } from "@ethersproject/units"
 import { PublicKey } from "@solana/web3.js"
 import {
@@ -31,14 +26,11 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
 import useAsyncEffect from "use-async-effect"
+import * as anchor from "@project-serum/anchor"
 import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import bs58 from "bs58"
 import { sha256 } from "js-sha256"
-import { useFormatUnit } from "@/hooks/useFormatUnit"
-import * as anchor from "@project-serum/anchor"
-import { useGetMint } from "@/hooks/useGetMint"
-import { useAccount } from "@/hooks/useAccount"
 
 const { Title } = Typography
 
@@ -57,6 +49,7 @@ interface DataType {
   status: string
   onDeposit: () => void
   onClose: () => void
+  onShow: () => void
   onWithdraw: (amount: BN) => void
 }
 
@@ -117,11 +110,19 @@ const columns: ColumnsType<DataType> = [
     key: "x",
     render: (
       _,
-      { onWithdraw, onClose, onDeposit, availableAmount, isAdmin }
+      { onWithdraw, onClose, onShow, onDeposit, availableAmount, isAdmin }
     ) => {
       if (isAdmin) {
         return (
           <Space>
+            <Button
+              onClick={(e) => {
+                e.stopPropagation()
+                onShow()
+              }}
+            >
+              View
+            </Button>
             <Button
               onClick={() =>
                 onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
@@ -182,20 +183,26 @@ const LenderPage: React.FC = () => {
   const onWithdraw = async (
     poolPubKey: PublicKey,
     poolVaultPubkey: PublicKey,
-    mintPubKey: PublicKey,
+    vaultMint: PublicKey,
+    collateralMint: PublicKey,
     amount: BN
   ) => {
     if (workspace.value) {
       const { program, wallet, connection } = workspace.value
 
       const [poolPDA] = await PublicKey.findProgramAddress(
-        [Buffer.from("pool"), mintPubKey.toBuffer()],
+        [
+          Buffer.from("pool"),
+          wallet.publicKey.toBuffer(),
+          collateralMint.toBuffer(),
+          vaultMint.toBuffer(),
+        ],
         program.programId
       )
 
       const mint = await getMint(
         connection,
-        mintPubKey,
+        vaultMint,
         commitmentLevel,
         TOKEN_PROGRAM_ID
       )
@@ -220,7 +227,11 @@ const LenderPage: React.FC = () => {
     }
   }
 
-  const onDeposit = async (poolPubKey, vaultAccount, vaultMint) => {
+  const onDeposit = async (
+    poolPubKey: PublicKey,
+    vaultAccount: PublicKey,
+    vaultMint: PublicKey
+  ) => {
     poolSelectedRef.current = {
       poolPubKey,
       vaultAccount,
@@ -272,11 +283,13 @@ const LenderPage: React.FC = () => {
           onDeposit: () =>
             onDeposit(publicKey, account.vaultAccount, account.vaultMint),
           onClose: () => onClose(publicKey),
+          onShow: () => router.push(`/lender/pool?id=${publicKey.toBase58()}`),
           onWithdraw: (amount: BN) =>
             onWithdraw(
               publicKey,
               account.vaultAccount,
               account.vaultMint,
+              account.collateralMint,
               amount
             ),
         }
@@ -442,13 +455,13 @@ const LenderPage: React.FC = () => {
               <Table
                 columns={columns}
                 pagination={false}
-                onRow={(record) => {
-                  return {
-                    onClick: async () => {
-                      await router.push(`/lender/pool?id=${record.key}`)
-                    },
-                  }
-                }}
+                // onRow={(record) => {
+                //   return {
+                //     onClick: async () => {
+                //       await router.push(`/lender/pool?id=${record.key}`)
+                //     },
+                //   }
+                // }}
                 dataSource={myPools}
               />
             </Col>
