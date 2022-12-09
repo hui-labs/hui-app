@@ -172,16 +172,6 @@ const loanColumns: ColumnsType<LoanDataType> = [
       return <span>{TOKEN_LISTS[collateralMint.toBase58()]}</span>
     },
   },
-  {
-    title: "Status",
-    dataIndex: "status",
-    key: "status",
-    render: (_, { status }) => (
-      <div>
-        <Tag color={"blue"}>{status.toUpperCase()}</Tag>
-      </div>
-    ),
-  },
   { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
   {
     title: "Max Loan Amount",
