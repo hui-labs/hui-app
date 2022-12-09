@@ -230,6 +230,7 @@ const BorrowerPage: React.FC = () => {
   const usdtAccount = useAccount(workspace, usdtMint, SystemFeeUSDTPubKey)
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
+  const [created, setCreated] = useState<string | null>(null)
 
   const handleSubmit = async (data: LoanForm) => {
     if (data && selectedPool && workspace.value) {
@@ -254,12 +255,15 @@ const BorrowerPage: React.FC = () => {
         )
         console.log(formatUnits(receiverAccount.amount.toString(), 9))
 
-        await onCreateLoan(
+        const tx = await onCreateLoan(
           loanAmount,
           selectedPool,
           depositorAccount.address,
           receiverAccount.address
         )
+
+        setOpen(false)
+        setCreated(tx)
       }
       setConfirmLoading(false)
     }
@@ -299,7 +303,7 @@ const BorrowerPage: React.FC = () => {
       const nftMintKeypair = Keypair.generate()
       const nftAccountKeypair = Keypair.generate()
 
-      await program.methods
+      const tx = await program.methods
         .initLoan(new BN(amount * DEFAULT_DECIMALS))
         .accounts({
           vaultAccount: vaultKeypair.publicKey,
@@ -334,8 +338,12 @@ const BorrowerPage: React.FC = () => {
           vaultKeypair,
         ])
         .rpc()
+
       console.log("created")
+      return tx
     }
+
+    return null
   }
   const [selectedPool, setSelectedPool] = useState<PublicKey | null>(null)
 
@@ -402,8 +410,9 @@ const BorrowerPage: React.FC = () => {
   }
 
   useAsyncEffect(async () => {
+    console.log("created", created)
     if (workspace.value) {
-      const { program, wallet, client } = workspace.value
+      const { wallet, client } = workspace.value
       const loans = await client.from("MasterLoan").offset(0).limit(10).select()
       const loansDetail = await Promise.all(
         loans.map((loan) => loanMetadataFetcher(client, loan))
@@ -483,9 +492,10 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [LoanDataType[], LoanDataType[]]
       )
 
+      console.log("data", data)
       setMyLoans(data[0])
     }
-  }, [workspace.value])
+  }, [workspace.value, created])
 
   useAsyncEffect(async () => {
     if (workspace.value) {
@@ -548,7 +558,7 @@ const BorrowerPage: React.FC = () => {
       )
       setAvailablePools(() => data[1])
     }
-  }, [workspace.value])
+  }, [workspace.value, created])
 
   const showModal = (data: PoolDataType) => {
     setPoolDetails(data)
