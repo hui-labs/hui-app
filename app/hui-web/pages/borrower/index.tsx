@@ -59,6 +59,7 @@ interface PoolDataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  loanTerm: string
   showModal: (data: PoolDataType) => void
 }
 
@@ -114,6 +115,11 @@ const poolColumns: ColumnsType<PoolDataType> = [
     key: "maxLoanThreshold",
   },
   {
+    title: "Loan Term",
+    dataIndex: "loanTerm",
+    key: "loanTerm",
+  },
+  {
     title: "Action",
     dataIndex: "",
     key: "x",
@@ -145,6 +151,7 @@ interface LoanDataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  loanTerm: string
   onFinal: () => void
 }
 
@@ -192,9 +199,14 @@ const loanColumns: ColumnsType<LoanDataType> = [
     key: "maxLoanThreshold",
   },
   {
-    title: "loan",
+    title: "Loan",
     dataIndex: "receivedAmount",
     key: "receivedAmount",
+  },
+  {
+    title: "Loan Term",
+    dataIndex: "loanTerm",
+    key: "loanTerm",
   },
   {
     title: "Action",
@@ -433,6 +445,7 @@ const BorrowerPage: React.FC = () => {
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
             status,
+            loanTerm: Object.keys(account.loanTerm)[0],
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
               decimals
@@ -510,7 +523,8 @@ const BorrowerPage: React.FC = () => {
           vaultMint: account.vaultMint,
           vaultAccount: account.vaultAccount,
           collateralMint: account.collateralMint,
-          status: "",
+          status: Object.keys(account.status)[0],
+          loanTerm: Object.keys(account.loanTerm)[0],
           availableAmount: "0",
           minLoanAmount: formatUnits(
             account.minLoanAmount.toString(),
