@@ -260,7 +260,6 @@ const BorrowerPage: React.FC = () => {
           wallet.publicKey,
           receiverMint
         )
-        console.log(formatUnits(receiverAccount.amount.toString(), 9))
 
         const tx = await onCreateLoan(
           loanAmount,
@@ -344,7 +343,6 @@ const BorrowerPage: React.FC = () => {
         ])
         .rpc()
 
-      console.log("created")
       return tx
     }
 
@@ -400,10 +398,6 @@ const BorrowerPage: React.FC = () => {
         wallet.publicKey
       )
 
-      console.log(
-        "loanMetadata.account.nftMint",
-        loanMetadata.account.nftMint.toBase58()
-      )
       const vaultAccountKeypair = Keypair.generate()
       const tx = await program.methods
         .finalSettlement(new BN((80 + 5.99999976) * DEFAULT_DECIMALS))
@@ -428,17 +422,13 @@ const BorrowerPage: React.FC = () => {
   }
 
   useAsyncEffect(async () => {
-    console.log("created", created)
     if (workspace.value) {
       const { wallet, client, program } = workspace.value
       const loans = await client.from("MasterLoan").offset(0).limit(10).select()
-      const a = await program.account.loanMetadata.all()
-      console.log("a", a)
       const loansDetail = await Promise.all(
         loans.map((loan) => loanMetadataFetcher(client, loan))
       )
 
-      console.log("all loan", loansDetail)
       const rawData: LoanDataType[] = loansDetail.map(
         ({ publicKey, account, loanMetadata }) => {
           const status = loanMetadata
@@ -512,7 +502,6 @@ const BorrowerPage: React.FC = () => {
         [[], []] as [LoanDataType[], LoanDataType[]]
       )
 
-      console.log("data", data)
       setMyLoans(data[0])
     }
   }, [workspace.value, created])

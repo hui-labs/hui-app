@@ -24,9 +24,6 @@ export const useCreateAccount = ({
   associatedAccount,
 }: CreateAccountConfig) => {
   return useAsyncFn(async () => {
-    console.log(
-      workspace.value && mint.value && associatedAccount.value && account.error
-    )
     if (
       workspace.value &&
       mint.value &&

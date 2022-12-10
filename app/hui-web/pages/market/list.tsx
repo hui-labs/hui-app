@@ -182,7 +182,6 @@ const ListNFT = () => {
           )
         )
       )
-      console.log(nftAccountsDetail)
 
       const data = nftAccountsDetail
         .filter((v) => v.itemForSale !== null || v.tokenAccount.amount !== "0")

@@ -1,11 +1,15 @@
 import Link from "next/link"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
-import useIsMounted from "@/hooks/useIsMounted"
 import { useAutoConnectWallet } from "@/hooks/useAutoConnectWallet"
+import dynamic from "next/dynamic"
+
+const WalletMultiButtonDynamic = dynamic(
+  async () =>
+    (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
+  { ssr: false }
+)
 
 function Header() {
   useAutoConnectWallet()
-  const mounted = useIsMounted()
 
   return (
     <>
@@ -36,7 +40,9 @@ function Header() {
             Faucet
           </Link>
         </div>
-        <div>{mounted && <WalletMultiButton className="bg-indigo-500" />}</div>
+        <div>
+          <WalletMultiButtonDynamic className="bg-indigo-500" />
+        </div>
       </div>
       <hr className="drop-shadow" />
     </>

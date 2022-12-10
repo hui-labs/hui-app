@@ -110,7 +110,6 @@ const Market = () => {
       if (!buyerTokenAccount) {
         throw new Error("Missing buyer token account")
       }
-      console.log(formatUnits(buyerTokenAccount.amount, 9))
 
       const associatedNftTokenAccount = await getAssociatedTokenAddress(
         nftMint,
@@ -157,7 +156,6 @@ const Market = () => {
         .limit(10)
         .select()
 
-      console.log("itemForSales", itemForSales)
       const data = itemForSales.reduce<ItemForSaleDataType[]>(
         (acc, { publicKey, account }) => {
           if (
