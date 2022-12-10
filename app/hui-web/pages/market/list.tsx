@@ -21,7 +21,6 @@ interface LoanMetadataDataType {
   parent: PublicKey
   onListNFT: () => void
   onDelistNFT: () => void
-  onClaimFund: () => void
 }
 
 const columns: ColumnsType<LoanMetadataDataType> = [
@@ -44,18 +43,7 @@ const columns: ColumnsType<LoanMetadataDataType> = [
     title: "Action",
     dataIndex: "",
     key: "",
-    render: (
-      _,
-      { onListNFT, onDelistNFT, onClaimFund, isSold, isOwner, isListed }
-    ) => {
-      if (isSold && isOwner) {
-        return (
-          <div>
-            <Button onClick={onClaimFund}>Claim</Button>
-          </div>
-        )
-      }
-
+    render: (_, { onListNFT, onDelistNFT, isSold, isOwner, isListed }) => {
       if (isListed) {
         return (
           <div>
@@ -212,14 +200,6 @@ const ListNFT = () => {
                   itemForSale?.publicKey,
                   itemForSale?.account.vaultAccount
                 ),
-              onClaimFund: () =>
-                onClaimFund(
-                  itemForSale?.publicKey,
-                  nftMintPubKey,
-                  itemForSale?.account.ownerAccount,
-                  itemForSale?.account.itemAccount,
-                  itemForSale?.account.vaultAccount
-                ),
             }
           }
         )
@@ -227,49 +207,6 @@ const ListNFT = () => {
       setListLoanMetadatas(data)
     }
   }, [workspace.value])
-
-  const onClaimFund = async (
-    itemForSalePubKey: PublicKey,
-    nftMint: PublicKey,
-    nftAccount: PublicKey,
-    itemAccount: PublicKey,
-    vaultAccount: PublicKey
-  ) => {
-    if (workspace.value) {
-      const { wallet, program } = workspace.value
-      const [itemForSalePDA] = await PublicKey.findProgramAddress(
-        [
-          Buffer.from("itemForSale"),
-          wallet.publicKey.toBuffer(),
-          nftMint.toBuffer(),
-          itemAccount.toBuffer(),
-        ],
-        program.programId
-      )
-
-      const ownerAccount = await getAssociatedTokenAddress(
-        USDTPubKey,
-        wallet.publicKey
-      )
-      const tx = await program.methods
-        .claimFund()
-        .accounts({
-          itemForSale: itemForSalePubKey,
-          itemForSalePda: itemForSalePDA,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-          owner: wallet.publicKey,
-          ownerAccount: ownerAccount,
-          vaultMint: USDTPubKey,
-          vaultAccount: vaultAccount,
-          nftAccount,
-        })
-        .rpc()
-
-      console.log(tx)
-    }
-  }
 
   const onListNFT = async (
     loanMetadataPubKey: PublicKey,
