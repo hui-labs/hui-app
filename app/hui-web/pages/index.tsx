@@ -270,7 +270,7 @@ const LenderPage: React.FC = () => {
         <div className="h-full">
           <button
             className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800 ml-5"
-            onClick={() => router.push("/lender/add")}
+            onClick={() => router.push("/lend/add")}
           >
             Create Pool
           </button>

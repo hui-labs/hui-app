@@ -114,7 +114,7 @@ pub mod hui {
 
         // master_loan.nft_account = ctx.accounts.nft_account.key().clone();
 
-        // Transfer to the borrower
+        // Transfer to the borrow
         // amount >= min_loan
         // && amount <= current_pool_amount - loan_fee
         // && amount <= max_loan
@@ -625,7 +625,6 @@ pub struct LoanMetadata {
     pub nft_mint: Pubkey,
     pub parent: Pubkey,
     pub nft_account: Pubkey,
-    pub claim_account: Pubkey,
     pub status: LoanStatus,
     pub amount: u64,
     pub is_claimed: bool,

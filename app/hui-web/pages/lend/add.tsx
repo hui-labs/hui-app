@@ -31,6 +31,8 @@ import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useRouter } from "next/router"
+import { useSupabaseClient } from "@supabase/auth-helpers-react"
+import { Database } from "@/types/supabase"
 
 const { Option } = Select
 
@@ -61,6 +63,7 @@ const AddPool: React.FC = () => {
   const router = useRouter()
   const vaultTokenSelectedRef = useRef<any>(null)
   const collateralTokenSelectedRef = useRef<any>(null)
+  const supabase = useSupabaseClient<Database>()
 
   const estimatedLoanCommissionFee = useMemo(() => {
     return ((topUpAmount || 0) / DEFAULT_DECIMALS) * SYSTEM_LOAN_COMMISSION_FEE
@@ -238,27 +241,27 @@ const AddPool: React.FC = () => {
         const vaultKeypair = web3.Keypair.generate()
         const pool = web3.Keypair.generate()
         const ins = await program.account.pool.createInstruction(pool)
+        const interestRate =
+          form.getFieldValue("interestRate") * DEFAULT_PERCENTAGE_DECIMALS
+        const maxLoanAmount =
+          form.getFieldValue("maxLoanAmount") * DEFAULT_DECIMALS
+        const minLoanAmount =
+          form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
+        const maxLoanThreshold =
+          form.getFieldValue("maxLoanThreshold") * DEFAULT_PERCENTAGE_DECIMALS
+        const loanTerm = form.getFieldValue("loanTerm")
         await program.methods
           .initPool(
             {
-              interestRate: new BN(
-                form.getFieldValue("interestRate") * DEFAULT_PERCENTAGE_DECIMALS
-              ),
-              maxLoanAmount: new BN(
-                form.getFieldValue("maxLoanAmount") * DEFAULT_DECIMALS
-              ),
-              minLoanAmount: new BN(
-                form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
-              ),
-              maxLoanThreshold: new BN(
-                form.getFieldValue("maxLoanThreshold") *
-                  DEFAULT_PERCENTAGE_DECIMALS
-              ),
+              interestRate: new BN(interestRate),
+              maxLoanAmount: new BN(maxLoanAmount),
+              minLoanAmount: new BN(minLoanAmount),
+              maxLoanThreshold: new BN(maxLoanThreshold),
             },
             new BN(topUpAmount * DEFAULT_DECIMALS),
             new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS),
             {
-              [form.getFieldValue("loanTerm")]: {},
+              [loanTerm]: {},
             }
           )
           .accounts({
@@ -277,7 +280,29 @@ const AddPool: React.FC = () => {
           .preInstructions([ins])
           .signers([pool, vaultKeypair])
           .rpc()
-        await router.push("/lender")
+
+        await supabase.from("pools").insert([
+          {
+            interest_rate: interestRate,
+            max_loan_amount: maxLoanAmount,
+            min_loan_amount: minLoanAmount,
+            max_loan_threshold: maxLoanThreshold,
+            amount: topUpAmount * DEFAULT_DECIMALS,
+            commission_fee:
+              Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS,
+            loan_term: loanTerm,
+            pool_pubkey: pool.publicKey.toBase58(),
+            vault_mint: vaultTokenSelectedRef.current.value.address.toBase58(),
+            vault_account: vaultKeypair.publicKey.toBase58(),
+            collateral_mint:
+              collateralTokenSelectedRef.current.value.address.toBase58(),
+            owner: wallet.publicKey.toBase58(),
+            deposit_token: walletVaultAccount.address.toBase58(),
+            system_fee_account: SystemFeeUSDTPubKey.toBase58(),
+            status: "OPENING",
+          },
+        ])
+        await router.push("/lend")
       } catch (e) {
         console.log(e)
       }

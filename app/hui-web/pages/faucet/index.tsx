@@ -41,7 +41,7 @@ const Airdrop = () => {
 
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
-  const balance = useBalance(workspace, undefined, reload)
+  const balance = useBalance(workspace, undefined, [reload])
   const solBalance = useFormatUnit(balance.value)
 
   return (

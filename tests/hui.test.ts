@@ -332,7 +332,7 @@ describe("test hui flow", () => {
     // await program.methods
     //   .claimLoanFund()
     //   .accounts({
-    //     borrower: bob.publicKey,
+    //     borrow: bob.publicKey,
     //     pool: poolKeypair.publicKey,
     //     loanMetadata: loanMetadataKeypair.publicKey,
     //     poolPda: poolPDA,

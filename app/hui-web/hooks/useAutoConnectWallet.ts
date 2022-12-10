@@ -6,17 +6,18 @@ export const useAutoConnectWallet = () => {
   const { wallet, select, disconnecting, connected } = useWallet()
 
   useEffect(() => {
-    const autoConnect = localStorage.getItem("autoConnect")
-    if (autoConnect && !disconnecting && !connected) {
-      select(PhantomWalletName)
-    }
-
-    if (connected) {
-      localStorage.setItem("test", "123")
-    }
-
-    if (disconnecting) {
-      localStorage.removeItem("test")
-    }
-  }, [wallet, connected, disconnecting])
+    // const autoConnect = localStorage.getItem("autoConnect")
+    // if (autoConnect && !disconnecting && !connected) {
+    //   select(PhantomWalletName)
+    // }
+    //
+    // if (connected) {
+    //   localStorage.setItem("test", "123")
+    // }
+    //
+    // if (disconnecting) {
+    //   localStorage.removeItem("test")
+    // }
+    select(PhantomWalletName)
+  }, [wallet])
 }
