@@ -671,6 +671,7 @@ describe("test hui flow", () => {
         rent: web3.SYSVAR_RENT_PUBKEY,
         itemAccount: itemAccountKeypair.publicKey,
         loanMetadata: loanMetadataKeypair.publicKey,
+        sellerTokenAccount: aliceUSDTAccount,
         buyer: tom.publicKey,
         buyerAccount: tomAccount,
         vaultMint: usdtMintPubkey,
@@ -688,23 +689,22 @@ describe("test hui flow", () => {
       ])
       .rpc()
     console.log("Bought NFT")
-
-    await program.methods
-      .claimFund()
-      .accounts({
-        itemForSale: itemForSaleKeypair.publicKey,
-        itemForSalePda: itemForSalePDA,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-        owner: alice.publicKey,
-        ownerAccount: aliceUSDTAccount,
-        nftAccount: account,
-        vaultMint: usdtMintPubkey,
-        vaultAccount: itemForSaleUSDTKeypair.publicKey,
-      })
-      .signers([alice])
-      .rpc()
+    // await program.methods
+    //   .claimFund()
+    //   .accounts({
+    //     itemForSale: itemForSaleKeypair.publicKey,
+    //     itemForSalePda: itemForSalePDA,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     systemProgram: SystemProgram.programId,
+    //     rent: web3.SYSVAR_RENT_PUBKEY,
+    //     owner: alice.publicKey,
+    //     ownerAccount: aliceUSDTAccount,
+    //     nftAccount: account,
+    //     vaultMint: usdtMintPubkey,
+    //     vaultAccount: itemForSaleUSDTKeypair.publicKey,
+    //   })
+    //   .signers([alice])
+    //   .rpc()
     console.log("Claim Fund")
     // console.table([
     //   {

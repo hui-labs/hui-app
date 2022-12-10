@@ -591,6 +591,11 @@ export type Hui = {
           "isSigner": false
         },
         {
+          "name": "sellerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
@@ -643,62 +648,6 @@ export type Hui = {
         },
         {
           "name": "vaultAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "claimFund",
-      "accounts": [
-        {
-          "name": "itemForSale",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemForSalePda",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "owner",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "ownerAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "nftAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -1717,6 +1666,11 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
+          "name": "sellerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "tokenProgram",
           "isMut": false,
           "isSigner": false
@@ -1769,62 +1723,6 @@ export const IDL: Hui = {
         },
         {
           "name": "vaultAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "claimFund",
-      "accounts": [
-        {
-          "name": "itemForSale",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "itemForSalePda",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultMint",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "vaultAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "owner",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "ownerAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "nftAccount",
           "isMut": true,
           "isSigner": false
         },

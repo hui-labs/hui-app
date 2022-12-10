@@ -1,6 +1,6 @@
 import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
-import { useWorkspace } from "@/hooks/useWorkspace"
+import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import React, { useState } from "react"
 import { Button, Col, Row, Table } from "antd"
 import { ColumnsType } from "antd/es/table"
@@ -8,7 +8,9 @@ import { PublicKey, SystemProgram } from "@solana/web3.js"
 import dayjs from "dayjs"
 import { formatUnits } from "@ethersproject/units"
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
+  getAccount,
   getAssociatedTokenAddress,
   getMint,
   TOKEN_PROGRAM_ID,
@@ -111,6 +113,20 @@ const Market = () => {
         throw new Error("Missing buyer token account")
       }
 
+      const vaultAssociatedAccount = await getAssociatedTokenAddress(
+        USDTPubKey,
+        owner,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+
+      const walletVaultAccount = await getAccount(
+        connection,
+        vaultAssociatedAccount,
+        commitmentLevel
+      )
+
       const associatedNftTokenAccount = await getAssociatedTokenAddress(
         nftMint,
         wallet.publicKey
@@ -131,6 +147,7 @@ const Market = () => {
           vaultMint: vaultMint,
           vaultAccount: vaultAccount,
           buyerTokenAccount: buyerTokenAccount.address,
+          sellerTokenAccount: walletVaultAccount.address,
         })
         .preInstructions([
           await createAssociatedTokenAccountInstruction(
