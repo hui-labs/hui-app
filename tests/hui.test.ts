@@ -287,11 +287,12 @@ describe("test hui flow", () => {
     }
     await printTable("Created pool")
 
+    const loanMetadataKeypair = Keypair.generate()
     await program.methods
       .initLoan(new BN(100 * DECIMALS))
       .accounts({
         nftMint: nftMintKeypair.publicKey,
-        nftAccount: nftAccountKeypair.publicKey,
+        loanMetadata: loanMetadataKeypair.publicKey,
         masterLoan: masterLoanKeypair.publicKey,
         pool: poolKeypair.publicKey,
         poolPda: poolPDA,
@@ -309,27 +310,49 @@ describe("test hui flow", () => {
 
         collateralMint: usdcMintPubkey,
         collateralAccount: collateralKeypair.publicKey,
-        vaultMint: usdtMintPubkey,
-        vaultAccount: vaultKeypair.publicKey,
+        // vaultMint: usdtMintPubkey,
+        // vaultAccount: vaultKeypair.publicKey,
       })
       .preInstructions([
         await program.account.masterLoan.createInstruction(masterLoanKeypair),
+        await program.account.loanMetadata.createInstruction(
+          loanMetadataKeypair
+        ),
       ])
       .signers([
         masterLoanKeypair,
+        loanMetadataKeypair,
         bob,
         collateralKeypair,
-        vaultKeypair,
         nftMintKeypair,
-        nftAccountKeypair,
       ])
       .rpc()
+    console.log("Created loan")
+
+    // await program.methods
+    //   .claimLoanFund()
+    //   .accounts({
+    //     borrower: bob.publicKey,
+    //     pool: poolKeypair.publicKey,
+    //     loanMetadata: loanMetadataKeypair.publicKey,
+    //     poolPda: poolPDA,
+    //     rent: web3.SYSVAR_RENT_PUBKEY,
+    //     tokenProgram: TOKEN_PROGRAM_ID,
+    //     systemProgram: SystemProgram.programId,
+    //     poolVault: poolVaultKeypair.publicKey,
+    //     tokenReceiver: bobUSDTAccount,
+    //   })
+    //   .signers([bob])
+    //   .rpc()
+    // console.log("Claimed loan fund")
 
     const collateralAccount = await getAccount(
       connection,
       collateralKeypair.publicKey
     )
-    const vaultAccount = await getAccount(connection, vaultKeypair.publicKey)
+    // const vaultAccount = await getAccount(connection, vaultKeypair.publicKey)
+    console.log("collateralAccount", collateralAccount.address.toBase58())
+    // console.log("vaultAccount", vaultAccount.address.toBase58())
     const printTableAll = async (message?: string) => {
       if (message) {
         console.log(message)
@@ -371,11 +394,11 @@ describe("test hui flow", () => {
           address: collateralAccount.address.toBase58(),
           amount: await getTokenBalance(connection, collateralAccount.address),
         },
-        {
-          name: "Loan Vault USDT",
-          address: vaultAccount.address.toBase58(),
-          amount: await getTokenBalance(connection, vaultAccount.address),
-        },
+        // {
+        //   name: "Loan Vault USDT",
+        //   address: vaultAccount.address.toBase58(),
+        //   amount: await getTokenBalance(connection, vaultAccount.address),
+        // },
         {
           name: "System Fee Account",
           address: systemUSDTFeeAccount.toBase58(),
@@ -457,28 +480,22 @@ describe("test hui flow", () => {
     )
     console.log("account", account.toBase58())
 
-    const loanMetadataKeypair = Keypair.generate()
     await program.methods
       .claimNft()
       .accounts({
         masterLoan: masterLoanKeypair.publicKey,
         masterLoanPda: masterLoanPDA,
         nftMint: nftMintKeypair.publicKey,
-        nftAccount: nftAccountKeypair.publicKey,
-        claimAccount: account,
+        nftAccount: account,
         owner: alice.publicKey,
         loanMetadata: loanMetadataKeypair.publicKey,
-        loanMetadataPda: loanMetadataPDA,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         rent: web3.SYSVAR_RENT_PUBKEY,
         // associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
-      .signers([alice, loanMetadataKeypair])
+      .signers([alice])
       .preInstructions([
-        await program.account.loanMetadata.createInstruction(
-          loanMetadataKeypair
-        ),
         await createAssociatedTokenAccountInstruction(
           alice.publicKey,
           account,
@@ -494,6 +511,7 @@ describe("test hui flow", () => {
     )
     console.log("isClaimed", masterLoan.isClaimed)
 
+    const vaultAccountKeypair = Keypair.generate()
     await program.methods
       .finalSettlement(new BN((80 + 5.99999976) * DECIMALS))
       .accounts({
@@ -503,11 +521,12 @@ describe("test hui flow", () => {
         tokenReceiver: bobUSDCAccount,
         depositor: bob.publicKey,
         collateralAccount: collateralAccount.address,
-        vaultAccount: vaultAccount.address,
+        vaultMint: usdtMintPubkey,
+        vaultAccount: vaultAccountKeypair.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         loanMetadata: loanMetadataKeypair.publicKey,
       })
-      .signers([bob])
+      .signers([bob, vaultAccountKeypair])
       .rpc()
     await printTableAll("Final settlement")
 
@@ -694,6 +713,10 @@ describe("test hui flow", () => {
     //   },
     // ])
 
+    const vaultAccount = await getAccount(
+      connection,
+      vaultAccountKeypair.publicKey
+    )
     // Claim loan
     await program.methods
       .claimLoan()

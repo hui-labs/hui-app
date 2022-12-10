@@ -1,20 +1,20 @@
 import React, { useState } from "react"
-import { Button, Col, Row, Space, Table, Tag } from "antd"
+import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
 import { useWorkspace } from "@/hooks/useWorkspace"
 import { TOKEN_LISTS } from "@/common/constants"
-import useIsMounted from "@/hooks/useIsMounted"
 import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
 import { formatUnits } from "@ethersproject/units"
 import { ColumnsType } from "antd/es/table"
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
+import { PublicKey, SystemProgram } from "@solana/web3.js"
 import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
 import { web3 } from "@project-serum/anchor"
-import { Typography } from "antd"
+import { AnchorClient } from "@/services/anchorClient"
+import bs58 from "bs58"
 
 const { Title } = Typography
 
@@ -143,8 +143,8 @@ const LoansOfPool: React.FC = () => {
   const onClaimNFT = async (
     masterLoanPubKey: PublicKey,
     poolPubKey: PublicKey,
-    nftAccount: PublicKey,
     nftMint: PublicKey,
+    loanMetadata: any,
     isClaimed: boolean
   ) => {
     if (isClaimed) {
@@ -154,22 +154,11 @@ const LoansOfPool: React.FC = () => {
     if (workspace.value) {
       const { program, wallet } = workspace.value
 
-      const loanMetadataKeypair = Keypair.generate()
-
       const [masterLoanPDA] = await PublicKey.findProgramAddress(
         [Buffer.from("masterLoan"), poolPubKey.toBuffer()],
         program.programId
       )
-      //['ynSEjsgeWPJqM7M1Vd7foG3WuUiVzMWCiV1FzYVA9zo', '69qzHLJsEVdDuyV6yxbGm7v1UiHcSSh53wNkNoacaz4r', 'Do1wWc2Cu5RkQDg8iU5DQo9m1EGrXPHnS18YyZH3pHXs']
-      const [loanMetadataPDA] = await PublicKey.findProgramAddress(
-        [
-          Buffer.from("loan"),
-          masterLoanPubKey.toBuffer(),
-          nftAccount.toBuffer(),
-          nftMint.toBuffer(),
-        ],
-        SystemProgram.programId
-      )
+
       const associatedNftTokenAccount = await getAssociatedTokenAddress(
         nftMint,
         wallet.publicKey
@@ -180,20 +169,14 @@ const LoansOfPool: React.FC = () => {
           masterLoan: masterLoanPubKey,
           masterLoanPda: masterLoanPDA,
           nftMint,
-          nftAccount,
-          claimAccount: associatedNftTokenAccount,
+          nftAccount: associatedNftTokenAccount,
           owner: wallet.publicKey,
-          loanMetadata: loanMetadataKeypair.publicKey,
-          loanMetadataPda: loanMetadataPDA,
+          loanMetadata: loanMetadata.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
         })
-        .signers([loanMetadataKeypair])
         .preInstructions([
-          await program.account.loanMetadata.createInstruction(
-            loanMetadataKeypair
-          ),
           await createAssociatedTokenAccountInstruction(
             wallet.publicKey,
             associatedNftTokenAccount,
@@ -206,17 +189,36 @@ const LoansOfPool: React.FC = () => {
     }
   }
 
+  const loanMetadataFetcher = async (client: AnchorClient, loan: any) => {
+    const loanMetadata = await client
+      .from("LoanMetadata")
+      .filters([
+        {
+          memcmp: {
+            offset: 8 + 32,
+            bytes: bs58.encode(loan.publicKey.toBuffer()),
+          },
+        },
+      ])
+      .limit(1)
+      .one()
+
+    return {
+      ...loan,
+      loanMetadata,
+    }
+  }
+
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { wallet, client } = workspace.value
-      const allLoanOnProgram = await client
-        .from("MasterLoan")
-        .offset(0)
-        .limit(10)
-        .select()
-      const masterLoans = allLoanOnProgram
+      const loans = await client.from("MasterLoan").offset(0).limit(10).select()
+      const loansDetail = await Promise.all(
+        loans.map((loan) => loanMetadataFetcher(client, loan))
+      )
+      const masterLoans = loansDetail
         .filter((itemLoan) => itemLoan.account.pool.toBase58() === id)
-        .map(({ publicKey, account }) => {
+        .map(({ publicKey, account, loanMetadata }) => {
           const {
             collateralAccount,
             fee,
@@ -262,7 +264,7 @@ const LoansOfPool: React.FC = () => {
               4
             ),
             onClaimNFT: () =>
-              onClaimNFT(publicKey, pool, nftAccount, nftMint, isClaimed),
+              onClaimNFT(publicKey, pool, nftMint, loanMetadata, isClaimed),
           }
         })
 
