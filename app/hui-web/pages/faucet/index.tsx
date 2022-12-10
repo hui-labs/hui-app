@@ -12,6 +12,7 @@ import { useAccount } from "@/hooks/useAccount"
 import { useMintTo } from "@/hooks/useMintTo"
 import React, { useEffect, useState } from "react"
 import { Typography } from "antd"
+import { LAMPORTS_PER_SOL } from "@solana/web3.js"
 
 const { Title } = Typography
 
@@ -69,10 +70,26 @@ const Airdrop = () => {
           {usdtState.loading ? "Loading..." : "Faucet +100 USDT"}
         </button>
       </div>
-      <div>
+      <div className="flex justify-between items-center my-3">
         <p className="my-1">
-          Balance <span>{balance.loading ? "Loading..." : solBalance}</span>
+          Solana Balance:{" "}
+          <span>{balance.loading ? "Loading..." : solBalance}</span>
         </p>
+        <button
+          className="p-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
+          onClick={async () => {
+            if (workspace.value) {
+              const { connection, wallet } = workspace.value
+              const tx = await connection.requestAirdrop(
+                wallet.publicKey,
+                LAMPORTS_PER_SOL * 2
+              )
+              console.log(tx)
+            }
+          }}
+        >
+          {usdtState.loading ? "Loading..." : "Faucet +2 SOL"}
+        </button>
       </div>
     </div>
   )
