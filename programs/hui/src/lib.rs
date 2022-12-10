@@ -69,23 +69,6 @@ pub mod hui {
         Ok(())
     }
 
-    pub fn claim_loan_fund(ctx: Context<ClaimLoanFund>) -> Result<()> {
-        let signer_seeds = ctx
-            .accounts
-            .pool
-            .signer_seeds(&ctx.accounts.pool_pda, ctx.program_id)?;
-        let signer_seeds = &[&signer_seeds.value()[..]];
-
-        let amount = ctx.accounts.loan_metadata.amount;
-        token::transfer(
-            ctx.accounts
-                .to_transfer_receiver_context()
-                .with_signer(signer_seeds),
-            amount,
-        )?;
-        Ok(())
-    }
-
     pub fn init_loan(ctx: Context<InitLoan>, amount: u64) -> Result<()> {
         let curve = ConstantProduct;
         let pool = &ctx.accounts.pool;
@@ -689,14 +672,14 @@ pub struct ClaimLoan<'info> {
     pub master_loan: Box<Account<'info, MasterLoan>>,
     #[account(mut, close = owner, constraint = loan_metadata.parent == master_loan.key())]
     pub loan_metadata: Box<Account<'info, LoanMetadata>>,
-    #[account(mut)]
-    pub token_account: Box<Account<'info, TokenAccount>>,
     #[account(mut, constraint = nft_mint.key() == loan_metadata.nft_mint)]
     pub nft_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub nft_account: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub vault_account: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub token_account: Box<Account<'info, TokenAccount>>,
     /// CHECK: This is not dangerous because we don't read or write from this account
     pub master_loan_pda: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,

@@ -393,11 +393,6 @@ const BorrowerPage: React.FC = () => {
         wallet.publicKey
       )
 
-      const nftAccount = await getAssociatedTokenAddress(
-        loanMetadata.account.nftMint,
-        wallet.publicKey
-      )
-
       const vaultAccountKeypair = Keypair.generate()
       const tx = await program.methods
         .finalSettlement(new BN((80 + 5.99999976) * DEFAULT_DECIMALS))
@@ -428,9 +423,11 @@ const BorrowerPage: React.FC = () => {
       const loansDetail = await Promise.all(
         loans.map((loan) => loanMetadataFetcher(client, loan))
       )
+      console.log("loansDetail", loansDetail)
 
-      const rawData: LoanDataType[] = loansDetail.map(
-        ({ publicKey, account, loanMetadata }) => {
+      const rawData: LoanDataType[] = loansDetail
+        .filter((v) => v.loanMetadata)
+        .map(({ publicKey, account, loanMetadata }) => {
           const status = loanMetadata
             ? Object.keys(loanMetadata?.account.status)[0]
             : ""
@@ -471,8 +468,7 @@ const BorrowerPage: React.FC = () => {
                 loanMetadata
               ),
           }
-        }
-      )
+        })
 
       // const accounts = await Promise.all(
       //   rawData.map((item) =>

@@ -1,6 +1,6 @@
 import React, { useState } from "react"
-import { Button, Col, Row, Space, Table, Tag, Typography } from "antd"
-import { useWorkspace } from "@/hooks/useWorkspace"
+import { Button, Col, Row, Table, Tag, Typography } from "antd"
+import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { TOKEN_LISTS } from "@/common/constants"
 import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
@@ -8,7 +8,9 @@ import { formatUnits } from "@ethersproject/units"
 import { ColumnsType } from "antd/es/table"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountInstruction,
+  getAccount,
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
@@ -34,6 +36,7 @@ interface DataType {
   isClaimed: boolean
   borrower: PublicKey
   onClaimNFT: () => void
+  onClaim: () => void
 }
 
 const columns: ColumnsType<DataType> = [
@@ -54,7 +57,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "borrower",
+    title: "Borrower",
     dataIndex: "borrower",
     width: 1000,
 
@@ -75,27 +78,17 @@ const columns: ColumnsType<DataType> = [
   },
   { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
   {
-    title: "Is Claimed",
-    dataIndex: "isClaimed",
-    key: "isClaimed",
-    render: (_, { isClaimed }) => (
-      <div>
-        <Tag color={"blue"}>{isClaimed ? "True" : "False"}</Tag>
-      </div>
-    ),
-  },
-  {
     title: "Max Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "fee",
+    title: "Fee",
     dataIndex: "fee",
     key: "fee",
   },
   {
-    title: "loan Fee",
+    title: "Loan Fee",
     dataIndex: "loanFee",
     key: "loanFee",
   },
@@ -121,14 +114,14 @@ const columns: ColumnsType<DataType> = [
   },
   {
     title: "Action",
-    dataIndex: "",
-    key: "x",
-    render: (_, { onClaimNFT }) => {
-      return (
-        <Space>
-          <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
-        </Space>
-      )
+    render: (_, { onClaimNFT, onClaim, isClaimed, status }) => {
+      if (status === "opening" && !isClaimed)
+        return <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
+
+      if (status === "final")
+        return <Button onClick={() => onClaim()}>Claim Fund</Button>
+
+      return null
     },
   },
 ]
@@ -189,7 +182,72 @@ const LoansOfPool: React.FC = () => {
     }
   }
 
-  const loanMetadataFetcher = async (client: AnchorClient, loan: any) => {
+  const onClaim = async (
+    masterLoanPubKey: PublicKey,
+    poolPubKey: PublicKey,
+    nftMint: PublicKey,
+    vaultMint: PublicKey,
+    vaultAccount: PublicKey,
+    loanMetadata: any,
+    status: string,
+    nftAccount?: PublicKey
+  ) => {
+    if (workspace.value) {
+      if (status !== "final") {
+        console.log("Do not allow to claim")
+        return
+      }
+
+      if (!nftAccount) {
+        console.log("Do not allow to claim")
+        return
+      }
+
+      const { program, wallet, connection } = workspace.value
+
+      const [masterLoanPDA] = await PublicKey.findProgramAddress(
+        [Buffer.from("masterLoan"), poolPubKey.toBuffer()],
+        program.programId
+      )
+
+      const vaultAssociatedAccount = await getAssociatedTokenAddress(
+        vaultMint,
+        wallet.publicKey,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+
+      const walletVaultAccount = await getAccount(
+        connection,
+        vaultAssociatedAccount,
+        commitmentLevel
+      )
+
+      const tx = await program.methods
+        .claimLoan()
+        .accounts({
+          masterLoan: masterLoanPubKey,
+          masterLoanPda: masterLoanPDA,
+          owner: wallet.publicKey,
+          nftAccount,
+          nftMint,
+          vaultAccount,
+          tokenAccount: walletVaultAccount.address,
+          loanMetadata: loanMetadata.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+      console.log("tx", tx)
+    }
+  }
+
+  const loanMetadataFetcher = async (
+    connection: web3.Connection,
+    client: AnchorClient,
+    loan: any
+  ) => {
     const loanMetadata = await client
       .from("LoanMetadata")
       .filters([
@@ -211,13 +269,50 @@ const LoansOfPool: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { wallet, client } = workspace.value
+      const { wallet, client, connection } = workspace.value
       const loans = await client.from("MasterLoan").offset(0).limit(10).select()
       const loansDetail = await Promise.all(
-        loans.map((loan) => loanMetadataFetcher(client, loan))
+        loans.map((loan) => loanMetadataFetcher(connection, client, loan))
       )
+      console.log("loansDetail", loansDetail)
+
+      const allTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        wallet.publicKey,
+        {
+          programId: TOKEN_PROGRAM_ID,
+        }
+      )
+
+      const nftAccounts = allTokenAccounts.value
+        .map((v) => {
+          const { mint, tokenAmount } = v.account.data.parsed.info
+          return {
+            mint,
+            tokenAmount,
+            pubkey: v.pubkey,
+          }
+        })
+        .filter(({ tokenAmount }) => {
+          return tokenAmount.amount === "1" || tokenAmount.amount === "0"
+        })
+        .reduce<any>((acc, cur) => {
+          acc[cur.mint] = {
+            amount: cur.tokenAmount.uiAmount,
+            pubkey: cur.pubkey,
+          }
+          return acc
+        }, {})
+      console.log("nftAccounts", nftAccounts)
+
       const masterLoans = loansDetail
-        .filter((itemLoan) => itemLoan.account.pool.toBase58() === id)
+        .filter((itemLoan) => {
+          const hasNftAccount = nftAccounts[itemLoan.account.nftMint.toBase58()]
+          return (
+            itemLoan.account.pool.toBase58() === id &&
+            ((hasNftAccount && hasNftAccount.amount > 0) ||
+              !itemLoan.account.isClaimed)
+          )
+        })
         .map(({ publicKey, account, loanMetadata }) => {
           const {
             collateralAccount,
@@ -228,10 +323,16 @@ const LoansOfPool: React.FC = () => {
             owner,
             borrower,
             receivedAmount,
-            nftAccount,
             nftMint,
+            vaultMint,
+            vaultAccount,
             isClaimed,
           } = account
+          const nftAccount = nftAccounts[nftMint.toBase58()]?.pubkey
+          const status = loanMetadata
+            ? Object.keys(loanMetadata.account.status)[0]
+            : ""
+          console.log("vaultAccount", vaultAccount.toBase58())
           return {
             key: publicKey.toBase58(),
             owner: owner,
@@ -244,11 +345,12 @@ const LoansOfPool: React.FC = () => {
             loanTerm: Object.keys(loanTerm)[0],
             pool,
             receivedAmount: formatUnits(receivedAmount.toString(), decimals),
-            isAdmin: account.owner.toBase58() === wallet.publicKey.toBase58(),
+            // isAdmin: mint.owner.toBase58() === wallet.publicKey.toBase58(),
+            isAdmin: false,
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
-            status: "",
+            status,
             availableAmount: "0",
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
@@ -265,9 +367,21 @@ const LoansOfPool: React.FC = () => {
             ),
             onClaimNFT: () =>
               onClaimNFT(publicKey, pool, nftMint, loanMetadata, isClaimed),
+            onClaim: () =>
+              onClaim(
+                publicKey,
+                pool,
+                nftMint,
+                vaultMint,
+                vaultAccount,
+                loanMetadata,
+                status,
+                nftAccount
+              ),
           }
         })
 
+      console.log("masterLoans", masterLoans)
       setLoans(masterLoans)
     }
   }, [id, workspace.value])

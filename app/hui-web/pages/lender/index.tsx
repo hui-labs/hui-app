@@ -110,59 +110,47 @@ const columns: ColumnsType<DataType> = [
       _,
       { onWithdraw, onClose, onShow, onDeposit, availableAmount, isAdmin }
     ) => {
-      if (isAdmin) {
-        return (
-          <Space>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation()
-                onShow()
-              }}
-            >
-              View
-            </Button>
-            <Button
-              onClick={() =>
-                onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-              }
-            >
-              Withdraw
-            </Button>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDeposit()
-              }}
-            >
-              Deposit
-            </Button>
-            <Button
-              danger
-              type="primary"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClose()
-              }}
-            >
-              Close
-            </Button>
-          </Space>
-        )
-      }
-
-      return null
-      // return (
-      //   <Space>
-      //     <Button
-      //       type="primary"
-      //       onClick={() =>
-      //         onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-      //       }
-      //     >
-      //       Loan
-      //     </Button>
-      //   </Space>
-      // )
+      return (
+        <Space>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              onShow()
+            }}
+          >
+            View
+          </Button>
+          {isAdmin && (
+            <>
+              <Button
+                onClick={() =>
+                  onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
+                }
+              >
+                Withdraw
+              </Button>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeposit()
+                }}
+              >
+                Deposit
+              </Button>
+              <Button
+                danger
+                type="primary"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                }}
+              >
+                Close
+              </Button>
+            </>
+          )}
+        </Space>
+      )
     },
   },
 ]
@@ -171,9 +159,10 @@ const LenderPage: React.FC = () => {
   const router = useRouter()
   const workspace = useWorkspace()
   const [myPools, setMyPools] = useState<DataType[]>([])
+  const [allPools, setAllPools] = useState<DataType[]>([])
   const decimals = 9
   const poolSelectedRef = useRef<any>({ poolPubKey: "", vaultAccount: "" })
-  const [tabs, setTabs] = useState<string>("pool")
+  const [tabs, setTabs] = useState<string>("myPools")
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
   const [_, triggerReload] = useState(false)
@@ -320,7 +309,9 @@ const LenderPage: React.FC = () => {
         [[], []] as [DataType[], DataType[]]
       )
 
+      console.log("data", data)
       setMyPools(data[0])
+      setAllPools(data[1])
     }
   }, [workspace.value, _])
 
@@ -401,31 +392,22 @@ const LenderPage: React.FC = () => {
             options={[
               {
                 label: "Your Pools",
-                value: "pool",
+                value: "myPools",
               },
-              { label: "Loan Are Owned", value: "loan" },
+              { label: "All Pools", value: "allPools" },
             ]}
             onChange={(v) => setTabs(v as string)}
           />
         </div>
-        {tabs === "pool" && (
-          <Row>
-            <Col span={24}>
-              <Table
-                columns={columns}
-                pagination={false}
-                // onRow={(record) => {
-                //   return {
-                //     onClick: async () => {
-                //       await router.push(`/lender/pool?id=${record.key}`)
-                //     },
-                //   }
-                // }}
-                dataSource={myPools}
-              />
-            </Col>
-          </Row>
-        )}
+        <Row>
+          <Col span={24}>
+            <Table
+              columns={columns}
+              pagination={false}
+              dataSource={tabs === "myPools" ? myPools : allPools}
+            />
+          </Col>
+        </Row>
         <Modal
           title="Title"
           open={open}

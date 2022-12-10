@@ -182,9 +182,14 @@ const ListNFT = () => {
           )
         )
       )
+      console.log("nftAccountsDetail", nftAccountsDetail)
 
       const data = nftAccountsDetail
-        .filter((v) => v.itemForSale !== null || v.tokenAccount.amount !== "0")
+        .filter(
+          (v) =>
+            (v.loanMetadata !== null && v.itemForSale !== null) ||
+            v.tokenAccount.amount !== "0"
+        )
         .map<LoanMetadataDataType>(
           ({ itemForSale, loanMetadata, nftMintPubKey }) => {
             return {

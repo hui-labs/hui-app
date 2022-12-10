@@ -125,57 +125,6 @@ export type Hui = {
       ]
     },
     {
-      "name": "claimLoanFund",
-      "accounts": [
-        {
-          "name": "pool",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "poolVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "loanMetadata",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenReceiver",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "poolPda",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "borrower",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "initLoan",
       "accounts": [
         {
@@ -480,11 +429,6 @@ export type Hui = {
           "isSigner": false
         },
         {
-          "name": "tokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": false
@@ -496,6 +440,11 @@ export type Hui = {
         },
         {
           "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
           "isMut": true,
           "isSigner": false
         },
@@ -1302,57 +1251,6 @@ export const IDL: Hui = {
       ]
     },
     {
-      "name": "claimLoanFund",
-      "accounts": [
-        {
-          "name": "pool",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "poolVault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "loanMetadata",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "tokenReceiver",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "poolPda",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "borrower",
-          "isMut": true,
-          "isSigner": true
-        },
-        {
-          "name": "tokenProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "systemProgram",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "rent",
-          "isMut": false,
-          "isSigner": false
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "initLoan",
       "accounts": [
         {
@@ -1657,11 +1555,6 @@ export const IDL: Hui = {
           "isSigner": false
         },
         {
-          "name": "tokenAccount",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "nftMint",
           "isMut": true,
           "isSigner": false
@@ -1673,6 +1566,11 @@ export const IDL: Hui = {
         },
         {
           "name": "vaultAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAccount",
           "isMut": true,
           "isSigner": false
         },
