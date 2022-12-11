@@ -31,18 +31,10 @@ import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { useRouter } from "next/router"
+import { catchError } from "@/helps/notification"
+import { LOAN_TERMS, LoanTerm } from "@/helps/coverMonth"
 
 const { Option } = Select
-
-const LOAN_TERMS = {
-  twoMinutes: 12,
-  oneMonth: 1,
-  threeMonths: 3,
-  sixMonths: 6,
-  nineMonths: 9,
-  twelveMonths: 12,
-}
-type LoanTerm = keyof typeof LOAN_TERMS
 
 const AddPool: React.FC = () => {
   const [form] = Form.useForm()
@@ -91,7 +83,7 @@ const AddPool: React.FC = () => {
       default:
         return 0
     }
-  }, [vaultMint, usdtBalance, usdcBalance])
+  }, [vaultMint, usdtBalance, usdcBalance, usdtMint, usdcMint])
 
   const validateRules = useCallback(
     (key: string): FormRule[] | undefined => {
@@ -203,83 +195,90 @@ const AddPool: React.FC = () => {
     vaultTokenSelectedRef.current
     collateralTokenSelectedRef.current
 
-    if (
-      workspace.value &&
-      vaultTokenSelectedRef.current.value &&
-      collateralTokenSelectedRef.current.value
-    ) {
-      const { wallet, program, connection } = workspace.value
+    try {
+      if (
+        workspace.value &&
+        vaultTokenSelectedRef.current.value &&
+        collateralTokenSelectedRef.current.value
+      ) {
+        const { wallet, program, connection } = workspace.value
 
-      const [poolPDA] = await PublicKey.findProgramAddress(
-        [
-          Buffer.from("pool"),
-          wallet.publicKey.toBuffer(),
-          collateralTokenSelectedRef.current.value.address.toBuffer(),
-          vaultTokenSelectedRef.current.value.address.toBuffer(),
-        ],
-        program.programId
-      )
-
-      try {
-        const vaultAssociatedAccount = await getAssociatedTokenAddress(
-          vaultTokenSelectedRef.current.value.address,
-          wallet.publicKey,
-          false,
-          TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID
+        const [poolPDA] = await PublicKey.findProgramAddress(
+          [
+            Buffer.from("pool"),
+            wallet.publicKey.toBuffer(),
+            collateralTokenSelectedRef.current.value.address.toBuffer(),
+            vaultTokenSelectedRef.current.value.address.toBuffer(),
+          ],
+          program.programId
         )
 
-        const walletVaultAccount = await getAccount(
-          connection,
-          vaultAssociatedAccount,
-          commitmentLevel
-        )
-
-        const vaultKeypair = web3.Keypair.generate()
-        const pool = web3.Keypair.generate()
-        const ins = await program.account.pool.createInstruction(pool)
-        await program.methods
-          .initPool(
-            {
-              interestRate: new BN(
-                form.getFieldValue("interestRate") * DEFAULT_PERCENTAGE_DECIMALS
-              ),
-              maxLoanAmount: new BN(
-                form.getFieldValue("maxLoanAmount") * DEFAULT_DECIMALS
-              ),
-              minLoanAmount: new BN(
-                form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
-              ),
-              maxLoanThreshold: new BN(
-                form.getFieldValue("maxLoanThreshold") *
-                  DEFAULT_PERCENTAGE_DECIMALS
-              ),
-            },
-            new BN(topUpAmount * DEFAULT_DECIMALS),
-            new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS),
-            {
-              [form.getFieldValue("loanTerm")]: {},
-            }
+        try {
+          const vaultAssociatedAccount = await getAssociatedTokenAddress(
+            vaultTokenSelectedRef.current.value.address,
+            wallet.publicKey,
+            false,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
           )
-          .accounts({
-            pool: pool.publicKey,
-            poolPda: poolPDA,
-            systemProgram: SystemProgram.programId,
-            vaultMint: vaultTokenSelectedRef.current.value.address,
-            vaultAccount: vaultKeypair.publicKey,
-            collateralMint: collateralTokenSelectedRef.current.value.address,
-            depositor: wallet.publicKey,
-            systemFeeAccount: SystemFeeUSDTPubKey,
-            tokenDepositor: walletVaultAccount.address,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            rent: web3.SYSVAR_RENT_PUBKEY,
-          })
-          .preInstructions([ins])
-          .signers([pool, vaultKeypair])
-          .rpc()
-        await router.push("/lender")
-      } catch (e) {
-        console.log(e)
+
+          const walletVaultAccount = await getAccount(
+            connection,
+            vaultAssociatedAccount,
+            commitmentLevel
+          )
+
+          const vaultKeypair = web3.Keypair.generate()
+          const pool = web3.Keypair.generate()
+          const ins = await program.account.pool.createInstruction(pool)
+          await program.methods
+            .initPool(
+              {
+                interestRate: new BN(
+                  form.getFieldValue("interestRate") *
+                    DEFAULT_PERCENTAGE_DECIMALS
+                ),
+                maxLoanAmount: new BN(
+                  form.getFieldValue("maxLoanAmount") * DEFAULT_DECIMALS
+                ),
+                minLoanAmount: new BN(
+                  form.getFieldValue("minLoanAmount") * DEFAULT_DECIMALS
+                ),
+                maxLoanThreshold: new BN(
+                  form.getFieldValue("maxLoanThreshold") *
+                    DEFAULT_PERCENTAGE_DECIMALS
+                ),
+              },
+              new BN(topUpAmount * DEFAULT_DECIMALS),
+              new BN(Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS),
+              {
+                [form.getFieldValue("loanTerm")]: {},
+              }
+            )
+            .accounts({
+              pool: pool.publicKey,
+              poolPda: poolPDA,
+              systemProgram: SystemProgram.programId,
+              vaultMint: vaultTokenSelectedRef.current.value.address,
+              vaultAccount: vaultKeypair.publicKey,
+              collateralMint: collateralTokenSelectedRef.current.value.address,
+              depositor: wallet.publicKey,
+              systemFeeAccount: SystemFeeUSDTPubKey,
+              tokenDepositor: walletVaultAccount.address,
+              tokenProgram: TOKEN_PROGRAM_ID,
+              rent: web3.SYSVAR_RENT_PUBKEY,
+            })
+            .preInstructions([ins])
+            .signers([pool, vaultKeypair])
+            .rpc()
+          await router.push("/lender")
+        } catch (e) {
+          throw e
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        catchError("On Submit", err)
       }
     }
   }

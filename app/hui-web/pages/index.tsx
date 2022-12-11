@@ -193,7 +193,7 @@ const LenderPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, program, wallet, client } = workspace.value
+      const { connection, wallet, client } = workspace.value
       const pools = await client.from("Pool").offset(0).limit(10).select()
       const rawData: DataType[] = pools.map(({ publicKey, account }) => {
         return {
@@ -258,10 +258,10 @@ const LenderPage: React.FC = () => {
     }
   }, [workspace.value])
 
-  const onLoadData = async () => {
-    if (workspace.value) {
-    }
-  }
+  // const onLoadData = async () => {
+  //   if (workspace.value) {
+  //   }
+  // }
 
   return (
     <div className="px-6 mt-5 max-w-screen-lg mx-auto">
@@ -269,7 +269,7 @@ const LenderPage: React.FC = () => {
         <Title level={2}>Lender</Title>
         <div className="h-full">
           <button
-            className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800 ml-5"
+            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
             onClick={() => router.push("/lender/add")}
           >
             Create Pool
