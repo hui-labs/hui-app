@@ -30,6 +30,7 @@ import * as anchor from "@project-serum/anchor"
 import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import { catchError } from "@/helps/notification"
+import { LOAN_TERMS, LoanTerm } from "@/helps/coverMonth"
 
 const { Title } = Typography
 
@@ -46,6 +47,7 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
+  loanTerm: number
   onDeposit: () => void
   onClose: () => void
   onShow: () => void
@@ -92,9 +94,11 @@ const columns: ColumnsType<DataType> = [
     title: "Loan Term",
     dataIndex: "loanTerm",
     key: "loanTerm",
-    // render: ({ data }) => {
-    //
-    // },
+    render: (_, { loanTerm }) => (
+      <div>
+        <Tag color={"blue"}>{loanTerm}</Tag>
+      </div>
+    ),
   },
   {
     title: "Max Loan Amount",
@@ -275,6 +279,8 @@ const LenderPage: React.FC = () => {
         const pools = await client.from("Pool").offset(0).limit(10).select()
 
         const rawData: DataType[] = pools.map(({ publicKey, account }) => {
+          const status = Object.keys(account.status)[0]
+          const loanTerm: LoanTerm = Object.keys(account.loanTerm)[0] as any
           return {
             key: publicKey.toBase58(),
             owner: account.owner,
@@ -282,7 +288,8 @@ const LenderPage: React.FC = () => {
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
-            status: "",
+            status: status.toUpperCase(),
+            loanTerm: LOAN_TERMS[loanTerm],
             availableAmount: "0",
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
