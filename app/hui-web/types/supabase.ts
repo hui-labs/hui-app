@@ -18,7 +18,7 @@ export interface Database {
           collateral_mint: string
           collateral_account: string
           nft_mint: string
-          owner: string
+          borrower: string
           system_fee_account: string
           deposit_account: string
           withdrawal_account: string
@@ -33,7 +33,7 @@ export interface Database {
           collateral_mint: string
           collateral_account: string
           nft_mint: string
-          owner: string
+          borrower: string
           system_fee_account: string
           deposit_account: string
           withdrawal_account: string
@@ -48,7 +48,7 @@ export interface Database {
           collateral_mint?: string
           collateral_account?: string
           nft_mint?: string
-          owner?: string
+          borrower?: string
           system_fee_account?: string
           deposit_account?: string
           withdrawal_account?: string
@@ -68,6 +68,7 @@ export interface Database {
           is_claimed: boolean
           tx: string
           master_loan: string | null
+          pool: string | null
         }
         Insert: {
           pubkey: string
@@ -80,6 +81,7 @@ export interface Database {
           is_claimed?: boolean
           tx: string
           master_loan?: string | null
+          pool?: string | null
         }
         Update: {
           pubkey?: string
@@ -92,6 +94,7 @@ export interface Database {
           is_claimed?: boolean
           tx?: string
           master_loan?: string | null
+          pool?: string | null
         }
       }
       nfts: {

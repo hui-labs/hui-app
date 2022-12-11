@@ -275,9 +275,8 @@ const LoansOfPool: React.FC = () => {
       const { wallet, client, connection } = workspace.value
       const { data: metadata, error } = await supabase
         .from("metadata")
-        .select("*, master_loan (*)")
-        .eq("pool", id)
-      console.log("loans", loans)
+        .select("*, master_loan(*), pool(*)")
+      console.log("metadata", metadata)
 
       if (error) throw error
       if (!metadata) throw new Error("Can not get loans")
@@ -297,7 +296,6 @@ const LoansOfPool: React.FC = () => {
           const nftAccount = nftAccounts[nftMint.toBase58()]?.pubkey
           const masterLoan: Database["public"]["Tables"]["master_loans"]["Row"] =
             metadata.master_loan as any
-          const status = m.status
           return {
             key: metadata.pubkey,
             borrower: masterLoan.owner,
@@ -314,7 +312,7 @@ const LoansOfPool: React.FC = () => {
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
-            status,
+            status: metadata.status,
             availableAmount: "0",
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
@@ -326,7 +324,7 @@ const LoansOfPool: React.FC = () => {
             ),
             interestRate: formatUnits(account.interestRate.toString(), 4),
             maxLoanThreshold: formatUnits(
-              account.maxLoanThreshold.toString(),
+              masterLoan.maxLoanThreshold.toString(),
               4
             ),
             onClaimNFT: () =>

@@ -354,7 +354,7 @@ const BorrowerPage: React.FC = () => {
       await supabase.from("master_loans").insert([
         {
           pubkey: masterLoan.publicKey.toBase58(),
-          owner: wallet.publicKey.toBase58(),
+          borrower: wallet.publicKey.toBase58(),
           amount: amount * DEFAULT_DECIMALS,
           system_fee_account: SystemFeeUSDTPubKey.toBase58(),
           pool: poolPubkey.toBase58(),
