@@ -114,6 +114,10 @@ async function main() {
   const env = `NEXT_FAUCET_PRIVATE_KEY=${privateKey}
 NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8899
 NEXT_PUBLIC_PROGRAM_ID=${programId}
+
+NEXT_PUBLIC_SUPABASE_URL=https://saunyxuyuhkbytonvfjq.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhdW55eHV5dWhrYnl0b252ZmpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjgzMDQ0MDIsImV4cCI6MTk4Mzg4MDQwMn0.Fc4o87hxtSCDh6cjNQc_2FArr0hYIuVQOBZa2fqTCH0
+
 NEXT_PUBLIC_USDC_MINT_PUBKEY=${usdcMintPubkey.toBase58()}
 NEXT_PUBLIC_USDT_MINT_PUBKEY=${usdtMintPubkey.toBase58()}
 NEXT_PUBLIC_WETH_MINT_PUBKEY=${wethMintPubkey.toBase58()}

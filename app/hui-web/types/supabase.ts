@@ -23,6 +23,7 @@ export interface Database {
           deposit_account: string
           withdrawal_account: string
           pool: string
+          tx: string
         }
         Insert: {
           pubkey: string
@@ -37,6 +38,7 @@ export interface Database {
           deposit_account: string
           withdrawal_account: string
           pool: string
+          tx: string
         }
         Update: {
           pubkey?: string
@@ -51,6 +53,7 @@ export interface Database {
           deposit_account?: string
           withdrawal_account?: string
           pool?: string
+          tx?: string
         }
       }
       metadata: {
@@ -63,6 +66,8 @@ export interface Database {
           status: string | null
           amount: number
           is_claimed: boolean
+          tx: string
+          master_loan: string | null
         }
         Insert: {
           pubkey: string
@@ -73,6 +78,8 @@ export interface Database {
           status?: string | null
           amount: number
           is_claimed?: boolean
+          tx: string
+          master_loan?: string | null
         }
         Update: {
           pubkey?: string
@@ -83,6 +90,34 @@ export interface Database {
           status?: string | null
           amount?: number
           is_claimed?: boolean
+          tx?: string
+          master_loan?: string | null
+        }
+      }
+      nfts: {
+        Row: {
+          pubkey: string
+          created_at: string | null
+          updated_at: string | null
+          owner: string
+          master_loan: string | null
+          metadata: string | null
+        }
+        Insert: {
+          pubkey: string
+          created_at?: string | null
+          updated_at?: string | null
+          owner: string
+          master_loan?: string | null
+          metadata?: string | null
+        }
+        Update: {
+          pubkey?: string
+          created_at?: string | null
+          updated_at?: string | null
+          owner?: string
+          master_loan?: string | null
+          metadata?: string | null
         }
       }
       pools: {
@@ -104,6 +139,7 @@ export interface Database {
           system_fee_account: string
           deposit_token: string
           status: string
+          tx: string
         }
         Insert: {
           pubkey: string
@@ -123,6 +159,7 @@ export interface Database {
           system_fee_account: string
           deposit_token: string
           status: string
+          tx: string
         }
         Update: {
           pubkey?: string
@@ -142,6 +179,48 @@ export interface Database {
           system_fee_account?: string
           deposit_token?: string
           status?: string
+          tx?: string
+        }
+      }
+      sales: {
+        Row: {
+          pubkey: string
+          created_at: string | null
+          updated_at: string | null
+          price: number
+          seller: string
+          buyer: string | null
+          nft: string
+          vault_mint: string
+          vault_token_account: string
+          vault_nft_account: string
+          tx: string
+        }
+        Insert: {
+          pubkey: string
+          created_at?: string | null
+          updated_at?: string | null
+          price: number
+          seller: string
+          buyer?: string | null
+          nft: string
+          vault_mint: string
+          vault_token_account: string
+          vault_nft_account: string
+          tx: string
+        }
+        Update: {
+          pubkey?: string
+          created_at?: string | null
+          updated_at?: string | null
+          price?: number
+          seller?: string
+          buyer?: string | null
+          nft?: string
+          vault_mint?: string
+          vault_token_account?: string
+          vault_nft_account?: string
+          tx?: string
         }
       }
     }

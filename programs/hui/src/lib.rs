@@ -11,8 +11,6 @@ declare_id!("7syDmCTM9ap9zhfH1gwjDJcGD6LyGFGcggh4fsKxzovV");
 
 #[program]
 pub mod hui {
-    use anchor_spl::token::InitializeAccount;
-
     use super::*;
 
     // 0.01%
@@ -97,7 +95,7 @@ pub mod hui {
 
         // master_loan.nft_account = ctx.accounts.nft_account.key().clone();
 
-        // Transfer to the borrow
+        // Transfer to the borrower
         // amount >= min_loan
         // && amount <= current_pool_amount - loan_fee
         // && amount <= max_loan
@@ -154,7 +152,7 @@ pub mod hui {
         Ok(())
     }
 
-    // WARNING: only for testing, will be disable on production
+    // WARNING: only for testing, will be disabled on production
     pub fn close_loan(_ctx: Context<CloseLoan>) -> Result<()> {
         // let data_account = &ctx.accounts.loan;
         // let owner_info = ctx.accounts.owner.to_account_info();
@@ -563,6 +561,7 @@ pub struct LoanMetadata {
     pub nft_mint: Pubkey,
     pub parent: Pubkey,
     pub nft_account: Pubkey,
+    pub claim_account: Pubkey,
     pub status: LoanStatus,
     pub amount: u64,
     pub is_claimed: bool,
@@ -809,37 +808,6 @@ impl MasterLoan {
         }
 
         Ok(SignerSeeds::<2>(seeds, [bump]))
-    }
-}
-
-#[derive(Accounts)]
-pub struct ClaimLoanFund<'info> {
-    pub pool: Account<'info, Pool>,
-    #[account(mut)]
-    pub pool_vault: Box<Account<'info, TokenAccount>>,
-    pub loan_metadata: Box<Account<'info, LoanMetadata>>,
-
-    #[account(mut)]
-    pub token_receiver: Box<Account<'info, TokenAccount>>,
-
-    /// CHECK: This is not dangerous because we don't read or write from this account
-    pub pool_pda: AccountInfo<'info>,
-
-    #[account(mut)]
-    pub borrower: Signer<'info>,
-    pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
-}
-
-impl<'info> ClaimLoanFund<'info> {
-    fn to_transfer_receiver_context(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
-        let cpi_accounts = Transfer {
-            from: self.pool_vault.to_account_info().clone(),
-            to: self.token_receiver.to_account_info().clone(),
-            authority: self.pool_pda.clone(),
-        };
-        CpiContext::new(self.token_program.to_account_info().clone(), cpi_accounts)
     }
 }
 

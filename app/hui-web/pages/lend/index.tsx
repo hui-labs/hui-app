@@ -46,10 +46,10 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
-  onDeposit: () => void
   onClose: () => void
   onShow: () => void
   onWithdraw: (amount: BN) => void
+  onDeposit: () => void
 }
 
 const columns: ColumnsType<DataType> = [
@@ -133,16 +133,6 @@ const columns: ColumnsType<DataType> = [
             }}
           >
             Deposit
-          </Button>
-          <Button
-            danger
-            type="primary"
-            onClick={(e) => {
-              e.stopPropagation()
-              onClose()
-            }}
-          >
-            Close
           </Button>
         </Space>
       )
@@ -239,10 +229,11 @@ const LenderPage: React.FC = () => {
 
   useAsyncEffect(async () => {
     if (workspace.value) {
-      const { connection, client, wallet } = workspace.value
-      const { data: pools, error } = await supabase.from("pools").select("*")
-      // const pools = await client.from("Pool").offset(0).limit(10).select()
-      console.log("pools", pools)
+      const { connection, wallet } = workspace.value
+      const { data: pools, error } = await supabase
+        .from("pools")
+        .select("*")
+        .eq("owner", wallet.publicKey.toBase58())
 
       if (error) throw error
 
@@ -255,7 +246,7 @@ const LenderPage: React.FC = () => {
           collateralMint: pool.collateral_mint,
           status: pool.status,
           availableAmount: "0",
-          minLoanAmount: formatUnits(pool.max_loan_amount.toString(), decimals),
+          minLoanAmount: formatUnits(pool.min_loan_amount.toString(), decimals),
           maxLoanAmount: formatUnits(pool.max_loan_amount.toString(), decimals),
           interestRate: formatUnits(pool.interest_rate.toString(), 4),
           maxLoanThreshold: formatUnits(pool.max_loan_threshold.toString(), 4),

@@ -4,7 +4,6 @@ import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { TOKEN_LISTS } from "@/common/constants"
 import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
-import { formatUnits } from "@ethersproject/units"
 import { ColumnsType } from "antd/es/table"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import {
@@ -17,6 +16,9 @@ import {
 import { web3 } from "@project-serum/anchor"
 import { AnchorClient } from "@/services/anchorClient"
 import bs58 from "bs58"
+import { useSupabaseClient } from "@supabase/auth-helpers-react"
+import { Database } from "@/types/supabase"
+import { formatUnits } from "@ethersproject/units"
 
 const { Title } = Typography
 
@@ -131,6 +133,7 @@ const LoansOfPool: React.FC = () => {
   const { id } = router.query
   const workspace = useWorkspace()
   const [loans, setLoans] = useState<DataType[]>([])
+  const supabase = useSupabaseClient<Database>()
   const decimals = 9
 
   const onClaimNFT = async (
@@ -270,75 +273,36 @@ const LoansOfPool: React.FC = () => {
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { wallet, client, connection } = workspace.value
-      const loans = await client.from("MasterLoan").offset(0).limit(10).select()
-      const loansDetail = await Promise.all(
-        loans.map((loan) => loanMetadataFetcher(connection, client, loan))
-      )
-      console.log("loansDetail", loansDetail)
+      const { data: metadata, error } = await supabase
+        .from("metadata")
+        .select("*, master_loan (*)")
+        .eq("pool", id)
+      console.log("loans", loans)
 
-      const allTokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        wallet.publicKey,
-        {
-          programId: TOKEN_PROGRAM_ID,
-        }
-      )
+      if (error) throw error
+      if (!metadata) throw new Error("Can not get loans")
 
-      const nftAccounts = allTokenAccounts.value
-        .map((v) => {
-          const { mint, tokenAmount } = v.account.data.parsed.info
-          return {
-            mint,
-            tokenAmount,
-            pubkey: v.pubkey,
-          }
-        })
-        .filter(({ tokenAmount }) => {
-          return tokenAmount.amount === "1" || tokenAmount.amount === "0"
-        })
-        .reduce<any>((acc, cur) => {
-          acc[cur.mint] = {
-            amount: cur.tokenAmount.uiAmount,
-            pubkey: cur.pubkey,
-          }
-          return acc
-        }, {})
-      console.log("nftAccounts", nftAccounts)
+      const nftMints = metadata.map((l) => l.nft_mint)
 
-      const masterLoans = loansDetail
-        .filter((itemLoan) => {
-          const hasNftAccount = nftAccounts[itemLoan.account.nftMint.toBase58()]
-          return (
-            itemLoan.account.pool.toBase58() === id &&
-            ((hasNftAccount && hasNftAccount.amount > 0) ||
-              !itemLoan.account.isClaimed)
-          )
-        })
-        .map(({ publicKey, account, loanMetadata }) => {
-          const {
-            collateralAccount,
-            fee,
-            fees: { loanFee, transferFee },
-            loanTerm,
-            pool,
-            owner,
-            borrower,
-            receivedAmount,
-            nftMint,
-            vaultMint,
-            vaultAccount,
-            isClaimed,
-          } = account
+      const masterLoans = metadata
+        // .filter((loan) => {
+        //   const hasNftAccount = nftAccounts[itemLoan.account.nftMint.toBase58()]
+        //   return (
+        //     itemLoan.account.pool.toBase58() === id &&
+        //     ((hasNftAccount && hasNftAccount.amount > 0) ||
+        //       !itemLoan.account.isClaimed)
+        //   )
+        // })
+        .map((metadata) => {
           const nftAccount = nftAccounts[nftMint.toBase58()]?.pubkey
-          const status = loanMetadata
-            ? Object.keys(loanMetadata.account.status)[0]
-            : ""
-          console.log("vaultAccount", vaultAccount.toBase58())
+          const masterLoan: Database["public"]["Tables"]["master_loans"]["Row"] =
+            metadata.master_loan as any
+          const status = m.status
           return {
-            key: publicKey.toBase58(),
-            owner: owner,
-            borrower: borrower,
-            collateralAccount,
-            isClaimed,
+            key: metadata.pubkey,
+            borrower: masterLoan.owner,
+            collateralAccount: metadata.master_loan,
+            isClaimed: metadata.is_claimed,
             fee: formatUnits(fee.toString(), decimals),
             loanFee: formatUnits(loanFee.toString(), 4),
             transferFee: formatUnits(transferFee.toString(), decimals),
@@ -381,7 +345,6 @@ const LoansOfPool: React.FC = () => {
           }
         })
 
-      console.log("masterLoans", masterLoans)
       setLoans(masterLoans)
     }
   }, [id, workspace.value])

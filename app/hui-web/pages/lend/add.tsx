@@ -250,7 +250,7 @@ const AddPool: React.FC = () => {
         const maxLoanThreshold =
           form.getFieldValue("maxLoanThreshold") * DEFAULT_PERCENTAGE_DECIMALS
         const loanTerm = form.getFieldValue("loanTerm")
-        await program.methods
+        const tx = await program.methods
           .initPool(
             {
               interestRate: new BN(interestRate),
@@ -291,7 +291,7 @@ const AddPool: React.FC = () => {
             commission_fee:
               Math.ceil(estimatedLoanCommissionFee) * DEFAULT_DECIMALS,
             loan_term: loanTerm,
-            pool_pubkey: pool.publicKey.toBase58(),
+            pubkey: pool.publicKey.toBase58(),
             vault_mint: vaultTokenSelectedRef.current.value.address.toBase58(),
             vault_account: vaultKeypair.publicKey.toBase58(),
             collateral_mint:
@@ -300,6 +300,7 @@ const AddPool: React.FC = () => {
             deposit_token: walletVaultAccount.address.toBase58(),
             system_fee_account: SystemFeeUSDTPubKey.toBase58(),
             status: "OPENING",
+            tx,
           },
         ])
         await router.push("/lend")
