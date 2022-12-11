@@ -11,7 +11,7 @@ import bs58 from "bs58"
 import { AnchorClient } from "@/services/anchorClient"
 import { formatUnits } from "@ethersproject/units"
 import { catchError } from "@/helps/notification"
-import { router } from "next/client"
+import { useRouter } from "next/router"
 
 const { Title } = Typography
 
@@ -71,6 +71,7 @@ const ListNFT = () => {
   const [loanMetadatas, setListLoanMetadatas] = useState<
     LoanMetadataDataType[]
   >([])
+  const router = useRouter()
 
   const itemForSaleFetcher = async (
     client: AnchorClient,
@@ -144,11 +145,11 @@ const ListNFT = () => {
         nftMintPubKey,
       }
 
-      if (q1.status === "fulfilled") {
+      if (q1.status === "fulfilled" && q1.value) {
         results.loanMetadata = q1.value[0] ?? null
       }
 
-      if (q2.status === "fulfilled") {
+      if (q2.status === "fulfilled" && q2.value) {
         results.itemForSale = q2.value[0] ?? null
       }
 
@@ -286,7 +287,7 @@ const ListNFT = () => {
             itemForSaleUSDTKeypair,
           ])
           .rpc()
-      setCreated(tx)
+        setCreated(tx)
         console.log("tx", tx)
       }
     } catch (err) {
