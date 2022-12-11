@@ -412,6 +412,7 @@ const BorrowerPage: React.FC = () => {
         })
         .signers([vaultAccountKeypair])
         .rpc()
+      setCreated(tx)
       console.log(tx)
     }
   }
@@ -476,11 +477,11 @@ const BorrowerPage: React.FC = () => {
       //   )
       // )
 
-      const cache = rawData.reduce((acc, cur) => {
-        acc[cur.vaultAccount.toBase58()] = cur
-        return acc
-      }, {} as Record<string, LoanDataType>)
-
+      // const cache = rawData.reduce((acc, cur) => {
+      //   acc[cur.vaultAccount.toBase58()] = cur
+      //   return acc
+      // }, {} as Record<string, LoanDataType>)
+      // console.log("cache", cache)
       // accounts.forEach((account) => {
       //   if (account.address.toBase58() in cache) {
       //     cache[account.address.toBase58()].availableAmount = formatUnits(
@@ -490,7 +491,7 @@ const BorrowerPage: React.FC = () => {
       //   }
       // })
 
-      const data = Object.values(cache).reduce(
+      const data = Object.values(rawData).reduce(
         (acc, cur) => {
           acc[cur.isAdmin ? 0 : 1].push(cur)
           return acc

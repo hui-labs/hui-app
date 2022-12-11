@@ -74,7 +74,7 @@ const columns: ColumnsType<ItemForSaleDataType> = [
 const Market = () => {
   const router = useRouter()
   const workspace = useWorkspace()
-
+  const [created, setCreated] = useState<string | null>(null)
   const [loanMetadatas, setListLoanMetadatas] = useState<ItemForSaleDataType[]>(
     []
   )
@@ -158,6 +158,7 @@ const Market = () => {
           ),
         ])
         .rpc()
+      setCreated(tx)
       console.log(tx)
       // const a = connection.getTokenAccountBalance()
     }
@@ -206,7 +207,7 @@ const Market = () => {
       )
       setListLoanMetadatas(data)
     }
-  }, [workspace.value])
+  }, [workspace.value, created])
 
   return (
     <div>
