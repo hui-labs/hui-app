@@ -11,7 +11,6 @@ import bs58 from "bs58"
 import { AnchorClient } from "@/services/anchorClient"
 import { formatUnits } from "@ethersproject/units"
 import { catchError } from "@/helps/notification"
-import { useRouter } from "next/router"
 
 const { Title } = Typography
 
@@ -67,11 +66,12 @@ const columns: ColumnsType<LoanMetadataDataType> = [
 
 const ListNFT = () => {
   const workspace = useWorkspace()
+  const [loading, setLoading] = useState<boolean>(false)
+
   const [created, setCreated] = useState<string | null>(null)
   const [loanMetadatas, setListLoanMetadatas] = useState<
     LoanMetadataDataType[]
   >([])
-  const router = useRouter()
 
   const itemForSaleFetcher = async (
     client: AnchorClient,
@@ -162,6 +162,7 @@ const ListNFT = () => {
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { connection, wallet, client } = workspace.value
@@ -229,9 +230,11 @@ const ListNFT = () => {
           )
         setListLoanMetadatas(data)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set List Loan Meta Data", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, created])
@@ -347,14 +350,6 @@ const ListNFT = () => {
     <div className="px-6 mt-5">
       <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
         <Title level={2}>NFT List</Title>
-        <div className="h-full">
-          <button
-            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
-            onClick={() => router.push("/market")}
-          >
-            Market
-          </button>
-        </div>
       </div>
 
       <Row>
@@ -363,6 +358,7 @@ const ListNFT = () => {
             columns={columns}
             pagination={false}
             dataSource={loanMetadatas}
+            loading={loading}
           />
         </Col>
       </Row>

@@ -47,7 +47,7 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
-  loanTerm: number
+  loanTerm: string
   onDeposit: () => void
   onClose: () => void
   onShow: () => void
@@ -83,21 +83,26 @@ const columns: ColumnsType<DataType> = [
     title: "Status",
     dataIndex: "status",
     key: "status",
-    render: (_, { status }) => (
-      <div>
-        <Tag color={"blue"}>{status.toUpperCase()}</Tag>
-      </div>
-    ),
+    render: (status) => {
+      return (
+        <div>
+          <Tag color={"blue"}>{Object.keys(status)[0].toUpperCase()}</Tag>
+        </div>
+      )
+    },
   },
-  { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
+  {
+    title: "Interest Rate/ Year",
+    dataIndex: "interestRate",
+    key: "interestRate",
+    render: (rate) => <span>{`${rate} %`}</span>,
+  },
   {
     title: "Loan Term",
     dataIndex: "loanTerm",
     key: "loanTerm",
-    render: (_, { loanTerm }) => (
-      <div>
-        <Tag color={"blue"}>{loanTerm}</Tag>
-      </div>
+    render: (term) => (
+      <span>{`${LOAN_TERMS[Object.keys(term)[0] as LoanTerm]} Month`}</span>
     ),
   },
   {
@@ -114,6 +119,7 @@ const columns: ColumnsType<DataType> = [
     title: "Max Loan Threshold",
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
+    render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
     title: "",
@@ -121,7 +127,7 @@ const columns: ColumnsType<DataType> = [
     key: "x",
     render: (
       _,
-      { onWithdraw, onClose, onShow, onDeposit, availableAmount, isAdmin }
+      { onWithdraw, onShow, onDeposit, availableAmount, isAdmin }
     ) => {
       return (
         <Space>
@@ -150,16 +156,6 @@ const columns: ColumnsType<DataType> = [
               >
                 Deposit
               </Button>
-              <Button
-                danger
-                type="primary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClose()
-                }}
-              >
-                Close
-              </Button>
             </>
           )}
         </Space>
@@ -179,6 +175,7 @@ const LenderPage: React.FC = () => {
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
   const [_, triggerReload] = useState(false)
+  const [loading, setLoading] = useState<boolean>(false)
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
@@ -273,14 +270,13 @@ const LenderPage: React.FC = () => {
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { connection, client, wallet } = workspace.value
         const pools = await client.from("Pool").offset(0).limit(10).select()
 
         const rawData: DataType[] = pools.map(({ publicKey, account }) => {
-          const status = Object.keys(account.status)[0]
-          const loanTerm: LoanTerm = Object.keys(account.loanTerm)[0] as any
           return {
             key: publicKey.toBase58(),
             owner: account.owner,
@@ -288,17 +284,17 @@ const LenderPage: React.FC = () => {
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
-            status: status.toUpperCase(),
-            loanTerm: LOAN_TERMS[loanTerm],
             availableAmount: "0",
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
               decimals
             ),
+            status: account.status,
             maxLoanAmount: formatUnits(
               account.maxLoanAmount.toString(),
               decimals
             ),
+            loanTerm: account.loanTerm,
             interestRate: formatUnits(account.interestRate.toString(), 4),
             maxLoanThreshold: formatUnits(
               account.maxLoanThreshold.toString(),
@@ -351,56 +347,14 @@ const LenderPage: React.FC = () => {
         setMyPools(data[0])
         setAllPools(data[1])
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set My Pools", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, _])
-
-  // const onLoadData = async () => {
-  //   try {
-  //     if (workspace.value) {
-  //       const { connection } = workspace.value
-  //       const discriminator = Buffer.from(sha256.digest("account:Pool")).slice(
-  //         0,
-  //         8
-  //       )
-  //       const accounts = await connection.getProgramAccounts(programId, {
-  //         dataSlice: {
-  //           offset: 0,
-  //           length: 0,
-  //         },
-  //         filters: [
-  //           {
-  //             memcmp: {
-  //               offset: 0,
-  //               bytes: bs58.encode(discriminator),
-  //             },
-  //           }, // Ensure it's a CandyMachine account.
-  //         ],
-  //       })
-  //       const accountPublicKeys = accounts.map((account) => account.pubkey)
-  //
-  //       const getPage = async (page: number, limit: number = 10) => {
-  //         const paginatedPublicKeys = accountPublicKeys.slice(
-  //           (page - 1) * limit,
-  //           page * limit
-  //         )
-  //
-  //         if (paginatedPublicKeys.length === 0) {
-  //           return []
-  //         }
-  //
-  //         return connection.getMultipleAccountsInfo(paginatedPublicKeys)
-  //       }
-  //     }
-  //   } catch (err) {
-  //     if (err instanceof Error) {
-  //       catchError("On Load", err)
-  //     }
-  //   }
-  // }
 
   const handleSubmit = async (props: { depositAmount: number }) => {
     const { depositAmount } = props
@@ -496,6 +450,7 @@ const LenderPage: React.FC = () => {
           <Col span={24}>
             <Table
               columns={columns}
+              loading={loading}
               pagination={false}
               dataSource={tabs === "myPools" ? myPools : allPools}
             />

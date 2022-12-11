@@ -78,6 +78,8 @@ const Market = () => {
   const router = useRouter()
   const workspace = useWorkspace()
   const [created, setCreated] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+
   const [loanMetadatas, setListLoanMetadatas] = useState<ItemForSaleDataType[]>(
     []
   )
@@ -91,6 +93,7 @@ const Market = () => {
     vaultAccount: PublicKey,
     metadataAccount: PublicKey
   ) => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { program, wallet, connection } = workspace.value
@@ -166,17 +169,20 @@ const Market = () => {
             ),
           ])
           .rpc()
-      setCreated(tx)
+        setCreated(tx)
         console.log(tx)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("On Buy", err)
+        setLoading(false)
       }
     }
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { client, wallet } = workspace.value
@@ -222,9 +228,11 @@ const Market = () => {
         )
         setListLoanMetadatas(data)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set List Loan Meta Data", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, created])
@@ -249,6 +257,7 @@ const Market = () => {
             columns={columns}
             pagination={false}
             dataSource={loanMetadatas}
+            loading={loading}
           />
         </Col>
       </Row>

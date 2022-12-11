@@ -117,7 +117,7 @@ const columns: ColumnsType<DataType> = [
   },
   {
     title: "",
-    render: (_, { onClaimNFT, onClaim, isClaimed, status, nftAccount }) => {
+    render: (_, { onClaimNFT, onClaim, status, nftAccount }) => {
       if (!nftAccount)
         return <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
 
@@ -136,6 +136,7 @@ const LoansOfPool: React.FC = () => {
   const [loans, setLoans] = useState<DataType[]>([])
   const decimals = 9
   const [created, setCreated] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
 
   const onClaimNFT = async (
     masterLoanPubKey: PublicKey,
@@ -183,7 +184,7 @@ const LoansOfPool: React.FC = () => {
             ),
           ])
           .rpc()
-      setCreated(tx)
+        setCreated(tx)
         console.log("tx", tx)
       }
     } catch (err) {
@@ -292,6 +293,7 @@ const LoansOfPool: React.FC = () => {
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { wallet, client, connection } = workspace.value
@@ -412,9 +414,11 @@ const LoansOfPool: React.FC = () => {
           })
         setLoans(masterLoans)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set Loans", err)
+        setLoading(false)
       }
     }
   }, [id, workspace.value, created])
@@ -427,7 +431,12 @@ const LoansOfPool: React.FC = () => {
 
       <Row>
         <Col span={100}>
-          <Table columns={columns} pagination={false} dataSource={loans} />
+          <Table
+            columns={columns}
+            pagination={false}
+            dataSource={loans}
+            loading={loading}
+          />
         </Col>
       </Row>
     </div>
