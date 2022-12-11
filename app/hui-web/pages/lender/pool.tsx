@@ -203,7 +203,8 @@ const LoansOfPool: React.FC = () => {
   ) => {
     try {
       if (workspace.value) {
-        console.log("nftAccount", nftAccount)if (status !== "final") {
+        console.log("nftAccount", nftAccount)
+        if (status !== "final") {
           console.log("Do not allow to claim")
           return
         }
@@ -328,7 +329,6 @@ const LoansOfPool: React.FC = () => {
             return acc
           }, {})
 
-
         const masterLoans = loansDetail
           .filter((itemLoan) => {
             const hasNftAccount =
@@ -376,7 +376,8 @@ const LoansOfPool: React.FC = () => {
               vaultMint: account.vaultMint,
               vaultAccount: account.vaultAccount,
               collateralMint: account.collateralMint,
-              nftAccount,status,
+              nftAccount,
+              status,
               availableAmount: "0",
               minLoanAmount: formatUnits(
                 account.minLoanAmount.toString(),
