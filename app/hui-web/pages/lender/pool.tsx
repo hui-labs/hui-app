@@ -135,6 +135,7 @@ const LoansOfPool: React.FC = () => {
   const workspace = useWorkspace()
   const [loans, setLoans] = useState<DataType[]>([])
   const decimals = 9
+  const [created, setCreated] = useState<string | null>(null)
 
   const onClaimNFT = async (
     masterLoanPubKey: PublicKey,
@@ -182,6 +183,7 @@ const LoansOfPool: React.FC = () => {
             ),
           ])
           .rpc()
+      setCreated(tx)
         console.log("tx", tx)
       }
     } catch (err) {
@@ -250,6 +252,7 @@ const LoansOfPool: React.FC = () => {
             systemProgram: SystemProgram.programId,
           })
           .rpc()
+        setCreated(tx)
         console.log("tx", tx)
       }
     } catch (err) {
@@ -414,7 +417,7 @@ const LoansOfPool: React.FC = () => {
         catchError("Set Loans", err)
       }
     }
-  }, [id, workspace.value])
+  }, [id, workspace.value, created])
 
   return (
     <div className="px-6 mt-5">

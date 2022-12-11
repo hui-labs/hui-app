@@ -67,7 +67,7 @@ const columns: ColumnsType<LoanMetadataDataType> = [
 
 const ListNFT = () => {
   const workspace = useWorkspace()
-
+  const [created, setCreated] = useState<string | null>(null)
   const [loanMetadatas, setListLoanMetadatas] = useState<
     LoanMetadataDataType[]
   >([])
@@ -233,7 +233,7 @@ const ListNFT = () => {
         catchError("Set List Loan Meta Data", err)
       }
     }
-  }, [workspace.value])
+  }, [workspace.value, created])
 
   const onListNFT = async (
     loanMetadataPubKey: PublicKey,
@@ -286,6 +286,7 @@ const ListNFT = () => {
             itemForSaleUSDTKeypair,
           ])
           .rpc()
+      setCreated(tx)
         console.log("tx", tx)
       }
     } catch (err) {
@@ -331,6 +332,7 @@ const ListNFT = () => {
             vaultAccount,
           })
           .rpc()
+        setCreated(tx)
         console.log(tx)
       }
     } catch (err) {

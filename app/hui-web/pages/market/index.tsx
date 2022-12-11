@@ -77,7 +77,7 @@ const columns: ColumnsType<ItemForSaleDataType> = [
 const Market = () => {
   const router = useRouter()
   const workspace = useWorkspace()
-
+  const [created, setCreated] = useState<string | null>(null)
   const [loanMetadatas, setListLoanMetadatas] = useState<ItemForSaleDataType[]>(
     []
   )
@@ -166,6 +166,7 @@ const Market = () => {
             ),
           ])
           .rpc()
+      setCreated(tx)
         console.log(tx)
       }
     } catch (err) {
@@ -226,7 +227,7 @@ const Market = () => {
         catchError("Set List Loan Meta Data", err)
       }
     }
-  }, [workspace.value])
+  }, [workspace.value, created])
 
   return (
     <div className="px-6 mt-5">

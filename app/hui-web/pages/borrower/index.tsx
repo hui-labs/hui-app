@@ -434,6 +434,7 @@ const BorrowerPage: React.FC = () => {
           })
           .signers([vaultAccountKeypair])
           .rpc()
+      setCreated(tx)
         console.log(tx)
         await getAssociatedTokenAddress(
           loanMetadata.account.nftMint,
@@ -516,27 +517,27 @@ const BorrowerPage: React.FC = () => {
         //   )
         // )
 
-        const cache = rawData.reduce((acc, cur) => {
-          acc[cur.vaultAccount.toBase58()] = cur
+      // const cache = rawData.reduce((acc, cur) => {
+      //   acc[cur.vaultAccount.toBase58()] = cur
+      //   return acc
+      // }, {} as Record<string, LoanDataType>)
+      // console.log("cache", cache)
+      // accounts.forEach((account) => {
+      //   if (account.address.toBase58() in cache) {
+      //     cache[account.address.toBase58()].availableAmount = formatUnits(
+      //       account.amount,
+      //       9
+      //     )
+      //   }
+      // })
+
+      const data = Object.values(rawData).reduce(
+        (acc, cur) => {
+          acc[cur.isAdmin ? 0 : 1].push(cur)
           return acc
-        }, {} as Record<string, LoanDataType>)
-
-        // accounts.forEach((account) => {
-        //   if (account.address.toBase58() in cache) {
-        //     cache[account.address.toBase58()].availableAmount = formatUnits(
-        //       account.amount,
-        //       9
-        //     )
-        //   }
-        // })
-
-        const data = Object.values(cache).reduce(
-          (acc, cur) => {
-            acc[cur.isAdmin ? 0 : 1].push(cur)
-            return acc
-          },
-          [[], []] as [LoanDataType[], LoanDataType[]]
-        )
+        },
+        [[], []] as [LoanDataType[], LoanDataType[]]
+      )
 
         setMyLoans(data[0])
       }
