@@ -6,7 +6,7 @@ import { PublicKey } from "@solana/web3.js"
 export const useBalance = (
   workspace: AsyncState<Workspace | null>,
   publicKey?: PublicKey,
-  reload: boolean
+  deps: any[] = []
 ) => {
   return useAsync(async () => {
     if (workspace.value) {
@@ -15,5 +15,5 @@ export const useBalance = (
         commitmentLevel
       )
     }
-  }, [workspace.value, publicKey, reload])
+  }, [workspace.value, publicKey, ...deps])
 }

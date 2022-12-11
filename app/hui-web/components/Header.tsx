@@ -17,15 +17,15 @@ function Header() {
         <div className="w-[430px] flex justify-between">
           <Link
             className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
-            href="/lender"
+            href="/lend"
           >
-            Lender
+            Lend
           </Link>
           <Link
             className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
-            href="/borrower"
+            href="/borrow"
           >
-            Borrower
+            Borrow
           </Link>
           <Link
             className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"

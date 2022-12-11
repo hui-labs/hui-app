@@ -43,6 +43,8 @@ import { AnchorClient } from "@/services/anchorClient"
 import { useGetMint } from "@/hooks/useGetMint"
 import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
+import { useSupabaseClient } from "@supabase/auth-helpers-react"
+import { Database } from "@/types/supabase"
 
 const { Title } = Typography
 
@@ -238,6 +240,7 @@ const BorrowerPage: React.FC = () => {
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const [created, setCreated] = useState<string | null>(null)
+  const supabase = useSupabaseClient<Database>()
 
   const handleSubmit = async (data: LoanForm) => {
     if (data && selectedPool && workspace.value) {
@@ -342,6 +345,21 @@ const BorrowerPage: React.FC = () => {
           collateralAccountKeypair,
         ])
         .rpc()
+
+      await supabase.from("master_loans").insert([
+        {
+          pubkey: masterLoan.publicKey.toBase58(),
+          owner: wallet.publicKey.toBase58(),
+          amount: amount * DEFAULT_DECIMALS,
+          system_fee_account: SystemFeeUSDTPubKey.toBase58(),
+          pool: poolPubkey.toBase58(),
+          collateral_mint: poolAccount.collateralMint.toBase58(),
+          collateral_account: collateralAccountKeypair.publicKey.toBase58(),
+          deposit_account: tokenDepositorPubkey.toBase58(),
+          withdrawal_account: tokenReceiverPubkey.toBase58(),
+          nft_mint: nftMintKeypair.publicKey.toBase58(),
+        },
+      ])
 
       return tx
     }

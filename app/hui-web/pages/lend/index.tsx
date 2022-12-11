@@ -29,16 +29,17 @@ import useAsyncEffect from "use-async-effect"
 import * as anchor from "@project-serum/anchor"
 import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
+import { useSupabaseClient } from "@supabase/auth-helpers-react"
+import { Database } from "@/types/supabase"
 
 const { Title } = Typography
 
 interface DataType {
   key: React.Key
-  isAdmin: boolean
-  owner: PublicKey
-  vaultMint: PublicKey
-  vaultAccount: PublicKey
-  collateralMint: PublicKey
+  owner: string
+  vaultMint: string
+  vaultAccount: string
+  collateralMint: string
   availableAmount: string
   interestRate: string
   maxLoanAmount: string
@@ -57,7 +58,7 @@ const columns: ColumnsType<DataType> = [
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
-      return <span>{TOKEN_LISTS[vaultMint.toBase58()]}</span>
+      return <span>{TOKEN_LISTS[vaultMint]}</span>
     },
   },
   {
@@ -65,7 +66,7 @@ const columns: ColumnsType<DataType> = [
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
-      return <span>{TOKEN_LISTS[collateralMint.toBase58()]}</span>
+      return <span>{TOKEN_LISTS[collateralMint]}</span>
     },
   },
   {
@@ -104,11 +105,9 @@ const columns: ColumnsType<DataType> = [
   },
   {
     title: "Action",
-    dataIndex: "",
-    key: "x",
     render: (
       _,
-      { onWithdraw, onClose, onShow, onDeposit, availableAmount, isAdmin }
+      { onWithdraw, onClose, onShow, onDeposit, availableAmount }
     ) => {
       return (
         <Space>
@@ -120,35 +119,31 @@ const columns: ColumnsType<DataType> = [
           >
             View
           </Button>
-          {isAdmin && (
-            <>
-              <Button
-                onClick={() =>
-                  onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
-                }
-              >
-                Withdraw
-              </Button>
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDeposit()
-                }}
-              >
-                Deposit
-              </Button>
-              <Button
-                danger
-                type="primary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClose()
-                }}
-              >
-                Close
-              </Button>
-            </>
-          )}
+          <Button
+            onClick={() =>
+              onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
+            }
+          >
+            Withdraw
+          </Button>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDeposit()
+            }}
+          >
+            Deposit
+          </Button>
+          <Button
+            danger
+            type="primary"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClose()
+            }}
+          >
+            Close
+          </Button>
         </Space>
       )
     },
@@ -166,6 +161,7 @@ const LenderPage: React.FC = () => {
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
   const [_, triggerReload] = useState(false)
+  const supabase = useSupabaseClient<Database>()
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
@@ -244,38 +240,39 @@ const LenderPage: React.FC = () => {
   useAsyncEffect(async () => {
     if (workspace.value) {
       const { connection, client, wallet } = workspace.value
-      const pools = await client.from("Pool").offset(0).limit(10).select()
+      const { data: pools, error } = await supabase.from("pools").select("*")
+      // const pools = await client.from("Pool").offset(0).limit(10).select()
+      console.log("pools", pools)
 
-      const rawData: DataType[] = pools.map(({ publicKey, account }) => {
+      if (error) throw error
+
+      const rawData: DataType[] = pools.map((pool) => {
         return {
-          key: publicKey.toBase58(),
-          owner: account.owner,
-          isAdmin: account.owner.toBase58() === wallet.publicKey.toBase58(),
-          vaultMint: account.vaultMint,
-          vaultAccount: account.vaultAccount,
-          collateralMint: account.collateralMint,
-          status: "",
+          key: pool.pubkey,
+          owner: pool.owner,
+          vaultMint: pool.vault_mint,
+          vaultAccount: pool.vault_account,
+          collateralMint: pool.collateral_mint,
+          status: pool.status,
           availableAmount: "0",
-          minLoanAmount: formatUnits(
-            account.minLoanAmount.toString(),
-            decimals
-          ),
-          maxLoanAmount: formatUnits(
-            account.maxLoanAmount.toString(),
-            decimals
-          ),
-          interestRate: formatUnits(account.interestRate.toString(), 4),
-          maxLoanThreshold: formatUnits(account.maxLoanThreshold.toString(), 4),
+          minLoanAmount: formatUnits(pool.max_loan_amount.toString(), decimals),
+          maxLoanAmount: formatUnits(pool.max_loan_amount.toString(), decimals),
+          interestRate: formatUnits(pool.interest_rate.toString(), 4),
+          maxLoanThreshold: formatUnits(pool.max_loan_threshold.toString(), 4),
           onDeposit: () =>
-            onDeposit(publicKey, account.vaultAccount, account.vaultMint),
-          onClose: () => onClose(publicKey),
-          onShow: () => router.push(`/lender/pool?id=${publicKey.toBase58()}`),
+            onDeposit(
+              new PublicKey(pool.pubkey),
+              new PublicKey(pool.vault_account),
+              new PublicKey(pool.vault_mint)
+            ),
+          onClose: () => onClose(new PublicKey(pool.pubkey)),
+          onShow: () => router.push(`/lend/${pool.pubkey}`),
           onWithdraw: (amount: BN) =>
             onWithdraw(
-              publicKey,
-              account.vaultAccount,
-              account.vaultMint,
-              account.collateralMint,
+              new PublicKey(pool.pubkey),
+              new PublicKey(pool.vault_account),
+              new PublicKey(pool.vault_mint),
+              new PublicKey(pool.collateral_mint),
               amount
             ),
         }
@@ -283,12 +280,16 @@ const LenderPage: React.FC = () => {
 
       const accounts = await Promise.all(
         rawData.map((item) =>
-          getAccount(connection, item.vaultAccount, commitmentLevel)
+          getAccount(
+            connection,
+            new PublicKey(item.vaultAccount),
+            commitmentLevel
+          )
         )
       )
 
       const cache = rawData.reduce((acc, cur) => {
-        acc[cur.vaultAccount.toBase58()] = cur
+        acc[cur.vaultAccount] = cur
         return acc
       }, {} as Record<string, DataType>)
 
@@ -301,17 +302,7 @@ const LenderPage: React.FC = () => {
         }
       })
 
-      const data = Object.values(cache).reduce(
-        (acc, cur) => {
-          acc[cur.isAdmin ? 0 : 1].push(cur)
-          return acc
-        },
-        [[], []] as [DataType[], DataType[]]
-      )
-
-      console.log("data", data)
-      setMyPools(data[0])
-      setAllPools(data[1])
+      setMyPools(rawData)
     }
   }, [workspace.value, _])
 
@@ -374,7 +365,7 @@ const LenderPage: React.FC = () => {
         <div className="h-full">
           <button
             className="bg-indigo-500 text-white p-3 rounded-md w-28 text-center hover:bg-slate-800 ml-5"
-            onClick={() => router.push("/lender/add")}
+            onClick={() => router.push("/lend/add")}
           >
             Create Pool
           </button>
