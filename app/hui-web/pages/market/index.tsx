@@ -2,7 +2,7 @@ import { useRouter } from "next/router"
 import useAsyncEffect from "use-async-effect"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import React, { useState } from "react"
-import { Button, Col, Row, Table } from "antd"
+import { Button, Col, Row, Table, Typography } from "antd"
 import { ColumnsType } from "antd/es/table"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import dayjs from "dayjs"
@@ -18,6 +18,9 @@ import {
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import { web3 } from "@project-serum/anchor"
 import { USDTPubKey } from "@/common/constants"
+import { catchError } from "@/helps/notification"
+
+const { Title } = Typography
 
 interface ItemForSaleDataType {
   key: React.Key
@@ -60,7 +63,7 @@ const columns: ColumnsType<ItemForSaleDataType> = [
     ),
   },
   {
-    title: "Action",
+    title: "",
     render: (_, { onBuy }) => {
       return (
         <div>
@@ -88,130 +91,158 @@ const Market = () => {
     vaultAccount: PublicKey,
     metadataAccount: PublicKey
   ) => {
-    if (workspace.value) {
-      const { program, wallet, connection } = workspace.value
+    try {
+      if (workspace.value) {
+        const { program, wallet, connection } = workspace.value
 
-      const [itemForSalePDA] = await PublicKey.findProgramAddress(
-        [
-          Buffer.from("itemForSale"),
-          owner.toBuffer(),
-          nftMint.toBuffer(),
-          itemAccount.toBuffer(),
-        ],
-        program.programId
-      )
+        const [itemForSalePDA] = await PublicKey.findProgramAddress(
+          [
+            Buffer.from("itemForSale"),
+            owner.toBuffer(),
+            nftMint.toBuffer(),
+            itemAccount.toBuffer(),
+          ],
+          program.programId
+        )
 
-      const mint = await getMint(connection, USDTPubKey)
-      const buyerTokenAccount = await getOrCreateAssociatedTokenAccount(
-        workspace.value,
-        wallet.publicKey,
-        mint,
-        false
-      )
+        const mint = await getMint(connection, USDTPubKey)
+        const buyerTokenAccount = await getOrCreateAssociatedTokenAccount(
+          workspace.value,
+          wallet.publicKey,
+          mint,
+          false
+        )
 
-      if (!buyerTokenAccount) {
-        throw new Error("Missing buyer token account")
-      }
+        if (!buyerTokenAccount) {
+          throw new Error("Missing buyer token account")
+        }
 
-      const vaultAssociatedAccount = await getAssociatedTokenAddress(
-        USDTPubKey,
-        owner,
-        false,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      )
+        const vaultAssociatedAccount = await getAssociatedTokenAddress(
+          USDTPubKey,
+          owner,
+          false,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
 
-      const walletVaultAccount = await getAccount(
-        connection,
-        vaultAssociatedAccount,
-        commitmentLevel
-      )
+        const walletVaultAccount = await getAccount(
+          connection,
+          vaultAssociatedAccount,
+          commitmentLevel
+        )
+        if (!buyerTokenAccount) {
+          throw new Error("Missing buyer token account")
+        }
+        console.log(formatUnits(buyerTokenAccount.amount, 9))
 
-      const associatedNftTokenAccount = await getAssociatedTokenAddress(
-        nftMint,
-        wallet.publicKey
-      )
-      const tx = await program.methods
-        .buyNft()
-        .accounts({
+        const associatedNftTokenAccount = await getAssociatedTokenAddress(
           nftMint,
-          itemForSale: publicKey,
-          itemForSalePda: itemForSalePDA,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-          itemAccount,
-          loanMetadata: metadataAccount,
-          buyer: wallet.publicKey,
-          buyerAccount: associatedNftTokenAccount,
-          vaultMint: vaultMint,
-          vaultAccount: vaultAccount,
-          buyerTokenAccount: buyerTokenAccount.address,
-          sellerTokenAccount: walletVaultAccount.address,
-        })
-        .preInstructions([
-          await createAssociatedTokenAccountInstruction(
-            wallet.publicKey,
-            associatedNftTokenAccount,
-            wallet.publicKey,
-            nftMint
-          ),
-        ])
-        .rpc()
+          wallet.publicKey
+        )
+        const tx = await program.methods
+          .buyNft()
+          .accounts({
+            nftMint,
+            itemForSale: publicKey,
+            itemForSalePda: itemForSalePDA,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+            itemAccount,
+            loanMetadata: metadataAccount,
+            buyer: wallet.publicKey,
+            buyerAccount: associatedNftTokenAccount,
+            vaultMint: vaultMint,
+            vaultAccount: vaultAccount,
+            buyerTokenAccount: buyerTokenAccount.address,
+            sellerTokenAccount: walletVaultAccount.address,
+          })
+          .preInstructions([
+            await createAssociatedTokenAccountInstruction(
+              wallet.publicKey,
+              associatedNftTokenAccount,
+              wallet.publicKey,
+              nftMint
+            ),
+          ])
+          .rpc()
       setCreated(tx)
-      console.log(tx)
-      // const a = connection.getTokenAccountBalance()
+        console.log(tx)
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        catchError("On Buy", err)
+      }
     }
   }
 
   useAsyncEffect(async () => {
-    if (workspace.value) {
-      const { client, wallet } = workspace.value
+    try {
+      if (workspace.value) {
+        const { client, wallet } = workspace.value
 
-      const itemForSales = await client
-        .from("ItemForSale")
-        .offset(0)
-        .limit(10)
-        .select()
+        const itemForSales = await client
+          .from("ItemForSale")
+          .offset(0)
+          .limit(10)
+          .select()
 
-      const data = itemForSales.reduce<ItemForSaleDataType[]>(
-        (acc, { publicKey, account }) => {
-          if (
-            account.owner.toBase58() !== wallet.publicKey.toBase58() &&
-            !account.isSold
-          ) {
-            return acc.concat({
-              key: publicKey.toBase58(),
-              owner: account.owner,
-              isOwner: account.owner.toBase58() !== wallet.publicKey.toBase58(),
-              price: formatUnits(account.price.toString(), 9),
-              createdAt: dayjs
-                .unix(account.createdAt)
-                .format("DD/MM/YYYY HH:mm"),
-              onBuy: () =>
-                onBuy(
-                  publicKey,
-                  account.owner,
-                  account.nftMint,
-                  account.itemAccount,
-                  account.vaultMint,
-                  account.vaultAccount,
-                  account.metadataAccount
-                ),
-            } as ItemForSaleDataType)
-          }
+        console.log("itemForSales", itemForSales)
+        const data = itemForSales.reduce<ItemForSaleDataType[]>(
+          (acc, { publicKey, account }) => {
+            if (
+              account.owner.toBase58() !== wallet.publicKey.toBase58() &&
+              !account.isSold
+            ) {
+              return acc.concat({
+                key: publicKey.toBase58(),
+                owner: account.owner,
+                isOwner:
+                  account.owner.toBase58() !== wallet.publicKey.toBase58(),
+                price: formatUnits(account.price.toString(), 9),
+                createdAt: dayjs
+                  .unix(account.createdAt)
+                  .format("DD/MM/YYYY HH:mm"),
+                onBuy: () =>
+                  onBuy(
+                    publicKey,
+                    account.owner,
+                    account.nftMint,
+                    account.itemAccount,
+                    account.vaultMint,
+                    account.vaultAccount,
+                    account.metadataAccount
+                  ),
+              } as ItemForSaleDataType)
+            }
 
-          return acc
-        },
-        []
-      )
-      setListLoanMetadatas(data)
+            return acc
+          },
+          []
+        )
+        setListLoanMetadatas(data)
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        catchError("Set List Loan Meta Data", err)
+      }
     }
   }, [workspace.value, created])
 
   return (
-    <div>
-      <button onClick={() => router.push("/market/list")}>List your NFT</button>
+    <div className="px-6 mt-5">
+      <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
+        <Title level={2}>Market</Title>
+        <div className="h-full">
+          <button
+            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
+            onClick={() => router.push("/market/list")}
+          >
+            List your NFT
+          </button>
+        </div>
+      </div>
+
       <Row>
         <Col span={24}>
           <Table
