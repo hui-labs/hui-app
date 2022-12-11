@@ -27,6 +27,7 @@ interface DataType {
   vaultMint: PublicKey
   vaultAccount: PublicKey
   collateralMint: PublicKey
+  nftAccount?: PublicKey
   availableAmount: string
   interestRate: string
   maxLoanAmount: string
@@ -114,8 +115,8 @@ const columns: ColumnsType<DataType> = [
   },
   {
     title: "Action",
-    render: (_, { onClaimNFT, onClaim, isClaimed, status }) => {
-      if (status === "opening" && !isClaimed)
+    render: (_, { onClaimNFT, onClaim, isClaimed, status, nftAccount }) => {
+      if (!nftAccount)
         return <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
 
       if (status === "final")
@@ -152,7 +153,7 @@ const LoansOfPool: React.FC = () => {
         program.programId
       )
 
-      const associatedNftTokenAccount = await getAssociatedTokenAddress(
+      const nftAccount = await getAssociatedTokenAddress(
         nftMint,
         wallet.publicKey
       )
@@ -162,7 +163,7 @@ const LoansOfPool: React.FC = () => {
           masterLoan: masterLoanPubKey,
           masterLoanPda: masterLoanPDA,
           nftMint,
-          nftAccount: associatedNftTokenAccount,
+          nftAccount,
           owner: wallet.publicKey,
           loanMetadata: loanMetadata.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -172,7 +173,7 @@ const LoansOfPool: React.FC = () => {
         .preInstructions([
           await createAssociatedTokenAccountInstruction(
             wallet.publicKey,
-            associatedNftTokenAccount,
+            nftAccount,
             wallet.publicKey,
             nftMint
           ),
@@ -193,6 +194,7 @@ const LoansOfPool: React.FC = () => {
     nftAccount?: PublicKey
   ) => {
     if (workspace.value) {
+      console.log("nftAccount", nftAccount)
       if (status !== "final") {
         console.log("Do not allow to claim")
         return
@@ -302,7 +304,6 @@ const LoansOfPool: React.FC = () => {
           }
           return acc
         }, {})
-      console.log("nftAccounts", nftAccounts)
 
       const masterLoans = loansDetail
         .filter((itemLoan) => {
@@ -350,6 +351,7 @@ const LoansOfPool: React.FC = () => {
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
+            nftAccount,
             status,
             availableAmount: "0",
             minLoanAmount: formatUnits(
