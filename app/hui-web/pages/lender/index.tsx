@@ -10,6 +10,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd"
 import { useRouter } from "next/router"
@@ -56,7 +57,7 @@ interface DataType {
 
 const columns: ColumnsType<DataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -64,7 +65,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
@@ -72,7 +73,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "Available Amount",
+    title: "Lending Limit",
     dataIndex: "availableAmount",
     key: "availableAmount",
     render: (_, { availableAmount }) => {
@@ -106,17 +107,21 @@ const columns: ColumnsType<DataType> = [
     ),
   },
   {
-    title: "Max Loan Amount",
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
     render: (rate) => <span>{`${rate} %`}</span>,
@@ -416,8 +421,8 @@ const LenderPage: React.FC = () => {
 
   return (
     <div className="px-6 mt-5">
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
-        <Title level={2}>Lender</Title>
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mb-5">
+        <Title level={2}>Lending</Title>
         <div className="h-full">
           <button
             className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
@@ -429,7 +434,7 @@ const LenderPage: React.FC = () => {
       </div>
 
       <div>
-        <div className="flex justify-between max-w-screen-xl mx-auto items-center mb-3">
+        <div className="flex justify-between max-w-screen-2xl mx-auto items-center mb-3">
           <Title level={3}>
             {tabs === "loan" ? "Your Loans" : "Available Pools"}
           </Title>

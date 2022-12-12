@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Button, Col, Row, Table, Tag, Typography } from "antd"
+import { Button, Col, Row, Table, Tag, Tooltip, Typography } from "antd"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
 import { TOKEN_LISTS } from "@/common/constants"
 import { useRouter } from "next/router"
@@ -44,7 +44,7 @@ interface DataType {
 
 const columns: ColumnsType<DataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -52,7 +52,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
@@ -60,7 +60,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "Borrower",
+    title: "Wallet Address Of Borrower",
     dataIndex: "borrower",
     width: 600,
     key: "borrower",
@@ -80,7 +80,7 @@ const columns: ColumnsType<DataType> = [
   },
   { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
   {
-    title: "Max Loan Amount",
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
@@ -90,22 +90,26 @@ const columns: ColumnsType<DataType> = [
     key: "fee",
   },
   {
-    title: "Loan Fee",
+    title: "Transaction Fee",
     dataIndex: "loanFee",
     key: "loanFee",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
   },
   {
-    title: "LoanTerm",
+    title: "Loan Term (Month)",
     dataIndex: "loanTerm",
     key: "loanTerm",
     render: (term) => <span>{`${LOAN_TERMS[term as LoanTerm]} Month`}</span>,
@@ -425,8 +429,8 @@ const LoansOfPool: React.FC = () => {
 
   return (
     <div className="px-6 mt-5">
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
-        <Title level={2}>Details</Title>
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mb-5">
+        <Title level={2}>List Of Loans</Title>
       </div>
 
       <Row>

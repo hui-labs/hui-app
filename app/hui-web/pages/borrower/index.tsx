@@ -10,6 +10,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
@@ -71,7 +72,7 @@ interface PoolDataType {
 
 const poolColumns: ColumnsType<PoolDataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -79,7 +80,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
@@ -87,7 +88,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
     },
   },
   {
-    title: "Available Amount",
+    title: "Lending Limit",
     dataIndex: "availableAmount",
     key: "availableAmount",
     render: (_, { availableAmount }) => {
@@ -111,17 +112,21 @@ const poolColumns: ColumnsType<PoolDataType> = [
     render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
-    title: "Max Loan Amount",
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
     render: (rate) => <span>{`${rate} %`}</span>,
@@ -144,7 +149,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
             type="primary"
             onClick={() => showModal(data)}
           >
-            Loan
+            Borrow
           </Button>
         </Space>
       )
@@ -170,7 +175,7 @@ interface LoanDataType {
 
 const loanColumns: ColumnsType<LoanDataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -178,7 +183,7 @@ const loanColumns: ColumnsType<LoanDataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
@@ -192,23 +197,27 @@ const loanColumns: ColumnsType<LoanDataType> = [
     render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
-    title: "Max Loan Amount",
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
     render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
-    title: "Loan",
+    title: "Loan Amount",
     dataIndex: "receivedAmount",
     key: "receivedAmount",
   },
@@ -227,7 +236,7 @@ const loanColumns: ColumnsType<LoanDataType> = [
 
       return (
         <Space>
-          <Button onClick={onFinal}>Final</Button>
+          <Button onClick={onFinal}>Final settlement</Button>
         </Space>
       )
     },
@@ -447,7 +456,7 @@ const BorrowerPage: React.FC = () => {
           })
           .signers([vaultAccountKeypair])
           .rpc()
-      setCreated(tx)
+        setCreated(tx)
         console.log(tx)
         await getAssociatedTokenAddress(
           loanMetadata.account.nftMint,
@@ -531,27 +540,27 @@ const BorrowerPage: React.FC = () => {
         //   )
         // )
 
-      // const cache = rawData.reduce((acc, cur) => {
-      //   acc[cur.vaultAccount.toBase58()] = cur
-      //   return acc
-      // }, {} as Record<string, LoanDataType>)
-      // console.log("cache", cache)
-      // accounts.forEach((account) => {
-      //   if (account.address.toBase58() in cache) {
-      //     cache[account.address.toBase58()].availableAmount = formatUnits(
-      //       account.amount,
-      //       9
-      //     )
-      //   }
-      // })
+        // const cache = rawData.reduce((acc, cur) => {
+        //   acc[cur.vaultAccount.toBase58()] = cur
+        //   return acc
+        // }, {} as Record<string, LoanDataType>)
+        // console.log("cache", cache)
+        // accounts.forEach((account) => {
+        //   if (account.address.toBase58() in cache) {
+        //     cache[account.address.toBase58()].availableAmount = formatUnits(
+        //       account.amount,
+        //       9
+        //     )
+        //   }
+        // })
 
-      const data = Object.values(rawData).reduce(
-        (acc, cur) => {
-          acc[cur.isAdmin ? 0 : 1].push(cur)
-          return acc
-        },
-        [[], []] as [LoanDataType[], LoanDataType[]]
-      )
+        const data = Object.values(rawData).reduce(
+          (acc, cur) => {
+            acc[cur.isAdmin ? 0 : 1].push(cur)
+            return acc
+          },
+          [[], []] as [LoanDataType[], LoanDataType[]]
+        )
 
         setMyLoans(data[0])
       }
@@ -655,10 +664,10 @@ const BorrowerPage: React.FC = () => {
 
   return (
     <div className="px-6 mt-5">
-      <Title className="max-w-screen-xl mx-auto" level={2}>
-        Borrower
+      <Title className="max-w-screen-2xl mx-auto" level={2}>
+        Borrowing
       </Title>
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mt-10">
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mt-10">
         <Title level={3}>
           {tabs === "loan" ? "Your Loans" : "Available Pools"}
         </Title>
@@ -670,7 +679,7 @@ const BorrowerPage: React.FC = () => {
               label: "Available Pools",
               value: "pool",
             },
-            { label: "Your Loan", value: "loan" },
+            { label: "Your Loans", value: "loan" },
           ]}
           onChange={(v) => setTabs(v as string)}
         />
@@ -719,17 +728,17 @@ const BorrowerPage: React.FC = () => {
           <>
             <div className="flex justify-between mb-4 px-5 mt-7">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Vault Token</h4>
+                <h4 className="font-medium">Loan Currency</h4>
                 <p>{TOKEN_LISTS[poolDetails.vaultMint.toBase58()]}</p>
               </div>
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Collateral Token</h4>
+                <h4 className="font-medium">Collateral Currency</h4>
                 <p>{TOKEN_LISTS[poolDetails.collateralMint.toBase58()]}</p>
               </div>
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Top Up Amount</h4>
+                <h4 className="font-medium">Available Pools</h4>
                 <p>{poolDetails.availableAmount}</p>
               </div>
               <div className="flex justify-between border-b w-56">
@@ -739,17 +748,19 @@ const BorrowerPage: React.FC = () => {
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Max Loan Amount</h4>
+                <h4 className="font-medium">Maximum Loan Amount</h4>
                 <p>{poolDetails.maxLoanAmount}</p>
               </div>
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Min Loan Amount</h4>
+                <h4 className="font-medium">Mintool Loan Amount</h4>
                 <p>{poolDetails.minLoanAmount}</p>
               </div>
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Max Loan Threshold</h4>
+                <Tooltip title="Maximum Loan-To-Value Ratio">
+                  <h4 className="font-medium">LTV ratio (%)</h4>
+                </Tooltip>
                 <p>{`${poolDetails.maxLoanThreshold} %`}</p>
               </div>
               <div className="flex justify-between border-b w-56">

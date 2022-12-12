@@ -9,6 +9,7 @@ import {
   Row,
   Select,
   Space,
+  Tooltip,
 } from "antd"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import { BN, web3 } from "@project-serum/anchor"
@@ -309,7 +310,7 @@ const AddPool: React.FC = () => {
           >
             <Form.Item
               name="vaultMint"
-              label="Vault Token"
+              label="Loan Currency"
               rules={[{ required: true }]}
             >
               <Select
@@ -323,7 +324,7 @@ const AddPool: React.FC = () => {
 
             <Form.Item
               name="collateralMint"
-              label="Collateral Mint"
+              label="Collateral Currency"
               rules={[{ required: true }]}
             >
               <Select
@@ -337,21 +338,21 @@ const AddPool: React.FC = () => {
 
             <Form.Item
               name="topUpAmount"
-              label="Top Up Amount"
+              label="Total Supply"
               rules={validateRules("topUpAmount")}
             >
               <InputNumber style={{ width: "100%" }} />
             </Form.Item>
 
             <div className="flex justify-between">
-              <Form.Item label="Estimated Loan Fee">
+              <Form.Item label="Estimated Transaction Fee">
                 <span className="ant-form-text">
                   {estimatedLoanCommissionFee.toFixed(2)}{" "}
                   {vaultMint?.toUpperCase()}
                 </span>
               </Form.Item>
 
-              <Form.Item label="Total Top Up Amount">
+              <Form.Item label="Total Payment">
                 <span className="ant-form-text">
                   {totalTopUpAmount.toFixed(2)} {vaultMint?.toUpperCase()}
                 </span>
@@ -394,7 +395,7 @@ const AddPool: React.FC = () => {
               <Form.Item
                 className="w-[200px]"
                 name="maxLoanAmount"
-                label="Max Loan Amount"
+                label="Maximum Loan Amount"
                 rules={validateRules("maxLoanAmount")}
               >
                 <InputNumber style={{ width: "100%" }} />
@@ -403,7 +404,7 @@ const AddPool: React.FC = () => {
               <Form.Item
                 className="w-[200px]"
                 name="minLoanAmount"
-                label="Min Loan Amount"
+                label="Minimum Loan Amount"
                 rules={validateRules("minLoanAmount")}
               >
                 <InputNumber style={{ width: "100%" }} />
@@ -412,7 +413,11 @@ const AddPool: React.FC = () => {
 
             <Form.Item
               name="maxLoanThreshold"
-              label="Max Loan Threshold"
+              label={
+                <Tooltip title="Maximum Loan-To-Value Ratio">
+                  <span>{"LTV Ratio"}</span>
+                </Tooltip>
+              }
               rules={validateRules("maxLoanThreshold")}
             >
               <InputNumber style={{ width: "100%" }} />
@@ -429,7 +434,7 @@ const AddPool: React.FC = () => {
                 </Button>
 
                 <Button type="default" onClick={onFill}>
-                  Fill
+                  Autofill
                 </Button>
               </Space>
             </Form.Item>
@@ -446,28 +451,28 @@ const AddPool: React.FC = () => {
       >
         <div className="flex justify-between mb-4 px-5 mt-7">
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Vault Token</h4>
+            <h4 className="font-medium">Loan Currency</h4>
             <p>{vaultMint?.toUpperCase()}</p>
           </div>
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Collateral Token</h4>
+            <h4 className="font-medium">Collateral Currency</h4>
             <p>{form.getFieldValue("collateralMint")?.toUpperCase()}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Top Up Amount</h4>
+            <h4 className="font-medium">Top Supply</h4>
             <p>{form.getFieldValue("topUpAmount")}</p>
           </div>
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Total & Fee</h4>
+            <h4 className="font-medium">Total Payment</h4>
             <p>{totalTopUpAmount.toFixed(2)}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
           <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Loan Term</h4>
-            <p>{loanOfTerm}</p>
+            <p>{`${loanOfTerm} `}</p>
           </div>
           <div className="flex justify-between border-b w-56">
             <h4 className="font-medium">Interest Rate</h4>
@@ -491,17 +496,19 @@ const AddPool: React.FC = () => {
         </div>
         <div className="flex justify-between mb-4 px-5">
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Max Loan Amount</h4>
+            <h4 className="font-medium">Maximum Loan Amount</h4>
             <p>{form.getFieldValue("maxLoanAmount")}</p>
           </div>
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Min Loan Amount</h4>
+            <h4 className="font-medium">Minimum Loan Amount</h4>
             <p>{form.getFieldValue("minLoanAmount")}</p>
           </div>
         </div>
         <div className="flex justify-between mb-4 px-5">
           <div className="flex justify-between border-b w-56">
-            <h4 className="font-medium">Max Loan Threshold</h4>
+            <Tooltip title="Maximum Loan-To-Value Ratio">
+              <h4 className="font-medium">LTV ratio</h4>
+            </Tooltip>
             <p>{`${form.getFieldValue("maxLoanThreshold")} %`}</p>
           </div>
         </div>
