@@ -301,7 +301,7 @@ const BorrowerPage: React.FC = () => {
 
           setOpen(false)
           setCreated(tx)
-          setTitlePopup("Create Loan Success")
+          setTitlePopup("Borrow Success")
           showPopupSuccess()
         }
         setConfirmLoading(false)
@@ -462,7 +462,7 @@ const BorrowerPage: React.FC = () => {
           .signers([vaultAccountKeypair])
           .rpc()
         setCreated(tx)
-        setTitlePopup("Final Success")
+        setTitlePopup("Final Settlement Success")
         showPopupSuccess()
 
         console.log(tx)
