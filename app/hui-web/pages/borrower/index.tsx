@@ -10,6 +10,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd"
 import { commitmentLevel, useWorkspace } from "@/hooks/useWorkspace"
@@ -50,7 +51,7 @@ const { Title } = Typography
 
 interface LoanForm {
   loanTerm: string
-  loanAmount: number
+  collateralAmount: number
 }
 
 interface PoolDataType {
@@ -72,7 +73,7 @@ interface PoolDataType {
 
 const poolColumns: ColumnsType<PoolDataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -80,7 +81,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
@@ -88,7 +89,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
     },
   },
   {
-    title: "Available Amount",
+    title: "Lending Limit",
     dataIndex: "availableAmount",
     key: "availableAmount",
     render: (_, { availableAmount }) => {
@@ -105,21 +106,31 @@ const poolColumns: ColumnsType<PoolDataType> = [
       </div>
     ),
   },
-  { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
   {
-    title: "Max Loan Amount",
+    title: "Interest Rate/ Year",
+    dataIndex: "interestRate",
+    key: "interestRate",
+    render: (rate) => <span>{`${rate} %`}</span>,
+  },
+  {
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
+    render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
     title: "Loan Term",
@@ -139,7 +150,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
             type="primary"
             onClick={() => showModal(data)}
           >
-            Loan
+            Borrow
           </Button>
         </Space>
       )
@@ -165,7 +176,7 @@ interface LoanDataType {
 
 const loanColumns: ColumnsType<LoanDataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -173,31 +184,41 @@ const loanColumns: ColumnsType<LoanDataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
       return <span>{TOKEN_LISTS[collateralMint.toBase58()]}</span>
     },
   },
-  { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
   {
-    title: "Max Loan Amount",
+    title: "Interest Rate/ Year",
+    dataIndex: "interestRate",
+    key: "interestRate",
+    render: (rate) => <span>{`${rate} %`}</span>,
+  },
+  {
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
+    render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
-    title: "Loan",
+    title: "Loan Amount",
     dataIndex: "receivedAmount",
     key: "receivedAmount",
   },
@@ -216,7 +237,7 @@ const loanColumns: ColumnsType<LoanDataType> = [
 
       return (
         <Space>
-          <Button onClick={onFinal}>Final</Button>
+          <Button onClick={onFinal}>Final settlement</Button>
         </Space>
       )
     },
@@ -234,7 +255,7 @@ const BorrowerPage: React.FC = () => {
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [tabs, setTabs] = useState<string>("pool")
   const [poolDetails, setPoolDetails] = useState<PoolDataType>()
-  const loanAmount = Form.useWatch("loanAmount", form)
+  const collateralAmount = Form.useWatch("collateralAmount", form)
   const usdcMint = useGetMint(workspace, USDCPubKey)
   const usdtMint = useGetMint(workspace, USDTPubKey)
   const usdcAccount = useAccount(workspace, usdcMint)
@@ -242,13 +263,14 @@ const BorrowerPage: React.FC = () => {
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const [created, setCreated] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
   const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
   const [titlePopup, setTitlePopup] = useState("")
 
   const handleSubmit = async (data: LoanForm) => {
     try {
       if (data && selectedPool && workspace.value) {
-        const loanAmount = data?.loanAmount
+        const collateralAmount = data?.collateralAmount
 
         setConfirmLoading(true)
         const pool = availablePools.find(
@@ -271,7 +293,7 @@ const BorrowerPage: React.FC = () => {
           )
 
           const tx = await onCreateLoan(
-            loanAmount,
+            collateralAmount,
             selectedPool,
             depositorAccount.address,
             receiverAccount.address
@@ -462,6 +484,7 @@ const BorrowerPage: React.FC = () => {
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { wallet, client } = workspace.value
@@ -549,14 +572,17 @@ const BorrowerPage: React.FC = () => {
 
         setMyLoans(data[0])
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set My Loans", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, created])
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { connection, wallet, client } = workspace.value
@@ -622,9 +648,11 @@ const BorrowerPage: React.FC = () => {
         )
         setAvailablePools(() => data[1])
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set Available Pools", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, created])
@@ -652,10 +680,10 @@ const BorrowerPage: React.FC = () => {
 
   return (
     <div className="px-6 mt-5">
-      <Title className="max-w-screen-xl mx-auto" level={2}>
-        Borrower
+      <Title className="max-w-screen-2xl mx-auto" level={2}>
+        Borrowing
       </Title>
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mt-10">
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mt-10">
         <Title level={3}>
           {tabs === "loan" ? "Your Loans" : "Available Pools"}
         </Title>
@@ -667,7 +695,7 @@ const BorrowerPage: React.FC = () => {
               label: "Available Pools",
               value: "pool",
             },
-            { label: "Your Loan", value: "loan" },
+            { label: "Your Loans", value: "loan" },
           ]}
           onChange={(v) => setTabs(v as string)}
         />
@@ -681,6 +709,7 @@ const BorrowerPage: React.FC = () => {
                 columns={loanColumns}
                 pagination={false}
                 dataSource={myLoans}
+                loading={loading}
               />
             </Col>
           </Row>
@@ -695,6 +724,7 @@ const BorrowerPage: React.FC = () => {
                 columns={poolColumns}
                 pagination={false}
                 dataSource={availablePools}
+                loading={loading}
               />
             </Col>
           </Row>
@@ -714,17 +744,17 @@ const BorrowerPage: React.FC = () => {
           <>
             <div className="flex justify-between mb-4 px-5 mt-7">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Vault Token</h4>
+                <h4 className="font-medium">Loan Currency</h4>
                 <p>{TOKEN_LISTS[poolDetails.vaultMint.toBase58()]}</p>
               </div>
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Collateral Token</h4>
+                <h4 className="font-medium">Collateral Currency</h4>
                 <p>{TOKEN_LISTS[poolDetails.collateralMint.toBase58()]}</p>
               </div>
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Top Up Amount</h4>
+                <h4 className="font-medium">Available Pools</h4>
                 <p>{poolDetails.availableAmount}</p>
               </div>
               <div className="flex justify-between border-b w-56">
@@ -734,17 +764,19 @@ const BorrowerPage: React.FC = () => {
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Max Loan Amount</h4>
+                <h4 className="font-medium">Maximum Loan Amount</h4>
                 <p>{poolDetails.maxLoanAmount}</p>
               </div>
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Min Loan Amount</h4>
+                <h4 className="font-medium">Mintool Loan Amount</h4>
                 <p>{poolDetails.minLoanAmount}</p>
               </div>
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Max Loan Threshold</h4>
+                <Tooltip title="Maximum Loan-To-Value Ratio">
+                  <h4 className="font-medium">LTV ratio (%)</h4>
+                </Tooltip>
                 <p>{`${poolDetails.maxLoanThreshold} %`}</p>
               </div>
               <div className="flex justify-between border-b w-56">
@@ -754,28 +786,31 @@ const BorrowerPage: React.FC = () => {
             </div>
             <div className="flex justify-between mb-4 px-5">
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Collateral Amount</h4>
-                {/*formula is loanAmount / maxLoanThreshold * 100 */}
+                <h4 className="font-medium">Loan Amount</h4>
                 <p>
-                  {loanAmount
+                  {collateralAmount
                     ? (
-                        (loanAmount * 100) /
-                        parseInt(poolDetails.maxLoanThreshold)
+                        (collateralAmount *
+                          parseInt(poolDetails.maxLoanThreshold)) /
+                        100
                       ).toFixed(2)
                     : 0}
                 </p>
               </div>
               <div className="flex justify-between border-b w-56">
-                <h4 className="font-medium">Pay</h4>
-                {/*formula is loanAmount + loanAmount / interestRate * loanTerm (here is 6 month)*/}
+                <h4 className="font-medium">Amount Due</h4>
                 <p>
-                  {loanAmount
+                  {collateralAmount
                     ? (
-                        (loanAmount *
+                        (((collateralAmount *
+                          parseInt(poolDetails.maxLoanThreshold)) /
+                          100) *
                           parseFloat(poolDetails.interestRate) *
                           LOAN_TERMS[poolDetails.loanTerm as LoanTerm]) /
                           1200 +
-                        loanAmount
+                        (collateralAmount *
+                          parseInt(poolDetails.maxLoanThreshold)) /
+                          100
                       ).toFixed(2)
                     : 0}
                 </p>
@@ -793,8 +828,8 @@ const BorrowerPage: React.FC = () => {
             >
               {poolDetails && (
                 <Form.Item
-                  name="loanAmount"
-                  label="Loan Amount"
+                  name="collateralAmount"
+                  label="Collateral Amount"
                   rules={[
                     { required: true },
                     {

@@ -10,6 +10,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
 } from "antd"
 import { useRouter } from "next/router"
@@ -48,7 +49,7 @@ interface DataType {
   minLoanAmount: string
   maxLoanThreshold: string
   status: string
-  loanTerm: number
+  loanTerm: string
   onDeposit: () => void
   onClose: () => void
   onShow: () => void
@@ -57,7 +58,7 @@ interface DataType {
 
 const columns: ColumnsType<DataType> = [
   {
-    title: "Vault Token",
+    title: "Loan Currency",
     dataIndex: "vaultMint",
     key: "vaultMint",
     render: (_, { vaultMint }) => {
@@ -65,7 +66,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "Collateral Token",
+    title: "Collateral Currency",
     dataIndex: "collateralMint",
     key: "collateralMint",
     render: (_, { collateralMint }) => {
@@ -73,7 +74,7 @@ const columns: ColumnsType<DataType> = [
     },
   },
   {
-    title: "Available Amount",
+    title: "Lending Limit",
     dataIndex: "availableAmount",
     key: "availableAmount",
     render: (_, { availableAmount }) => {
@@ -84,37 +85,47 @@ const columns: ColumnsType<DataType> = [
     title: "Status",
     dataIndex: "status",
     key: "status",
-    render: (_, { status }) => (
-      <div>
-        <Tag color={"blue"}>{status.toUpperCase()}</Tag>
-      </div>
-    ),
+    render: (status) => {
+      return (
+        <div>
+          <Tag color={"blue"}>{Object.keys(status)[0].toUpperCase()}</Tag>
+        </div>
+      )
+    },
   },
-  { title: "Interest Rate", dataIndex: "interestRate", key: "interestRate" },
+  {
+    title: "Interest Rate/ Year",
+    dataIndex: "interestRate",
+    key: "interestRate",
+    render: (rate) => <span>{`${rate} %`}</span>,
+  },
   {
     title: "Loan Term",
     dataIndex: "loanTerm",
     key: "loanTerm",
-    render: (_, { loanTerm }) => (
-      <div>
-        <Tag color={"blue"}>{loanTerm}</Tag>
-      </div>
+    render: (term) => (
+      <span>{`${LOAN_TERMS[Object.keys(term)[0] as LoanTerm]} Month`}</span>
     ),
   },
   {
-    title: "Max Loan Amount",
+    title: "Maximum Loan Amount",
     dataIndex: "maxLoanAmount",
     key: "maxLoanAmount",
   },
   {
-    title: "Min Loan Amount",
+    title: "Minimum Loan Amount",
     dataIndex: "minLoanAmount",
     key: "minLoanAmount",
   },
   {
-    title: "Max Loan Threshold",
+    title: () => (
+      <Tooltip title="Maximum Loan-To-Value Ratio">
+        <span>{"LTV Ratio"}</span>
+      </Tooltip>
+    ),
     dataIndex: "maxLoanThreshold",
     key: "maxLoanThreshold",
+    render: (rate) => <span>{`${rate} %`}</span>,
   },
   {
     title: "",
@@ -122,7 +133,7 @@ const columns: ColumnsType<DataType> = [
     key: "x",
     render: (
       _,
-      { onWithdraw, onClose, onShow, onDeposit, availableAmount, isAdmin }
+      { onWithdraw, onShow, onDeposit, availableAmount, isAdmin }
     ) => {
       return (
         <Space>
@@ -151,16 +162,6 @@ const columns: ColumnsType<DataType> = [
               >
                 Deposit
               </Button>
-              <Button
-                danger
-                type="primary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClose()
-                }}
-              >
-                Close
-              </Button>
             </>
           )}
         </Space>
@@ -181,6 +182,7 @@ const LenderPage: React.FC = () => {
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
   const [_, triggerReload] = useState(false)
+  const [loading, setLoading] = useState<boolean>(false)
   const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
   const [titlePopup, setTitlePopup] = useState("")
 
@@ -286,14 +288,13 @@ const LenderPage: React.FC = () => {
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { connection, client, wallet } = workspace.value
         const pools = await client.from("Pool").offset(0).limit(10).select()
 
         const rawData: DataType[] = pools.map(({ publicKey, account }) => {
-          const status = Object.keys(account.status)[0]
-          const loanTerm: LoanTerm = Object.keys(account.loanTerm)[0] as any
           return {
             key: publicKey.toBase58(),
             owner: account.owner,
@@ -301,17 +302,17 @@ const LenderPage: React.FC = () => {
             vaultMint: account.vaultMint,
             vaultAccount: account.vaultAccount,
             collateralMint: account.collateralMint,
-            status: status.toUpperCase(),
-            loanTerm: LOAN_TERMS[loanTerm],
             availableAmount: "0",
             minLoanAmount: formatUnits(
               account.minLoanAmount.toString(),
               decimals
             ),
+            status: account.status,
             maxLoanAmount: formatUnits(
               account.maxLoanAmount.toString(),
               decimals
             ),
+            loanTerm: account.loanTerm,
             interestRate: formatUnits(account.interestRate.toString(), 4),
             maxLoanThreshold: formatUnits(
               account.maxLoanThreshold.toString(),
@@ -364,9 +365,11 @@ const LenderPage: React.FC = () => {
         setMyPools(data[0])
         setAllPools(data[1])
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set My Pools", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, _])
@@ -441,8 +444,8 @@ const LenderPage: React.FC = () => {
 
   return (
     <div className="px-6 mt-5">
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
-        <Title level={2}>Lender</Title>
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mb-5">
+        <Title level={2}>Lending</Title>
         <div className="h-full">
           <button
             className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
@@ -454,7 +457,7 @@ const LenderPage: React.FC = () => {
       </div>
 
       <div>
-        <div className="flex justify-between max-w-screen-xl mx-auto items-center mb-3">
+        <div className="flex justify-between max-w-screen-2xl mx-auto items-center mb-3">
           <Title level={3}>
             {tabs === "loan" ? "Your Loans" : "Available Pools"}
           </Title>
@@ -475,6 +478,7 @@ const LenderPage: React.FC = () => {
           <Col span={24}>
             <Table
               columns={columns}
+              loading={loading}
               pagination={false}
               dataSource={tabs === "myPools" ? myPools : allPools}
             />

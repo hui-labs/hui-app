@@ -2,7 +2,16 @@ import { useWorkspace } from "@/hooks/useWorkspace"
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js"
 import { BN, web3 } from "@project-serum/anchor"
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token"
-import { Button, Col, Row, Table, Typography } from "antd"
+import {
+  Button,
+  Col,
+  Form,
+  InputNumber,
+  Modal,
+  Row,
+  Table,
+  Typography,
+} from "antd"
 import React, { useState } from "react"
 import { ColumnsType } from "antd/es/table"
 import { DEFAULT_DECIMALS, USDTPubKey } from "@/common/constants"
@@ -26,6 +35,7 @@ interface LoanMetadataDataType {
   parent: PublicKey
   onListNFT: () => void
   onDelistNFT: () => void
+  onShow: () => void
 }
 
 const columns: ColumnsType<LoanMetadataDataType> = [
@@ -35,7 +45,7 @@ const columns: ColumnsType<LoanMetadataDataType> = [
     key: "price",
   },
   {
-    title: "Parent",
+    title: "NFT Contract Address",
     dataIndex: "parent",
     key: "parent",
     render: (_, { parent }) => (
@@ -48,7 +58,7 @@ const columns: ColumnsType<LoanMetadataDataType> = [
     title: "",
     dataIndex: "",
     key: "",
-    render: (_, { onListNFT, onDelistNFT, isListed }) => {
+    render: (_, { onDelistNFT, isListed, onShow }) => {
       if (isListed) {
         return (
           <div>
@@ -59,7 +69,7 @@ const columns: ColumnsType<LoanMetadataDataType> = [
 
       return (
         <div>
-          <Button onClick={onListNFT}>List</Button>
+          <Button onClick={onShow}>List</Button>
         </div>
       )
     },
@@ -68,10 +78,20 @@ const columns: ColumnsType<LoanMetadataDataType> = [
 
 const ListNFT = () => {
   const workspace = useWorkspace()
+  const [loading, setLoading] = useState<boolean>(false)
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [params, setParams] = useState<{
+    loanMetadataPubKey: PublicKey
+    nftMint: PublicKey
+  }>()
+
   const [created, setCreated] = useState<string | null>(null)
   const [loanMetadatas, setListLoanMetadatas] = useState<
     LoanMetadataDataType[]
   >([])
+
+  const [form] = Form.useForm()
+  const price = Form.useWatch("price", form)
   const router = useRouter()
   const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
   const [titlePopup, setTitlePopup] = useState("")
@@ -165,6 +185,7 @@ const ListNFT = () => {
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { connection, wallet, client } = workspace.value
@@ -227,22 +248,32 @@ const ListNFT = () => {
                     itemForSale?.publicKey,
                     itemForSale?.account.vaultAccount
                   ),
+                onShow: () =>
+                  onShowModal(loanMetadata?.publicKey, nftMintPubKey),
               }
             }
           )
         setListLoanMetadatas(data)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set List Loan Meta Data", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, created])
+
+  const onShowModal = (loanMetadataPubKey: PublicKey, nftMint: PublicKey) => {
+    setParams({ loanMetadataPubKey, nftMint })
+    setShowModal(true)
+  }
 
   const onListNFT = async (
     loanMetadataPubKey: PublicKey,
     nftMint: PublicKey
   ) => {
+    console.log("ok")
     try {
       if (workspace.value) {
         const { program, wallet } = workspace.value
@@ -264,7 +295,7 @@ const ListNFT = () => {
           wallet.publicKey
         )
         const tx = await program.methods
-          .listNft(new BN(50 * DEFAULT_DECIMALS))
+          .listNft(new BN(price * DEFAULT_DECIMALS))
           .accounts({
             seller: wallet.publicKey,
             loanMetadata: loanMetadataPubKey,
@@ -295,8 +326,10 @@ const ListNFT = () => {
         showPopupSuccess()
         console.log("tx", tx)
       }
+      setShowModal(false)
     } catch (err) {
       if (err instanceof Error) {
+        setShowModal(false)
         catchError("On List NFT", err)
       }
     }
@@ -360,16 +393,8 @@ const ListNFT = () => {
 
   return (
     <div className="px-6 mt-5">
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mb-5">
         <Title level={2}>NFT List</Title>
-        <div className="h-full">
-          <button
-            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
-            onClick={() => router.push("/market")}
-          >
-            Market
-          </button>
-        </div>
       </div>
 
       <Row>
@@ -378,9 +403,31 @@ const ListNFT = () => {
             columns={columns}
             pagination={false}
             dataSource={loanMetadatas}
+            loading={loading}
           />
         </Col>
       </Row>
+      {params && (
+        <Modal
+          title="Sell Info"
+          open={showModal}
+          onOk={() => onListNFT(params.loanMetadataPubKey, params.nftMint)}
+          onCancel={() => setShowModal(false)}
+        >
+          <Form layout="vertical" form={form} name="control-hooks">
+            <Form.Item
+              label="Price"
+              name="price"
+              rules={[
+                { required: true },
+                { type: "number", min: 1, message: "Min value can't < 0" },
+              ]}
+            >
+              <InputNumber style={{ width: "100%" }} />
+            </Form.Item>
+          </Form>
+        </Modal>
+      )}
       <ModalSuccess
         isOpen={openPopupSuccess}
         onCancel={hidePopupSuccess}

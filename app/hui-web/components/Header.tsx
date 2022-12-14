@@ -13,31 +13,31 @@ function Header() {
 
   return (
     <>
-      <div className="flex justify-between py-4 border-b max-w-screen-xl mx-auto">
-        <div className="w-[430px] flex justify-between">
+      <div className="flex justify-between py-4 border-b max-w-screen-2xl mx-auto">
+        <div className="w-[620px] flex justify-between">
           <Link
-            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            className="py-3 text-white w-36 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
             href="/lender"
           >
-            Lender
+            Lending
           </Link>
           <Link
-            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            className="py-3 text-white w-36 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
             href="/borrower"
           >
-            Borrower
+            Borrowing
           </Link>
           <Link
-            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            className="py-3 text-white w-36 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
             href="/market"
           >
-            Market
+            Loan Market
           </Link>
           <Link
-            className="p-3 text-white w-24 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
+            className="py-3 text-white w-36 text-center bg-indigo-500 hover:bg-slate-800 rounded-md"
             href="/faucet"
           >
-            Faucet
+            Account Balance
           </Link>
         </div>
         <div>
