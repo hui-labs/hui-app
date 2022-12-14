@@ -120,10 +120,10 @@ const SystemInfo = () => {
 
 const FaucetPage: React.FC = () => {
   return (
-    <div className="max-w-screen-xl mx-auto mt-5 px-6">
+    <div className="max-w-screen-2xl mx-auto mt-5 px-6">
       <div className="px-20 pb-20 pt-0 shadow-lg max-w-screen-md mx-auto mt-10">
         <Title className="text-center pt-5 pb-7" level={2}>
-          Faucet
+          Account Balance
         </Title>
         <Airdrop />
         <hr className="my-3" />

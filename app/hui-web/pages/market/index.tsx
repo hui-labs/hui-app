@@ -78,6 +78,8 @@ const Market = () => {
   const router = useRouter()
   const workspace = useWorkspace()
   const [created, setCreated] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+
   const [loanMetadatas, setListLoanMetadatas] = useState<ItemForSaleDataType[]>(
     []
   )
@@ -91,6 +93,7 @@ const Market = () => {
     vaultAccount: PublicKey,
     metadataAccount: PublicKey
   ) => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { program, wallet, connection } = workspace.value
@@ -166,17 +169,20 @@ const Market = () => {
             ),
           ])
           .rpc()
-      setCreated(tx)
+        setCreated(tx)
         console.log(tx)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("On Buy", err)
+        setLoading(false)
       }
     }
   }
 
   useAsyncEffect(async () => {
+    setLoading(true)
     try {
       if (workspace.value) {
         const { client, wallet } = workspace.value
@@ -222,17 +228,19 @@ const Market = () => {
         )
         setListLoanMetadatas(data)
       }
+      setLoading(false)
     } catch (err) {
       if (err instanceof Error) {
         catchError("Set List Loan Meta Data", err)
+        setLoading(false)
       }
     }
   }, [workspace.value, created])
 
   return (
     <div className="px-6 mt-5">
-      <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
-        <Title level={2}>Market</Title>
+      <div className="flex justify-between items-center max-w-screen-2xl mx-auto mb-5">
+        <Title level={2}>Loan Market</Title>
         <div className="h-full">
           <button
             className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
@@ -249,6 +257,7 @@ const Market = () => {
             columns={columns}
             pagination={false}
             dataSource={loanMetadatas}
+            loading={loading}
           />
         </Col>
       </Row>
