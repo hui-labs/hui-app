@@ -19,6 +19,7 @@ import { getOrCreateAssociatedTokenAccount } from "@/services"
 import { web3 } from "@project-serum/anchor"
 import { USDTPubKey } from "@/common/constants"
 import { catchError } from "@/helps/notification"
+import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
 
@@ -83,6 +84,7 @@ const Market = () => {
   const [loanMetadatas, setListLoanMetadatas] = useState<ItemForSaleDataType[]>(
     []
   )
+  const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
 
   const onBuy = async (
     publicKey: PublicKey,
@@ -170,6 +172,7 @@ const Market = () => {
           ])
           .rpc()
         setCreated(tx)
+        showPopupSuccess()
         console.log(tx)
       }
       setLoading(false)
@@ -237,6 +240,14 @@ const Market = () => {
     }
   }, [workspace.value, created])
 
+  const hidePopupSuccess = () => {
+    setOpenPopupSuccess(false)
+  }
+
+  const showPopupSuccess = () => {
+    setOpenPopupSuccess(true)
+  }
+
   return (
     <div className="px-6 mt-5">
       <div className="flex justify-between items-center max-w-screen-2xl mx-auto mb-5">
@@ -261,6 +272,12 @@ const Market = () => {
           />
         </Col>
       </Row>
+      <ModalSuccess
+        isOpen={openPopupSuccess}
+        onCancel={hidePopupSuccess}
+        onSubmit={hidePopupSuccess}
+        title={"Buy NFT Success"}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   Button,
   Col,
@@ -32,6 +32,7 @@ import { BN } from "@project-serum/anchor"
 import { getOrCreateAssociatedTokenAccount } from "@/services"
 import { catchError } from "@/helps/notification"
 import { LOAN_TERMS, LoanTerm } from "@/helps/coverMonth"
+import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
 
@@ -172,6 +173,7 @@ const columns: ColumnsType<DataType> = [
 const LenderPage: React.FC = () => {
   const router = useRouter()
   const workspace = useWorkspace()
+  const { createPoolSuccess } = router.query
   const [myPools, setMyPools] = useState<DataType[]>([])
   const [allPools, setAllPools] = useState<DataType[]>([])
   const decimals = 9
@@ -181,6 +183,15 @@ const LenderPage: React.FC = () => {
   const [open, setOpen] = useState(false)
   const [_, triggerReload] = useState(false)
   const [loading, setLoading] = useState<boolean>(false)
+  const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
+  const [titlePopup, setTitlePopup] = useState("")
+
+  useEffect(() => {
+    if (createPoolSuccess) {
+      setTitlePopup("Create Pool Success")
+      showPopupSuccess()
+    }
+  }, [createPoolSuccess])
 
   const onWithdraw = async (
     poolPubKey: PublicKey,
@@ -225,7 +236,9 @@ const LenderPage: React.FC = () => {
             tokenProgram: TOKEN_PROGRAM_ID,
           })
           .rpc()
-
+        triggerReload((state) => !state)
+        setTitlePopup("Withdraw Success")
+        showPopupSuccess()
         console.log(tx)
       }
     } catch (err) {
@@ -401,8 +414,10 @@ const LenderPage: React.FC = () => {
             tokenProgram: TOKEN_PROGRAM_ID,
           })
           .rpc()
-        triggerReload((state) => !state)
         handleCancel()
+        triggerReload((state) => !state)
+        setTitlePopup("Deposit Success")
+        showPopupSuccess()
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -417,6 +432,14 @@ const LenderPage: React.FC = () => {
 
   const handleCancel = () => {
     setOpen(false)
+  }
+
+  const hidePopupSuccess = () => {
+    setOpenPopupSuccess(false)
+  }
+
+  const showPopupSuccess = () => {
+    setOpenPopupSuccess(true)
   }
 
   return (
@@ -462,7 +485,7 @@ const LenderPage: React.FC = () => {
           </Col>
         </Row>
         <Modal
-          title="Title"
+          title=""
           open={open}
           onOk={() => form.submit()}
           onCancel={handleCancel}
@@ -488,6 +511,12 @@ const LenderPage: React.FC = () => {
           </Row>
         </Modal>
       </div>
+      <ModalSuccess
+        isOpen={openPopupSuccess}
+        onCancel={hidePopupSuccess}
+        onSubmit={hidePopupSuccess}
+        title={titlePopup}
+      />
     </div>
   )
 }
