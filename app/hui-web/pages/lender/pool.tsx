@@ -19,6 +19,7 @@ import { AnchorClient } from "@/services/anchorClient"
 import bs58 from "bs58"
 import { catchError } from "@/helps/notification"
 import { LOAN_TERMS, LoanTerm } from "@/helps/coverMonth"
+import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
 
@@ -136,6 +137,8 @@ const LoansOfPool: React.FC = () => {
   const [loans, setLoans] = useState<DataType[]>([])
   const decimals = 9
   const [created, setCreated] = useState<string | null>(null)
+  const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
+  const [titlePopup, setTitlePopup] = useState("")
 
   const onClaimNFT = async (
     masterLoanPubKey: PublicKey,
@@ -183,7 +186,9 @@ const LoansOfPool: React.FC = () => {
             ),
           ])
           .rpc()
-      setCreated(tx)
+        setTitlePopup("Claim NFT Success")
+        showPopupSuccess()
+        setCreated(tx)
         console.log("tx", tx)
       }
     } catch (err) {
@@ -253,6 +258,8 @@ const LoansOfPool: React.FC = () => {
           })
           .rpc()
         setCreated(tx)
+        setTitlePopup("Claim Fund Success")
+        showPopupSuccess()
         console.log("tx", tx)
       }
     } catch (err) {
@@ -419,6 +426,14 @@ const LoansOfPool: React.FC = () => {
     }
   }, [id, workspace.value, created])
 
+  const hidePopupSuccess = () => {
+    setOpenPopupSuccess(false)
+  }
+
+  const showPopupSuccess = () => {
+    setOpenPopupSuccess(true)
+  }
+
   return (
     <div className="px-6 mt-5">
       <div className="flex justify-between items-center max-w-screen-xl mx-auto mb-5">
@@ -430,6 +445,12 @@ const LoansOfPool: React.FC = () => {
           <Table columns={columns} pagination={false} dataSource={loans} />
         </Col>
       </Row>
+      <ModalSuccess
+        isOpen={openPopupSuccess}
+        onCancel={hidePopupSuccess}
+        onSubmit={hidePopupSuccess}
+        title={titlePopup}
+      />
     </div>
   )
 }

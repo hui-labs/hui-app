@@ -12,6 +12,7 @@ import { AnchorClient } from "@/services/anchorClient"
 import { formatUnits } from "@ethersproject/units"
 import { catchError } from "@/helps/notification"
 import { useRouter } from "next/router"
+import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
 
@@ -72,6 +73,8 @@ const ListNFT = () => {
     LoanMetadataDataType[]
   >([])
   const router = useRouter()
+  const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
+  const [titlePopup, setTitlePopup] = useState("")
 
   const itemForSaleFetcher = async (
     client: AnchorClient,
@@ -288,6 +291,8 @@ const ListNFT = () => {
           ])
           .rpc()
         setCreated(tx)
+        setTitlePopup("List NFT Success")
+        showPopupSuccess()
         console.log("tx", tx)
       }
     } catch (err) {
@@ -334,6 +339,8 @@ const ListNFT = () => {
           })
           .rpc()
         setCreated(tx)
+        setTitlePopup("DeList NFT Success")
+        showPopupSuccess()
         console.log(tx)
       }
     } catch (err) {
@@ -341,6 +348,14 @@ const ListNFT = () => {
         catchError("On De List NFT", err)
       }
     }
+  }
+
+  const hidePopupSuccess = () => {
+    setOpenPopupSuccess(false)
+  }
+
+  const showPopupSuccess = () => {
+    setOpenPopupSuccess(true)
   }
 
   return (
@@ -366,6 +381,12 @@ const ListNFT = () => {
           />
         </Col>
       </Row>
+      <ModalSuccess
+        isOpen={openPopupSuccess}
+        onCancel={hidePopupSuccess}
+        onSubmit={hidePopupSuccess}
+        title={titlePopup}
+      />
     </div>
   )
 }

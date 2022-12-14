@@ -271,7 +271,7 @@ const AddPool: React.FC = () => {
             .preInstructions([ins])
             .signers([pool, vaultKeypair])
             .rpc()
-          await router.push("/lender")
+          await router.push("/lender?createPoolSuccess=true")
         } catch (e) {
           throw e
         }

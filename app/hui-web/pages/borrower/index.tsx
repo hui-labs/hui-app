@@ -44,6 +44,7 @@ import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { catchError } from "@/helps/notification"
 import { LOAN_TERMS, LoanTerm } from "@/helps/coverMonth"
+import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
 
@@ -241,6 +242,8 @@ const BorrowerPage: React.FC = () => {
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const [created, setCreated] = useState<string | null>(null)
+  const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
+  const [titlePopup, setTitlePopup] = useState("")
 
   const handleSubmit = async (data: LoanForm) => {
     try {
@@ -276,6 +279,8 @@ const BorrowerPage: React.FC = () => {
 
           setOpen(false)
           setCreated(tx)
+          setTitlePopup("Create Loan Success")
+          showPopupSuccess()
         }
         setConfirmLoading(false)
       }
@@ -434,7 +439,10 @@ const BorrowerPage: React.FC = () => {
           })
           .signers([vaultAccountKeypair])
           .rpc()
-      setCreated(tx)
+        setCreated(tx)
+        setTitlePopup("Final Success")
+        showPopupSuccess()
+
         console.log(tx)
         await getAssociatedTokenAddress(
           loanMetadata.account.nftMint,
@@ -517,27 +525,27 @@ const BorrowerPage: React.FC = () => {
         //   )
         // )
 
-      // const cache = rawData.reduce((acc, cur) => {
-      //   acc[cur.vaultAccount.toBase58()] = cur
-      //   return acc
-      // }, {} as Record<string, LoanDataType>)
-      // console.log("cache", cache)
-      // accounts.forEach((account) => {
-      //   if (account.address.toBase58() in cache) {
-      //     cache[account.address.toBase58()].availableAmount = formatUnits(
-      //       account.amount,
-      //       9
-      //     )
-      //   }
-      // })
+        // const cache = rawData.reduce((acc, cur) => {
+        //   acc[cur.vaultAccount.toBase58()] = cur
+        //   return acc
+        // }, {} as Record<string, LoanDataType>)
+        // console.log("cache", cache)
+        // accounts.forEach((account) => {
+        //   if (account.address.toBase58() in cache) {
+        //     cache[account.address.toBase58()].availableAmount = formatUnits(
+        //       account.amount,
+        //       9
+        //     )
+        //   }
+        // })
 
-      const data = Object.values(rawData).reduce(
-        (acc, cur) => {
-          acc[cur.isAdmin ? 0 : 1].push(cur)
-          return acc
-        },
-        [[], []] as [LoanDataType[], LoanDataType[]]
-      )
+        const data = Object.values(rawData).reduce(
+          (acc, cur) => {
+            acc[cur.isAdmin ? 0 : 1].push(cur)
+            return acc
+          },
+          [[], []] as [LoanDataType[], LoanDataType[]]
+        )
 
         setMyLoans(data[0])
       }
@@ -633,6 +641,14 @@ const BorrowerPage: React.FC = () => {
 
     return compare === "usdc" ? parseInt(usdcBalance) : parseInt(usdtBalance)
   }, [poolDetails, usdtBalance, usdcBalance])
+
+  const hidePopupSuccess = () => {
+    setOpenPopupSuccess(false)
+  }
+
+  const showPopupSuccess = () => {
+    setOpenPopupSuccess(true)
+  }
 
   return (
     <div className="px-6 mt-5">
@@ -810,6 +826,13 @@ const BorrowerPage: React.FC = () => {
           </Col>
         </Row>
       </Modal>
+
+      <ModalSuccess
+        isOpen={openPopupSuccess}
+        onCancel={hidePopupSuccess}
+        onSubmit={hidePopupSuccess}
+        title={titlePopup}
+      />
     </div>
   )
 }
