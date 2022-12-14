@@ -4,7 +4,7 @@ import * as animationData from "../success.json"
 
 import { Modal } from "antd"
 
-type ModalSuccessProps = {
+interface ModalSuccessProps {
   isOpen: boolean
   onSubmit: () => void
   onCancel: () => void
