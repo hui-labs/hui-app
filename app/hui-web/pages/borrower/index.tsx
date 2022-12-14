@@ -45,6 +45,7 @@ import { useAccount } from "@/hooks/useAccount"
 import { useFormatUnit } from "@/hooks/useFormatUnit"
 import { catchError } from "@/helps/notification"
 import { LOAN_TERMS, LoanTerm } from "@/helps/coverMonth"
+import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
 
@@ -263,6 +264,8 @@ const BorrowerPage: React.FC = () => {
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const [created, setCreated] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
+  const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
+  const [titlePopup, setTitlePopup] = useState("")
 
   const handleSubmit = async (data: LoanForm) => {
     try {
@@ -298,6 +301,8 @@ const BorrowerPage: React.FC = () => {
 
           setOpen(false)
           setCreated(tx)
+          setTitlePopup("Borrow Success")
+          showPopupSuccess()
         }
         setConfirmLoading(false)
       }
@@ -457,6 +462,9 @@ const BorrowerPage: React.FC = () => {
           .signers([vaultAccountKeypair])
           .rpc()
         setCreated(tx)
+        setTitlePopup("Final Settlement Success")
+        showPopupSuccess()
+
         console.log(tx)
         await getAssociatedTokenAddress(
           loanMetadata.account.nftMint,
@@ -662,6 +670,14 @@ const BorrowerPage: React.FC = () => {
     return compare === "usdc" ? parseInt(usdcBalance) : parseInt(usdtBalance)
   }, [poolDetails, usdtBalance, usdcBalance])
 
+  const hidePopupSuccess = () => {
+    setOpenPopupSuccess(false)
+  }
+
+  const showPopupSuccess = () => {
+    setOpenPopupSuccess(true)
+  }
+
   return (
     <div className="px-6 mt-5">
       <Title className="max-w-screen-2xl mx-auto" level={2}>
@@ -845,6 +861,13 @@ const BorrowerPage: React.FC = () => {
           </Col>
         </Row>
       </Modal>
+
+      <ModalSuccess
+        isOpen={openPopupSuccess}
+        onCancel={hidePopupSuccess}
+        onSubmit={hidePopupSuccess}
+        title={titlePopup}
+      />
     </div>
   )
 }
