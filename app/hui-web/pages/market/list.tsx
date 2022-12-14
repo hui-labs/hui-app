@@ -20,7 +20,6 @@ import bs58 from "bs58"
 import { AnchorClient } from "@/services/anchorClient"
 import { formatUnits } from "@ethersproject/units"
 import { catchError } from "@/helps/notification"
-import { useRouter } from "next/router"
 import { ModalSuccess } from "@/components/ModalSuccess"
 
 const { Title } = Typography
@@ -62,14 +61,26 @@ const columns: ColumnsType<LoanMetadataDataType> = [
       if (isListed) {
         return (
           <div>
-            <Button onClick={onDelistNFT}>Delist</Button>
+            <Button
+              className="bg-indigo-500 hover:bg-indigo-600"
+              type="primary"
+              onClick={onDelistNFT}
+            >
+              Delist
+            </Button>
           </div>
         )
       }
 
       return (
         <div>
-          <Button onClick={onShow}>List</Button>
+          <Button
+            className="bg-indigo-500 hover:bg-indigo-600"
+            type="primary"
+            onClick={onShow}
+          >
+            List
+          </Button>
         </div>
       )
     },
@@ -92,7 +103,6 @@ const ListNFT = () => {
 
   const [form] = Form.useForm()
   const price = Form.useWatch("price", form)
-  const router = useRouter()
   const [openPopupSuccess, setOpenPopupSuccess] = useState(false)
   const [titlePopup, setTitlePopup] = useState("")
 
@@ -413,6 +423,10 @@ const ListNFT = () => {
           open={showModal}
           onOk={() => onListNFT(params.loanMetadataPubKey, params.nftMint)}
           onCancel={() => setShowModal(false)}
+          okButtonProps={{ className: "bg-indigo-500 hover:bg-indigo-600" }}
+          cancelButtonProps={{
+            className: "hover:border-indigo-400 hover:text-indigo-500",
+          }}
         >
           <Form layout="vertical" form={form} name="control-hooks">
             <Form.Item

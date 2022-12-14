@@ -52,7 +52,7 @@ const Airdrop = () => {
           <span>{usdcAccount.loading ? "Loading..." : usdcBalance}</span>
         </p>
         <button
-          className="p-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
+          className="p-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white"
           onClick={() => mintUSDCTo()}
         >
           {usdcState.loading ? "Loading..." : "Faucet +100 USDC"}
@@ -64,7 +64,7 @@ const Airdrop = () => {
           <span>{usdtAccount.loading ? "Loading..." : usdtBalance}</span>
         </p>
         <button
-          className="p-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
+          className="p-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white"
           onClick={() => mintUSDTTo()}
         >
           {usdtState.loading ? "Loading..." : "Faucet +100 USDT"}
@@ -76,7 +76,7 @@ const Airdrop = () => {
           <span>{balance.loading ? "Loading..." : solBalance}</span>
         </p>
         <button
-          className="p-2 rounded-md bg-indigo-500 hover:bg-slate-800 text-white"
+          className="p-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white"
           onClick={async () => {
             if (workspace.value) {
               const { connection, wallet } = workspace.value

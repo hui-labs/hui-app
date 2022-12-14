@@ -146,7 +146,7 @@ const poolColumns: ColumnsType<PoolDataType> = [
       return (
         <Space>
           <Button
-            className="bg-indigo-500"
+            className="bg-indigo-500 hover:bg-indigo-600"
             type="primary"
             onClick={() => showModal(data)}
           >
@@ -237,7 +237,13 @@ const loanColumns: ColumnsType<LoanDataType> = [
 
       return (
         <Space>
-          <Button onClick={onFinal}>Final settlement</Button>
+          <Button
+            className="bg-indigo-500 hover:bg-indigo-600"
+            onClick={onFinal}
+            type="primary"
+          >
+            Final settlement
+          </Button>
         </Space>
       )
     },
@@ -738,7 +744,10 @@ const BorrowerPage: React.FC = () => {
         onOk={() => form.submit()}
         confirmLoading={confirmLoading}
         onCancel={handleCancel}
-        okButtonProps={{ className: "bg-indigo-500" }}
+        okButtonProps={{ className: "bg-indigo-500 hover:bg-indigo-600" }}
+        cancelButtonProps={{
+          className: "hover:border-indigo-400 hover:text-indigo-500",
+        }}
       >
         {poolDetails && (
           <>

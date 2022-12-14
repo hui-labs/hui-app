@@ -124,10 +124,26 @@ const columns: ColumnsType<DataType> = [
     title: "",
     render: (_, { onClaimNFT, onClaim, status, nftAccount }) => {
       if (!nftAccount)
-        return <Button onClick={() => onClaimNFT()}>Claim NFT</Button>
+        return (
+          <Button
+            className="bg-indigo-500 hover:bg-indigo-600"
+            type="primary"
+            onClick={() => onClaimNFT()}
+          >
+            Claim NFT
+          </Button>
+        )
 
       if (status === "final")
-        return <Button onClick={() => onClaim()}>Claim Fund</Button>
+        return (
+          <Button
+            className="bg-indigo-500 hover:bg-indigo-600"
+            type="primary"
+            onClick={() => onClaim()}
+          >
+            Claim Fund
+          </Button>
+        )
 
       return null
     },
@@ -316,7 +332,6 @@ const LoansOfPool: React.FC = () => {
         const loansDetail = await Promise.all(
           loans.map((loan) => loanMetadataFetcher(connection, client, loan))
         )
-        console.log("loansDetail", loansDetail)
 
         const allTokenAccounts = await connection.getParsedTokenAccountsByOwner(
           wallet.publicKey,
@@ -374,7 +389,6 @@ const LoansOfPool: React.FC = () => {
             const status = loanMetadata
               ? Object.keys(loanMetadata.account.status)[0]
               : ""
-            console.log("vaultAccount", vaultAccount.toBase58())
             return {
               key: publicKey.toBase58(),
               owner: owner,
