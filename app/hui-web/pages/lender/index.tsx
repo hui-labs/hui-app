@@ -138,6 +138,7 @@ const columns: ColumnsType<DataType> = [
       return (
         <Space>
           <Button
+            className="hover:border-indigo-400 hover:text-indigo-500"
             onClick={(e) => {
               e.stopPropagation()
               onShow()
@@ -148,6 +149,7 @@ const columns: ColumnsType<DataType> = [
           {isAdmin && (
             <>
               <Button
+                className="hover:border-indigo-400 hover:text-indigo-500"
                 onClick={() =>
                   onWithdraw(new BN(parseUnits(availableAmount, 9).toString()))
                 }
@@ -155,6 +157,7 @@ const columns: ColumnsType<DataType> = [
                 Withdraw
               </Button>
               <Button
+                className="hover:border-indigo-400 hover:text-indigo-500"
                 onClick={(e) => {
                   e.stopPropagation()
                   onDeposit()
@@ -448,7 +451,7 @@ const LenderPage: React.FC = () => {
         <Title level={2}>Lending</Title>
         <div className="h-full">
           <button
-            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
+            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-indigo-600 ml-5"
             onClick={() => router.push("/lender/add")}
           >
             Create Pool

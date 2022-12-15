@@ -48,6 +48,8 @@ const AddPool: React.FC = () => {
   const vaultMint = Form.useWatch("vaultMint", form)
   const loanTerm = Form.useWatch<LoanTerm>("loanTerm", form)
   const interestRate = Form.useWatch("interestRate", form)
+  const maxLoan = Form.useWatch("maxLoanAmount", form)
+  const minLoan = Form.useWatch("minLoanAmount", form)
   const usdcBalance = useFormatUnit(usdcAccount.value?.amount)
   const usdtBalance = useFormatUnit(usdtAccount.value?.amount)
   const [isOpen, setIsOpen] = useState<boolean>(false)
@@ -68,8 +70,8 @@ const AddPool: React.FC = () => {
 
   const interestIncome = useMemo(() => {
     if (loanOfTerm === 0 || !interestRate) return 0
-    return loanOfTerm * interestRate
-  }, [loanOfTerm, interestRate])
+    return ((loanOfTerm * interestRate) / 1200) * topUpAmount
+  }, [loanOfTerm, interestRate, topUpAmount])
 
   const currentBalance: number = useMemo(() => {
     switch (vaultMint) {
@@ -102,7 +104,7 @@ const AddPool: React.FC = () => {
               max: currentBalance,
               message: "You don't enough token",
             },
-            { type: "number", min: 100, message: "min value is 100" },
+            { type: "number", min: 90, message: "min value is 90" },
           ],
         ],
         [
@@ -136,12 +138,18 @@ const AddPool: React.FC = () => {
             {
               type: "number",
               max: topUpAmount,
-              message: `You can't set Max Loan Amount bigger than ${topUpAmount}`,
+              message: `You can't set Maximum Loan Amount bigger than ${topUpAmount}`,
             },
             {
               type: "number",
               min: 2,
-              message: "You can't set Max Loan Amount smaller than 2",
+              message: "You can't set Maximum Loan Amount smaller than 2",
+            },
+            {
+              type: "number",
+              min: minLoan,
+              message:
+                "You can't set Maximum Loan Amount smaller than Min Loan Amount",
             },
           ],
         ],
@@ -156,12 +164,18 @@ const AddPool: React.FC = () => {
             {
               type: "number",
               max: topUpAmount,
-              message: ` You can't set Min Loan Amount bigger than ${topUpAmount}`,
+              message: ` You can't set Minimum Loan Amount bigger than ${topUpAmount}`,
             },
             {
               type: "number",
               min: 1,
-              message: "You can't set Min Loan Amount smaller than 1",
+              message: "You can't set Minimum Loan Amount smaller than 1",
+            },
+            {
+              type: "number",
+              max: maxLoan,
+              message:
+                "You can't set Minimum Loan Amount bigger than Max Loan Amount",
             },
           ],
         ],
@@ -188,7 +202,7 @@ const AddPool: React.FC = () => {
       ])
       return rulesMap.get(key)
     },
-    [currentBalance, topUpAmount]
+    [currentBalance, maxLoan, minLoan, topUpAmount]
   )
 
   const onSubmit = async () => {
@@ -426,14 +440,18 @@ const AddPool: React.FC = () => {
             <Form.Item>
               <Space>
                 <Button
-                  className="bg-indigo-500"
+                  className="bg-indigo-500 hover:bg-indigo-600"
                   type="primary"
                   htmlType="submit"
                 >
                   Submit
                 </Button>
 
-                <Button type="default" onClick={onFill}>
+                <Button
+                  className="hover:border-indigo-400 hover:text-indigo-500"
+                  type="default"
+                  onClick={onFill}
+                >
                   Autofill
                 </Button>
               </Space>
@@ -445,7 +463,10 @@ const AddPool: React.FC = () => {
         title="Pool details"
         open={isOpen}
         width={600}
-        okButtonProps={{ className: "bg-indigo-500" }}
+        okButtonProps={{ className: "bg-indigo-500 hover:bg-indigo-600" }}
+        cancelButtonProps={{
+          className: "hover:border-indigo-400 hover:text-indigo-500",
+        }}
         onOk={onSubmit}
         onCancel={() => setIsOpen(false)}
       >

@@ -68,7 +68,13 @@ const columns: ColumnsType<ItemForSaleDataType> = [
     render: (_, { onBuy }) => {
       return (
         <div>
-          <Button onClick={onBuy}>Buy</Button>
+          <Button
+            type="primary"
+            className="bg-indigo-500 hover:bg-indigo-600"
+            onClick={onBuy}
+          >
+            Buy
+          </Button>
         </div>
       )
     },
@@ -254,7 +260,7 @@ const Market = () => {
         <Title level={2}>Loan Market</Title>
         <div className="h-full">
           <button
-            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-slate-800 ml-5"
+            className="bg-indigo-500 text-white p-3 rounded-md w-36 text-center hover:bg-indigo-600 ml-5"
             onClick={() => router.push("/market/list")}
           >
             List your NFT

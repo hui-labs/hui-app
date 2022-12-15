@@ -26,7 +26,9 @@ export const ModalSuccess = (props: ModalSuccessProps) => {
     <Modal
       open={isOpen}
       width={600}
-      okButtonProps={{ className: "bg-indigo-500" }}
+      okButtonProps={{
+        className: "bg-indigo-500 hover:bg-indigo-600 w-full h-10",
+      }}
       onOk={onSubmit}
       cancelButtonProps={{ style: { display: "none" } }}
       onCancel={onCancel}
