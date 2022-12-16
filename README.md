@@ -1,5 +1,7 @@
 ## HUI App
 
+WARNING: This project is under developing. Only avaible on devnet.
+
 Official HUI App program and interface of the HUI protocol.
 
 ## How to run
